@@ -12,8 +12,8 @@ parser:
 	mov	[current_locals_prefix],eax
 	mov	[anonymous_reverse],eax
 	mov	[anonymous_forward],eax
-	mov	esi,[source_start]
-	mov	edi,[code_start]
+	mov	esi,[memory_start]
+	mov	edi,[source_start]
      parser_loop:
 	mov	[current_line],esi
 	cmp	edi,[labels_list]
@@ -24,14 +24,12 @@ parser:
 	stos	dword [edi]
 	add	esi,16
 	call	parse_line
-	cmp	esi,[code_start]
+	cmp	esi,[source_start]
 	jb	parser_loop
 	xor	al,al
 	stos	byte [edi]
 	cmp	[anonymous_forward],0
 	jne	unexpected_end_of_file
-	mov	eax,[code_start]
-	mov	[source_start],eax
 	mov	[code_start],edi
 	ret
 
@@ -215,8 +213,6 @@ parse_line:
 	cmp	al,'}'
 	je	unallowed_character
 	cmp	al,'#'
-	je	unallowed_character
-	cmp	al,'`'
 	je	unallowed_character
 	dec	esi
 	cmp	al,1Ah
@@ -498,7 +494,7 @@ parse_line:
 	mov	al,0F2h
 	jmp	separator
       less:
-	cmp	byte [edi-1],83h
+	cmp	byte [edi-1],0F6h
 	je	separator
 	cmp	byte [esi],'>'
 	je	not_equal
@@ -726,8 +722,8 @@ get_label_id:
 	push	edi
 	push	ecx esi
 	mov	edi,[free_additional_memory]
-	xor	al,al
-	stos	byte [edi]
+	xor	ax,ax
+	stos	word [edi]
 	mov	esi,[current_locals_prefix]
 	mov	ebx,edi
 	lods	byte [esi]
@@ -747,6 +743,7 @@ get_label_id:
 	pop	edi
 	push	esi
 	movzx	ecx,al
+	mov	byte [ebx-1],al
 	mov	esi,ebx
 	call	get_label_id
 	pop	esi
@@ -844,7 +841,7 @@ get_label_id:
       add_label:
 	mov	ecx,edx
 	pop	esi
-	cmp	byte [esi-1],0
+	cmp	byte [esi-2],0
 	je	label_name_ok
 	mov	al,[esi]
 	cmp	al,30h

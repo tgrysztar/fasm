@@ -3,7 +3,7 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-	format	PE console on '..\DOS\fasm.com'
+	format	PE console
 
 	macro	align value { rb (value-1) - (RVA $ + value-1) mod value }
 
@@ -59,6 +59,7 @@ start:
 	call	assembler
 	call	formatter
 
+	call	display_user_messages
 	movzx	eax,[current_pass]
 	inc	eax
 	call	display_number
@@ -151,7 +152,7 @@ current_locals_prefix dd ?
 labels_list dd ?
 label_hash dd ?
 org_origin dd ?
-org_sib dd ?
+org_registers dd ?
 org_start dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?

@@ -974,7 +974,7 @@ calculate_expression:
 	stos	dword [edi]
 	mov	eax,edx
 	stos	dword [edi]
-	mov	eax,[org_sib]
+	mov	eax,[org_registers]
 	stos	dword [edi]
 	add	edi,8
 	jmp	calculation_loop
@@ -2066,7 +2066,6 @@ get_logical_value:
 	call	check_character
 	jc	return_true
 	jmp	symbols_different
-
       compare_symbol_types:
 	inc	esi
 	pop	ebx

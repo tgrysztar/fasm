@@ -26,22 +26,22 @@ assembler:
 	mov	[free_additional_memory],eax
 	mov	eax,[additional_memory_end]
 	mov	[structures_buffer],eax
-	mov	[next_pass_needed],0
-	mov	[code_type],16
-	mov	[reloc_labels],0
-	mov	[virtual_data],0
 	mov	esi,[source_start]
 	mov	edi,[code_start]
 	xor	eax,eax
-	mov	[output_format],al
 	mov	[org_origin],edi
 	mov	[org_start],edi
-	mov	[org_sib],eax
+	mov	[org_registers],eax
 	mov	[error_line],eax
 	mov	[counter],eax
 	mov	[format_flags],eax
 	mov	[number_of_relocations],eax
 	mov	[undefined_data_end],eax
+	mov	[next_pass_needed],al
+	mov	[output_format],al
+	mov	[reloc_labels],al
+	mov	[virtual_data],al
+	mov	[code_type],16
       pass_loop:
 	call	assemble_line
 	jnc	pass_loop
@@ -104,7 +104,6 @@ assembler:
 	mov	eax,[error_line]
 	or	eax,eax
 	jnz	pass_error
-	call	flush_display_buffer
       assemble_ok:
 	ret
 
@@ -137,9 +136,6 @@ assemble_line:
       new_line:
 	lods	dword [esi]
 	mov	[current_line],eax
-	test	byte [eax+7],80h
-	jnz	continue_line
-	mov	[eax+12],edi
       continue_line:
 	cmp	byte [esi],0Fh
 	je	line_assembled
@@ -175,7 +171,7 @@ assemble_line:
 	mov	[ebx+11],ch
 	setne	al
 	or	ah,al
-	mov	edx,[org_sib]
+	mov	edx,[org_registers]
 	cmp	edx,[ebx+12]
 	mov	[ebx+12],edx
 	setne	al
@@ -434,7 +430,7 @@ org_directive:
 	mov	ecx,edi
 	sub	ecx,eax
 	mov	[org_origin],ecx
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	jmp	instruction_assembled
 label_directive:
@@ -463,7 +459,7 @@ label_directive:
 	mov	eax,edi
 	sub	eax,[org_origin]
 	cdq
-	mov	ebp,[org_sib]
+	mov	ebp,[org_registers]
 	cmp	byte [esi],80h
 	jne	define_free_label
 	inc	esi
@@ -772,11 +768,11 @@ virtual_directive:
 	je	set_virtual
 	mov	[value_type],2
       set_virtual:
-	mov	edx,[org_sib]
-	mov	byte [org_sib],bh
-	mov	byte [org_sib+1],bl
-	mov	byte [org_sib+2],ch
-	mov	byte [org_sib+3],cl
+	mov	edx,[org_registers]
+	mov	byte [org_registers],bh
+	mov	byte [org_registers+1],bl
+	mov	byte [org_registers+2],ch
+	mov	byte [org_registers+3],cl
 	call	allocate_structure_data
 	mov	word [ebx],virtual_directive-assembler
 	neg	eax
@@ -842,7 +838,7 @@ virtual_directive:
 	mov	eax,[ebx+4]
 	mov	[org_origin],eax
 	mov	eax,[ebx+8]
-	mov	[org_sib],eax
+	mov	[org_registers],eax
 	mov	eax,[ebx+0Ch]
 	mov	[org_start],eax
 	mov	edi,[ebx+10h]

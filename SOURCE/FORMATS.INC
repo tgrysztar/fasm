@@ -11,11 +11,6 @@ formatter:
 	bt	[format_flags],0
 	jnc	elf_formatter
       common_formatter:
-	cmp	[output_format],3
-	jne	prepare_code
-	mov	eax,[stub_size]
-	sub	[code_start],eax
-      prepare_code:
 	mov	eax,edi
 	sub	eax,[code_start]
 	mov	[real_code_size],eax
@@ -29,16 +24,28 @@ formatter:
 	mov	edx,[output_file]
 	call	create
 	jc	write_failed
+	cmp	[output_format],3
+	jne	stub_written
+	mov	edx,[code_start]
+	mov	ecx,[stub_size]
+	sub	edx,ecx
+	add	[written_size],ecx
+	call	write
+      stub_written:
 	cmp	[output_format],2
-	jne	write_code
+	jne	write_output
 	call	write_mz_header
+      write_output:
+	call	write_code
+      output_written:
+	call	close
+	ret
       write_code:
 	mov	edx,[code_start]
 	mov	ecx,[code_size]
 	add	[written_size],ecx
 	call	write
 	jc	write_failed
-	call	close
 	ret
 format_directive:
 	cmp	edi,[code_start]
@@ -289,7 +296,7 @@ segment_directive:
 	xor	al,al
 	rep	stos byte [edi]
 	mov	[org_origin],edi
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	eax,edx
 	call	undefined_data
@@ -317,10 +324,13 @@ mz_entry:
 	cmp	al,'('
 	jne	invalid_argument
 	call	get_word_value
-	cmp	[next_pass_needed],0
-	jne	initial_cs_ok
 	cmp	[value_type],1
-	jne	invalid_address
+	je	initial_cs_ok
+	cmp	[error_line],0
+	jne	initial_cs_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_address
       initial_cs_ok:
 	mov	edx,[additional_memory]
 	mov	[edx+16h],ax
@@ -352,10 +362,13 @@ mz_stack:
 	mov	[edx+10h],ax
 	jmp	instruction_assembled
       stack_pointer:
-	cmp	[next_pass_needed],0
-	jne	initial_ss_ok
 	cmp	[value_type],1
-	jne	invalid_address
+	je	initial_ss_ok
+	cmp	[error_line],0
+	jne	initial_ss_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_address
       initial_ss_ok:
 	mov	edx,[additional_memory]
 	mov	[edx+0Eh],ax
@@ -692,8 +705,8 @@ format_pe:
 	add	esi,eax
 	inc	esi
       pe_settings_ok:
-	mov	eax,[stub_size]
-	or	eax,eax
+	mov	ebp,[stub_size]
+	or	ebp,ebp
 	jz	make_pe_stub
 	cmp	edx,[stub_file]
 	je	pe_stub_ok
@@ -705,20 +718,11 @@ format_pe:
 	sub	eax,[code_start]
 	mov	[stub_size],eax
 	mov	[code_start],edi
+	mov	ebp,eax
       pe_stub_ok:
 	mov	edx,edi
-	imul	ecx,[number_of_sections],28h
-	add	ecx,18h+0E0h
-	add	ecx,eax
-	dec	ecx
-	shr	ecx,9
-	inc	ecx
-	shl	ecx,9
-	sub	ecx,eax
-	mov	eax,[display_buffer]
-	sub	eax,ecx
-	cmp	edi,eax
-	jae	out_of_memory
+	mov	ecx,18h+0E0h
+	add	ebp,ecx
 	shr	ecx,2
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -732,24 +736,47 @@ format_pe:
 	mov	word [edx+40h],1	; OS version
 	mov	eax,[image_base]
 	mov	dword [edx+34h],eax
-	mov	ax,[subsystem]
-	mov	[edx+5Ch],ax
 	mov	eax,[subsystem_version]
 	mov	[edx+48h],eax
+	mov	ax,[subsystem]
+	mov	[edx+5Ch],ax
+	cmp	ax,1
+	jne	pe_alignment_ok
+	mov	eax,20h
+	mov	dword [edx+38h],eax
+	mov	dword [edx+3Ch],eax
+      pe_alignment_ok:
 	mov	word [edx+1Ah],VERSION_MAJOR + VERSION_MINOR shl 8
-	mov	eax,edi
-	sub	eax,[code_start]
-	add	eax,[stub_size]
-	mov	[edx+54h],eax		; size of headers
 	mov	dword [edx+60h],1000h	; stack reserve
 	mov	dword [edx+64h],1000h	; stack commit
 	mov	dword [edx+68h],10000h	; heap reserve
 	mov	dword [edx+6Ch],0	; heap commit
 	mov	dword [edx+74h],16	; number of directories
+	bsf	ecx,[edx+3Ch]
+	imul	ebx,[number_of_sections],28h
+	add	ebx,ebp
+	dec	ebx
+	shr	ebx,cl
+	inc	ebx
+	shl	ebx,cl
+	sub	ebx,ebp
+	mov	ecx,ebx
+	mov	eax,[display_buffer]
+	sub	eax,ecx
+	cmp	edi,eax
+	jae	out_of_memory
+	shr	ecx,2
+	xor	eax,eax
+	rep	stos dword [edi]
+	mov	eax,edi
+	sub	eax,[code_start]
+	add	eax,[stub_size]
+	mov	[edx+54h],eax		; size of headers
+	bsf	ecx,[edx+38h]
 	dec	eax
-	shr	eax,12
+	shr	eax,cl
 	inc	eax
-	shl	eax,12
+	shl	eax,cl
 	mov	[edx+28h],eax		; entry point rva
 	mov	[code_type],32
 	or	[reloc_labels],-1
@@ -765,7 +792,7 @@ format_pe:
 	add	eax,edi
 	sub	eax,[edx+34h]
 	mov	[org_origin],eax
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	bt	[format_flags],8
 	jnc	instruction_assembled
@@ -807,7 +834,6 @@ pe_section:
 	call	close_pe_section
 	bts	[format_flags],5
 	lea	ecx,[ebx+28h]
-	mov	edx,[code_start]
 	add	edx,[edx+54h]
 	sub	edx,[stub_size]
 	cmp	ecx,edx
@@ -840,7 +866,7 @@ pe_section:
 	sub	eax,[ebx+0Ch]
 	sub	eax,[edx+34h]
 	mov	[org_origin],eax
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	or	[reloc_labels],-1
       get_section_flags:
@@ -874,6 +900,7 @@ pe_section:
 	jmp	get_section_flags
       close_pe_section:
 	mov	ebx,[current_section]
+	mov	edx,[code_start]
 	mov	eax,edi
 	sub	eax,[ebx+14h]
 	jnz	finish_section
@@ -885,18 +912,22 @@ pe_section:
 	mov	[ebx+8],eax
 	cmp	edi,[undefined_data_end]
 	jne	align_section
+	cmp	dword [edx+38h],1000h
+	jb	align_section
 	mov	edi,[undefined_data_start]
       align_section:
 	mov	[undefined_data_end],0
-	mov	edx,edi
-	sub	edx,[ebx+14h]
-	mov	ecx,edx
-	dec	ecx
-	shr	ecx,9
-	inc	ecx
-	shl	ecx,9
-	mov	[ebx+10h],ecx
-	sub	ecx,edx
+	bsf	ecx,[edx+3Ch]
+	mov	ebp,edi
+	sub	ebp,[ebx+14h]
+	mov	eax,ebp
+	dec	eax
+	shr	eax,cl
+	inc	eax
+	shl	eax,cl
+	mov	[ebx+10h],eax
+	sub	eax,ebp
+	mov	ecx,eax
 	xor	al,al
 	rep	stos byte [edi]
 	mov	eax,[code_start]
@@ -909,10 +940,11 @@ pe_section:
 	jne	udata_ok
 	or	byte [ebx+24h],80h
       udata_ok:
+	bsf	ecx,[edx+38h]
 	dec	eax
-	shr	eax,12
+	shr	eax,cl
 	inc	eax
-	shl	eax,12
+	shl	eax,cl
 	add	eax,[ebx+0Ch]
 	add	ebx,28h
 	mov	[current_section],ebx
@@ -969,10 +1001,13 @@ pe_entry:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
-	cmp	[next_pass_needed],0
-	jne	pe_entry_ok
 	cmp	[value_type],2
-	jne	invalid_address
+	je	pe_entry_ok
+	cmp	[error_line],0
+	jne	pe_entry_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_address
       pe_entry_ok:
 	mov	edx,[code_start]
 	sub	eax,[edx+34h]
@@ -1072,7 +1107,7 @@ make_pe_fixups:
 	sub	esi,eax
 	mov	[free_additional_memory],esi
 	or	[number_of_relocations],-1
-	mov	edx,1000h
+	xor	edx,edx
 	mov	ebp,edi
       make_fixups:
 	cmp	[esi],edx
@@ -1118,16 +1153,17 @@ close_pe:
 	shl	eax,2
 	sub	[free_additional_memory],eax
       pe_flags_ok:
-	xor	ecx,ecx
 	mov	eax,[number_of_sections]
 	mov	[edx+6],ax
+	bsf	ecx,[edx+3Ch]
 	imul	eax,28h
 	add	eax,18h+0E0h
 	add	eax,[stub_size]
 	dec	eax
-	shr	eax,9
+	shr	eax,cl
 	inc	eax
-	shl	eax,9
+	shl	eax,cl
+	xor	ecx,ecx
 	cmp	eax,[edx+54h]
 	je	process_directories
 	or	[next_pass_needed],-1
@@ -1147,6 +1183,25 @@ close_pe:
 	inc	cl
 	cmp	cl,10h
 	jb	process_directories
+	mov	ebx,[code_start]
+	sub	ebx,[stub_size]
+	mov	ecx,edi
+	sub	ecx,ebx
+	mov	ebp,ecx
+	shr	ecx,1
+	xor	eax,eax
+	cdq
+      calculate_checksum:
+	mov	dx,[ebx]
+	add	eax,edx
+	mov	dx,ax
+	shr	eax,16
+	add	eax,edx
+	add	ebx,2
+	loop	calculate_checksum
+	add	eax,ebp
+	mov	ebx,[code_start]
+	mov	[ebx+58h],eax
 	ret
 
 format_coff:
@@ -1170,7 +1225,7 @@ format_coff:
 	mov	[current_section],ebx
 	mov	[number_of_sections],0
 	mov	[org_origin],edi
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[code_type],32
 	or	[reloc_labels],-1
@@ -1188,7 +1243,7 @@ coff_section:
 	mov	[ebx],al
 	mov	[ebx+8],edi
 	mov	[org_origin],edi
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	or	[reloc_labels],-1
 	mov	[ebx+10h],eax
@@ -1581,13 +1636,7 @@ coff_formatter:
 	add	[written_size],ecx
 	call	write
 	jc	write_failed
-	mov	edx,[code_start]
-	mov	ecx,[code_size]
-	add	[written_size],ecx
-	call	write
-	jc	write_failed
-	call	close
-	ret
+	jmp	write_output
       store_symbol_name:
 	push	esi
 	mov	esi,[esi+4]
@@ -1652,7 +1701,7 @@ format_elf:
 	mov	[current_section],ebx
 	mov	[number_of_sections],0
 	mov	[org_origin],edi
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[code_type],32
 	or	[reloc_labels],-1
@@ -1673,7 +1722,7 @@ elf_section:
 	mov	[ebx],al
 	mov	[ebx+8],edi
 	mov	[org_origin],edi
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	or	[reloc_labels],-1
 	mov	al,10b
@@ -2072,19 +2121,14 @@ elf_formatter:
 	mov	edx,[output_file]
 	call	create
 	jc	write_failed
-	mov	edx,[code_start]
-	mov	ecx,[code_size]
-	add	[written_size],ecx
-	call	write
-	jc	write_failed
+	call	write_code
 	mov	ecx,edi
 	mov	edx,[free_additional_memory]
 	sub	ecx,edx
 	add	[written_size],ecx
 	call	write
 	jc	write_failed
-	call	close
-	ret
+	jmp	output_written
 
 format_elf_exe:
 	add	esi,2
@@ -2115,7 +2159,7 @@ format_elf_exe:
 	neg	eax
 	add	eax,edi
 	mov	[org_origin],eax
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	jmp	instruction_assembled
 elf_entry:
@@ -2180,7 +2224,7 @@ elf_exe_section:
 	neg	eax
 	add	eax,edi
 	mov	[org_origin],eax
-	mov	[org_sib],0
+	mov	[org_registers],0
 	mov	[org_start],edi
 	jmp	instruction_assembled
       close_elf_exe_section:
@@ -2239,6 +2283,7 @@ formatter_symbols:
  db 2,'ms',18h,41h
  db 2,'mz',18h,2
  db 6,'native',1Bh,1
+ db 11,'notpageable',19h,27
  db 2,'pe',18h,3
  db 8,'readable',19h,30
  db 8,'resource',1Ah,2

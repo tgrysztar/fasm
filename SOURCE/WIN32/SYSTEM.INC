@@ -115,6 +115,8 @@ get_params:
 	lodsb
 	cmp	al,20h
 	je	param_end
+	cmp	al,0Dh
+	je	param_end
 	or	al,al
 	jz	param_end
 	jmp	copy_param
@@ -125,6 +127,8 @@ get_params:
 	lodsb
 	cmp	al,22h
 	je	string_param_end
+	cmp	al,0Dh
+	je	param_end
 	or	al,al
 	jz	param_end
 	stosb
@@ -271,18 +275,6 @@ display_string:
 	push	ebp
 	call	[WriteFile]
 	ret
-display_block:
-	push	ecx
-	push	STD_OUTPUT_HANDLE
-	call	[GetStdHandle]
-	pop	ecx
-	push	0
-	push	bytes_count
-	push	ecx
-	push	esi
-	push	eax
-	call	[WriteFile]
-	ret
 display_character:
 	push	ebx
 	mov	[character],dl
@@ -330,6 +322,55 @@ display_number:
 	pop	ebx
 	ret
 
+display_user_messages:
+	mov	[displayed_count],0
+	call	flush_display_buffer
+	cmp	[displayed_count],1
+	jb	line_break_ok
+	je	make_line_break
+	mov	ax,word [last_displayed]
+	cmp	ax,0A0Dh
+	je	line_break_ok
+	cmp	ax,0D0Ah
+	je	line_break_ok
+      make_line_break:
+	mov	word [buffer],0A0Dh
+	push	STD_OUTPUT_HANDLE
+	call	[GetStdHandle]
+	push	0
+	push	bytes_count
+	push	2
+	push	buffer
+	push	eax
+	call	[WriteFile]
+      line_break_ok:
+	ret
+display_block:
+	add	[displayed_count],ecx
+	cmp	ecx,1
+	ja	take_last_two_characters
+	jb	block_displayed
+	mov	al,[last_displayed+1]
+	mov	ah,[esi]
+	mov	word [last_displayed],ax
+	jmp	block_ok
+      take_last_two_characters:
+	mov	ax,[esi+ecx-2]
+	mov	word [last_displayed],ax
+      block_ok:
+	push	ecx
+	push	STD_OUTPUT_HANDLE
+	call	[GetStdHandle]
+	pop	ecx
+	push	0
+	push	bytes_count
+	push	ecx
+	push	esi
+	push	eax
+	call	[WriteFile]
+      block_displayed:
+	ret
+
 fatal_error:
 	mov	esi,error_prefix
 	call	display_string
@@ -340,34 +381,44 @@ fatal_error:
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
-	call	flush_display_buffer
+	call	display_user_messages
+	push	dword 0
 	mov	ebx,[current_line]
-      find_error_home:
+      get_error_lines:
+	push	ebx
 	test	byte [ebx+7],80h
-	jz	error_home_ok
+	jz	display_error_line
+	mov	edx,ebx
+      find_definition_origin:
+	mov	edx,[edx+12]
+	test	byte [edx+7],80h
+	jnz	find_definition_origin
+	push	edx
 	mov	ebx,[ebx+8]
-	jmp	find_error_home
-      error_home_ok:
+	jmp	get_error_lines
+      display_error_line:
 	mov	esi,[ebx]
 	call	display_string
 	mov	esi,line_number_start
 	call	display_string
 	mov	eax,[ebx+4]
+	and	eax,7FFFFFFFh
 	call	display_number
 	mov	dl,']'
 	call	display_character
-	cmp	ebx,[current_line]
+	pop	esi
+	cmp	ebx,esi
 	je	line_number_ok
 	mov	dl,20h
 	call	display_character
-	mov	esi,[current_line]
+	push	esi
 	mov	esi,[esi]
 	movzx	ecx,byte [esi]
 	inc	esi
 	call	display_block
 	mov	esi,line_number_start
 	call	display_string
-	mov	esi,[current_line]
+	pop	esi
 	mov	eax,[esi+4]
 	and	eax,7FFFFFFFh
 	call	display_number
@@ -388,11 +439,14 @@ assembler_error:
 	xor	al,al
 	call	lseek
 	mov	ecx,[esp]
-	mov	edx,[memory_start]
+	mov	edx,[additional_memory]
+	lea	eax,[edx+ecx]
+	cmp	eax,[additional_memory_end]
+	ja	out_of_memory
 	call	read
 	call	close
 	pop	ecx
-	mov	esi,[memory_start]
+	mov	esi,[additional_memory]
       get_line_data:
 	mov	al,[esi]
 	cmp	al,0Ah
@@ -407,11 +461,14 @@ assembler_error:
 	loop	get_line_data
       display_line_data:
 	mov	ecx,esi
-	mov	esi,[memory_start]
+	mov	esi,[additional_memory]
 	sub	ecx,esi
 	call	display_block
 	mov	esi,cr_lf
 	call	display_string
+	pop	ebx
+	or	ebx,ebx
+	jnz	display_error_line
 	mov	esi,error_prefix
 	call	display_string
 	pop	esi
@@ -502,8 +559,10 @@ make_timestamp:
 	add	eax,ecx
 	ret
 
-character db ?,0
+character db ?
 bytes_count dd ?
+displayed_count dd ?
+last_displayed rb 2
 
 error_prefix db 'error: ',0
 error_suffix db '.'

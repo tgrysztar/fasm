@@ -3,22 +3,31 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-	org	100h
+	format	 MZ
+	heap	 0
+	entry	 main:start
 
-	macro	align value { rb (value-1) - ($ + value-1) mod value }
+	macro	 align value { rb (value-1) - ($ + value-1) mod value }
+
+include 'modes.inc'
+
+segment main use16
 
 start:
 
-	mov	ah,4Ah
-	mov	bx,1010h
-	int	21h
+	mov	ax,ds
+	push	cs cs
+	pop	ds es
+	mov	[psp_segment],ax
+
 	mov	dx,_logo
 	mov	ah,9
 	int	21h
 
 	cld
 
-	call	init_flatrm
+	call	go32
+	use32
 	call	init_memory
 
 	call	get_params
@@ -37,31 +46,33 @@ start:
 	cmp	byte [eax],0
 	jne	information
 
-	mov	di,characters
-	mov	cx,100h
+	mov	edi,characters
+	mov	ecx,100h
 	xor	al,al
       make_characters_table:
 	stosb
 	inc	al
 	loop	make_characters_table
-	mov	si,characters+'a'
-	mov	di,characters+'A'
-	mov	cx,26
+	mov	esi,characters+'a'
+	mov	edi,characters+'A'
+	mov	ecx,26
 	rep	movsb
-	mov	di,characters
-	mov	si,symbol_characters+1
-	movzx	cx,byte [si-1]
-	xor	bx,bx
+	mov	edi,characters
+	mov	esi,symbol_characters+1
+	movzx	ecx,byte [esi-1]
+	xor	ebx,ebx
       convert_table:
 	lodsb
 	mov	bl,al
-	mov	byte [di+bx],0
+	mov	byte [edi+ebx],0
 	loop	convert_table
 	mov	[display_buffer],0
 
-	mov	ebx,46Ch
-	sub	ebx,[program_base]
-	mov	eax,[ebx]
+	xor	ah,ah
+	int	1Ah
+	mov	ax,cx
+	shl	eax,16
+	mov	ax,dx
 	mov	[start_time],eax
 
 	call	preprocessor
@@ -69,15 +80,18 @@ start:
 	call	assembler
 	call	formatter
 
+	call	display_user_messages
 	movzx	eax,[current_pass]
 	inc	eax
 	call	display_number
 	mov	ah,9
 	mov	dx,_passes_suffix
-	int	21h
-	mov	ebx,46Ch
-	sub	ebx,[program_base]
-	mov	eax,[ebx]
+	call	dos_int
+	xor	ah,ah
+	int	1Ah
+	mov	ax,cx
+	shl	eax,16
+	mov	ax,dx
 	sub	eax,[start_time]
 	mov	ebx,100
 	mul	ebx
@@ -97,20 +111,20 @@ start:
 	call	display_number
 	mov	ah,9
 	mov	dx,_seconds_suffix
-	int	21h
+	call	dos_int
       display_bytes_count:
 	mov	eax,[written_size]
 	call	display_number
 	mov	ah,9
 	mov	dx,_bytes_suffix
-	int	21h
+	call	dos_int
 	xor	al,al
 	jmp	exit_program
 
 information:
 	mov	dx,_usage
 	mov	ah,9
-	int	21h
+	call	dos_int
 	mov	al,1
 	jmp	exit_program
 
@@ -139,6 +153,7 @@ _counter db 8,'00000000'
 align 4
 
 program_base dd ?
+buffer_address dd ?
 memory_start dd ?
 memory_end dd ?
 additional_memory dd ?
@@ -170,7 +185,7 @@ anonymous_forward dd ?
 labels_list dd ?
 label_hash dd ?
 org_origin dd ?
-org_sib dd ?
+org_registers dd ?
 org_start dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
@@ -229,9 +244,7 @@ nextbyte db ?
 characters rb 100h
 params rb 100h
 converted rb 100h
-buffer rb 1000h
 
-rb 400h
-if $ > 10000h
-  display 'warning: 64k limit exceeded.'
-end if
+segment buffer
+
+rb 1000h

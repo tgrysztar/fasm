@@ -111,11 +111,10 @@ basic_instruction:
 	jmp	instruction_assembled
       basic_mem_reg_16bit:
 	call	operand_16bit_prefix
-	inc	[base_code]
-	call	store_instruction
-	jmp	instruction_assembled
+	jmp	basic_mem_reg_store
       basic_mem_reg_32bit:
 	call	operand_32bit_prefix
+      basic_mem_reg_store:
 	inc	[base_code]
 	call	store_instruction
 	jmp	instruction_assembled
@@ -232,11 +231,10 @@ basic_instruction:
 	jmp	instruction_assembled
       basic_reg_mem_16bit:
 	call	operand_16bit_prefix
-	add	[base_code],3
-	call	store_instruction
-	jmp	instruction_assembled
+	jmp	basic_reg_mem_store
       basic_reg_mem_32bit:
 	call	operand_32bit_prefix
+      basic_reg_mem_store:
 	add	[base_code],3
 	call	store_instruction
 	jmp	instruction_assembled
@@ -410,11 +408,10 @@ single_operand_instruction:
 	jmp	instruction_assembled
       single_mem_16bit:
 	call	operand_16bit_prefix
-	inc	[base_code]
-	call	store_instruction
-	jmp	instruction_assembled
+	jmp	single_mem_store
       single_mem_32bit:
 	call	operand_32bit_prefix
+      single_mem_store:
 	inc	[base_code]
 	call	store_instruction
 	jmp	instruction_assembled
@@ -686,7 +683,7 @@ mov_instruction:
 	je	mov_reg_creg
 	cmp	ah,7
 	je	mov_reg_dreg
-	ja	invalid_operand
+	ja	mov_reg_treg
 	sub	al,61h
 	mov	bl,[postbyte_register]
 	shl	al,3
@@ -698,19 +695,24 @@ mov_instruction:
 	jne	invalid_operand_size
 	call	operand_16bit_prefix
 	jmp	mov_reg_sreg_store
-     mov_reg_sreg32:
+      mov_reg_sreg32:
 	call	operand_32bit_prefix
-     mov_reg_sreg_store:
+      mov_reg_sreg_store:
 	mov	al,8Ch
 	stos	byte [edi]
 	mov	al,bl
 	stos	byte [edi]
 	jmp	instruction_assembled
-      mov_reg_creg:
-	mov	bh,20h
+      mov_reg_treg:
+	cmp	ah,11
+	jne	invalid_operand
+	mov	bh,24h
 	jmp	mov_reg_xrx
       mov_reg_dreg:
 	mov	bh,21h
+	jmp	mov_reg_xrx
+      mov_reg_creg:
+	mov	bh,20h
       mov_reg_xrx:
 	and	al,111b
 	mov	bl,[postbyte_register]
@@ -858,7 +860,7 @@ mov_instruction:
 	je	mov_creg
 	cmp	ah,7
 	je	mov_dreg
-	ja	invalid_operand
+	ja	mov_treg
 	sub	al,61h
 	mov	[postbyte_register],al
 	lods	byte [esi]
@@ -919,11 +921,16 @@ mov_instruction:
 	mov	[base_code],8Eh
 	call	store_instruction
 	jmp	instruction_assembled
-      mov_creg:
-	mov	dl,22h
+      mov_treg:
+	cmp	ah,11
+	jne	invalid_operand
+	mov	dl,26h
 	jmp	mov_xrx
       mov_dreg:
 	mov	dl,23h
+	jmp	mov_xrx
+      mov_creg:
+	mov	dl,22h
       mov_xrx:
 	and	al,111b
 	mov	bh,al
@@ -6353,9 +6360,13 @@ symbols:
  db 2,'ch',10h,15h
  db 2,'cl',10h,11h
  db 3,'cr0',10h,50h
+ db 3,'cr1',10h,51h
  db 3,'cr2',10h,52h
  db 3,'cr3',10h,53h
  db 3,'cr4',10h,54h
+ db 3,'cr5',10h,55h
+ db 3,'cr6',10h,56h
+ db 3,'cr7',10h,57h
  db 2,'cs',10h,62h
  db 2,'cx',10h,21h
  db 2,'dh',10h,16h
@@ -6366,6 +6377,7 @@ symbols:
  db 3,'dr1',10h,71h
  db 3,'dr2',10h,72h
  db 3,'dr3',10h,73h
+ db 3,'dr4',10h,74h
  db 3,'dr5',10h,75h
  db 3,'dr6',10h,76h
  db 3,'dr7',10h,77h
@@ -6408,6 +6420,14 @@ symbols:
  db 3,'st5',10h,0A5h
  db 3,'st6',10h,0A6h
  db 3,'st7',10h,0A7h
+ db 3,'tr0',10h,0B0h
+ db 3,'tr1',10h,0B1h
+ db 3,'tr2',10h,0B2h
+ db 3,'tr3',10h,0B3h
+ db 3,'tr4',10h,0B4h
+ db 3,'tr5',10h,0B5h
+ db 3,'tr6',10h,0B6h
+ db 3,'tr7',10h,0B7h
  db 5,'tword',11h,0Ah
  db 5,'use16',13h,10h
  db 5,'use32',13h,20h

@@ -1,6 +1,15 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.49
+[16-09-2003]
+------------
+[+] better error information for macro-generated lines
+[+] support for test registers
+[+] fix constant redefinition improved for speed
+[+] some improvements for PE formatter
+[-] several small fixes
+
 version 1.48
 [24-07-2003]
 ------------

@@ -4,8 +4,6 @@
 ; All rights reserved.
 
 preprocessor:
-	mov	eax,[memory_start]
-	mov	[source_start],eax
 	mov	eax,[additional_memory]
 	mov	[free_additional_memory],eax
 	mov	[macros_list],eax
@@ -21,7 +19,7 @@ preprocessor:
 	jc	main_file_not_found
 	cmp	[macro_status],0
 	jne	unexpected_end_of_file
-	mov	[code_start],edi
+	mov	[source_start],edi
 	ret
 
 preprocess_file:
@@ -556,46 +554,68 @@ process_equ_constants:
 	jmp	process_after_replaced
 process_concatenations:
 	xor	dl,dl
+	mov	ebp,edi
+	cmp	word [esi],3Bh
+	jne	before_concatenations
+	add	esi,2
       before_concatenations:
+	mov	edi,esi
 	lods	byte [esi]
 	cmp	al,'#'
-	je	first_concatenation
+	je	concatenation
 	cmp	al,1Ah
 	je	symbol_before_concatenations
 	cmp	al,3Bh
-	je	symbol_before_concatenations
-	xor	dl,dl
+	je	no_more_concatenations
 	cmp	al,22h
 	je	string_before_concatenations
+	xor	dl,dl
 	or	al,al
 	jnz	before_concatenations
 	mov	edi,esi
 	ret
+      no_more_concatenations:
+	mov	edi,ebp
+	ret
       symbol_before_concatenations:
-	or	dl,-1
+	mov	dl,1Ah
 	mov	ebx,esi
 	lods	byte [esi]
 	movzx	ecx,al
 	add	esi,ecx
-	mov	edi,esi
 	jmp	before_concatenations
       string_before_concatenations:
+	mov	dl,22h
 	mov	ebx,esi
 	lods	dword [esi]
 	add	esi,eax
-	mov	edi,esi
 	jmp	before_concatenations
-      first_concatenation:
-	or	dl,dl
-	jz	before_concatenations
+      concatenation:
+	cmp	dl,1Ah
+	je	symbol_concatenation
+	cmp	dl,22h
+	je	string_concatenation
+      no_concatenation:
+	cmp	esi,edi
+	je	before_concatenations
+	jmp	after_concatenation
+      symbol_concatenation:
 	cmp	byte [esi],1Ah
-	jne	before_concatenations
-      do_concatenation:
+	jne	no_concatenation
 	inc	esi
 	lods	byte [esi]
 	movzx	ecx,al
 	add	[ebx],al
 	jc	name_too_long
+	rep	movs byte [edi],[esi]
+	jmp	after_concatenation
+      string_concatenation:
+	cmp	byte [esi],22h
+	jne	no_concatenation
+	inc	esi
+	lods	dword [esi]
+	mov	ecx,eax
+	add	[ebx],eax
 	rep	movs byte [edi],[esi]
       after_concatenation:
 	lods	byte [esi]
@@ -604,14 +624,16 @@ process_concatenations:
 	stos	byte [edi]
 	cmp	al,1Ah
 	je	symbol_after_concatenation
-	xor	dl,dl
+	cmp	al,3Bh
+	je	no_more_concatenations
 	cmp	al,22h
 	je	string_after_concatenation
+	xor	dl,dl
 	or	al,al
 	jnz	after_concatenation
 	ret
       symbol_after_concatenation:
-	or	dl,-1
+	mov	dl,1Ah
 	mov	ebx,edi
 	lods	byte [esi]
 	stos	byte [edi]
@@ -619,18 +641,13 @@ process_concatenations:
 	rep	movs byte [edi],[esi]
 	jmp	after_concatenation
       string_after_concatenation:
+	mov	dl,22h
 	mov	ebx,edi
 	lods	dword [esi]
 	stos	dword [edi]
 	mov	ecx,eax
 	rep	movs byte [edi],[esi]
 	jmp	after_concatenation
-      concatenation:
-	or	dl,dl
-	jz	after_concatenation
-	cmp	byte [esi],1Ah
-	jne	after_concatenation
-	jmp	do_concatenation
 include_file:
 	lods	byte [esi]
 	cmp	al,22h
@@ -647,12 +664,21 @@ define_fix_constant:
 	add	esi,3
 	push	ebp esi
 	call	process_fix_constants
-	pop	ebx
+	mov	esi,[esp+4]
+	movzx	ecx,byte [esi-1]
+	mov	[value_type],1
+	call	find_symbolic_constant
+	jc	allocate_new_fix_constant
+	mov	ebx,edx
+	jmp	make_fix_constant
+      allocate_new_fix_constant:
 	mov	edx,[labels_list]
 	sub	edx,16
 	cmp	edx,[free_additional_memory]
 	jb	out_of_memory
 	mov	[labels_list],edx
+      make_fix_constant:
+	pop	ebx
 	mov	ecx,edi
 	dec	ecx
 	sub	ecx,ebx
@@ -695,8 +721,7 @@ restore_equ_constant:
 	jne	invalid_name
 	movzx	ecx,byte [esi]
 	inc	esi
-	and	[value_type],0F0h
-	or	[value_type],1
+	mov	[value_type],2
 	call	find_symbolic_constant
 	jc	no_symbolic_constant
 	mov	ecx,edx
@@ -707,7 +732,7 @@ restore_equ_constant:
 	mov	ebx,esi
 	mov	esi,edx
 	xchg	edi,edx
-	add	edi,16
+	add	edi,16-4
 	sub	esi,4
 	std
 	rep	movs dword [edi],[esi]
