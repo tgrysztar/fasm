@@ -26,6 +26,9 @@ invalid_argument:
 illegal_instruction:
 	mov	edi,_illegal_instruction
 	jmp	assembler_error
+instruction_not_allowed:
+	mov	edi,_instruction_not_allowed
+	jmp	assembler_error
 invalid_operand:
 	mov	edi,_invalid_operand
 	jmp	assembler_error
@@ -49,6 +52,9 @@ invalid_address:
 	jmp	assembler_error
 invalid_value:
 	mov	edi,_invalid_value
+	jmp	assembler_error
+invalid_use_of_symbol:
+	mov	edi,_invalid_use_of_symbol
 	jmp	assembler_error
 value_out_of_range:
 	mov	edi,_value_out_of_range
@@ -183,6 +189,7 @@ _invalid_macro_arguments db 'invalid macro arguments',0
 _unexpected_characters db 'unexpected characters',0
 _invalid_argument db 'invalid argument',0
 _illegal_instruction db 'illegal instruction',0
+_instruction_not_allowed db 'instruction not allowed',0
 _invalid_operand db 'invalid operand',0
 _invalid_operand_size db 'invalid size of operand',0
 _operand_size_not_specified db 'operand size not specified',0
@@ -191,6 +198,7 @@ _address_sizes_do_not_agree db 'address sizes do not agree',0
 _invalid_expression db 'invalid expression',0
 _invalid_address db 'invalid address',0
 _invalid_value db 'invalid value',0
+_invalid_use_of_symbol db 'invalid use of symbol',0
 _value_out_of_range db 'value out of range',0
 _relative_jump_out_of_range db 'relative jump out of range',0
 _extra_characters_on_line db 'extra characters on line',0

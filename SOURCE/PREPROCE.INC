@@ -93,19 +93,22 @@ preprocess_file:
 	je	lf_character
 	cmp	al,0Dh
 	je	cr_character
+	or	al,al
+	jz	line_end
 	stosb
 	jmp	copy_line
       lf_character:
+	lodsb
 	cmp	al,0Dh
 	je	line_end
 	dec	esi
 	jmp	line_end
       cr_character:
+	lodsb
 	cmp	al,0Ah
 	je	line_end
 	dec	esi
       line_end:
-	add	esi,2
 	xor	al,al
 	stosb
 	ret
@@ -432,12 +435,41 @@ use_macro:
 	mov	ebp,esi
       find_argument_value_end:
 	lodsb
+	cmp	al,27h
+	je	skip_argument_string
 	cmp	al,','
 	je	argument_value_end
 	or	al,al
 	jz	argument_value_end
 	cmp	al,';'
+	je	argument_value_end
+	cmp	al,20h
 	jne	find_argument_value_end
+	push	esi
+      check_argument_spaces:
+	lodsb
+	cmp	al,20h
+	je	check_argument_spaces
+	cmp	al,','
+	je	no_argument_spaces
+	or	al,al
+	jz	no_argument_spaces
+	cmp	al,';'
+	je	no_argument_spaces
+	add	esp,4
+	jmp	find_argument_value_end
+      no_argument_spaces:
+	pop	esi
+	jmp	argument_value_end
+      skip_argument_string:
+	lodsb
+	cmp	al,27h
+	jne	skip_argument_string
+	lodsb
+	cmp	al,27h
+	je	skip_argument_string
+	dec	esi
+	jmp	find_argument_value_end
       argument_value_end:
 	dec	esi
 	xchg	esi,ebx
@@ -476,11 +508,14 @@ use_macro:
 	cmp	al,','
 	je	next_argument
 	dec	ebx
+      check_arguments:
 	lodsb
-	cmp	al,0
-	je	arguments_ok
+	or	al,al
+	jz	arguments_ok
 	cmp	al,';'
 	je	arguments_ok
+	cmp	al,20h
+	je	check_arguments
 	jmp	invalid_macro_arguments
       next_argument:
 	lodsb
@@ -528,6 +563,8 @@ use_macro:
 	repne	scasb
 	mov	edi,ebx
 	je	special_character
+	cmp	al,'.'
+	je	special_character
 	cmp	al,27h
 	je	skip_string
 	dec	esi
@@ -545,12 +582,15 @@ use_macro:
 	repe	cmpsb
 	jnz	next_macro_variable
 	mov	al,[esi]
+	cmp	al,'.'
+	je	macro_variable_ok
 	mov	ebx,edi
 	mov	edi,special_characters+1
 	movzx	ecx,[special_characters]
 	repne	scasb
 	mov	edi,ebx
 	jne	next_macro_variable
+      macro_variable_ok:
 	pop	edi
 	mov	ebx,ebp
 	movzx	ecx,byte [ebx]
@@ -737,8 +777,30 @@ HF_directive:
 	mov	edx,[current_line]
 	mov	byte [edx+4],':'
 	mov	[program_format],48h
+	mov	[default_code_type],32
+	push	edi
+	mov	edi,program_types
+	call	get_operator
+	pop	edi
+	or	al,al
+	jz	check_directive_line
+	cmp	al,1
+	je	HF_relocatable
+      check_directive_line:
+	lodsb
+	or	al,al
+	jz	directive_ok
+	cmp	al,';'
+	je	directive_ok
+	cmp	al,20h
+	je	check_directive_line
+	jmp	extra_characters_on_line
+      directive_ok:
 	pop	ebp edi esi ecx
 	ret
+      HF_relocatable:
+	mov	[program_relocatable],1
+	jmp	check_directive_line
 
 file_number db 0
 files_list dd 0

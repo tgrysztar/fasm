@@ -52,6 +52,7 @@ create_symbol:
 	pop	edx eax
 	mov	[ebx],eax
 	mov	[ebx+4],edx
+	mov	byte [ebx+10],0
 	pop	edi esi
 	cmp	ebx,edi
 	jbe	out_of_memory
@@ -109,7 +110,11 @@ get_symbol:
 	mov	eax,[current_offset]
 	sub	eax,[org_start]
 	xor	edx,edx
-	mov	cl,2
+	mov	cx,2
+	cmp	[program_relocatable],0
+	je	got_symbol
+	mov	ch,1
+      got_symbol:
 	ret
       get_symbol_from_list:
 	mov	edi,[symbols_list]
@@ -138,14 +143,14 @@ get_symbol:
 	cmp	[current_pass],0
 	je	no_symbol_yet
       symbol_undefined:
-	xor	cl,cl
+	xor	cx,cx
 	ret
       no_symbol_yet:
 	mov	esi,edx
 	add	esi,ebp
 	xor	eax,eax
 	xor	edx,edx
-	mov	cl,1
+	mov	cx,1
 	ret
       symbol_found:
 	cmp	ah,'.'
@@ -163,6 +168,18 @@ get_symbol:
 	mov	eax,[ebx]
 	mov	edx,[ebx+4]
 	mov	cl,3
+	mov	ch,[ebx+10]
+	cmp	ch,2
+	je	imported_symbol
+	cmp	ch,1
+	jne	got_symbol
+	cmp	[program_relocatable],0
+	jne	got_symbol
+	xor	ch,ch
+	ret
+      imported_symbol:
+	mov	[import_value],eax
+	xor	eax,eax
 	ret
 
 symbols_list dd 0

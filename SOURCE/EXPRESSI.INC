@@ -5,6 +5,8 @@ get_byte_value:
 	mov	[expression_start],esi
 	call	get_expression
 	jc	invalid_value
+	cmp	byte [edi+26],0
+	jne	invalid_use_of_symbol
 	cmp	word [edi+24],0
 	jne	invalid_value
 	mov	eax,[edi]
@@ -27,6 +29,8 @@ get_word_value:
 	mov	[expression_start],esi
 	call	get_expression
 	jc	invalid_value
+	cmp	byte [edi+26],0
+	jne	invalid_use_of_symbol
 	cmp	word [edi+24],0
 	jne	invalid_value
       check_word_value:
@@ -53,6 +57,8 @@ get_dword_value:
 	jc	invalid_value
 	cmp	word [edi+24],0
 	jne	invalid_value
+	mov	ch,byte [edi+26]
+	mov	[value_type],ch
       check_dword_value:
 	mov	eax,[edi]
 	cmp	dword [edi+4],0
@@ -71,6 +77,8 @@ get_pword_value:
 	mov	[expression_start],esi
 	call	get_expression
 	jc	invalid_value
+	cmp	byte [edi+26],0
+	jne	invalid_use_of_symbol
 	cmp	word [edi+24],0
 	jne	invalid_value
 	mov	eax,[edi]
@@ -87,6 +95,8 @@ get_qword_value:
 	mov	[expression_start],esi
 	call	get_expression
 	jc	invalid_value
+	cmp	byte [edi+26],0
+	jne	invalid_use_of_symbol
 	cmp	word [edi+24],0
 	jne	invalid_value
 	mov	eax,[edi]
@@ -125,7 +135,8 @@ get_memory_address:
 	cmp	al,']'
 	jne	invalid_address
 	xor	bx,bx
-	xor	cl,cl
+	xor	cx,cx
+	mov	ch,byte [edi+26]
 	cmp	word [edi+24],0
 	je	check_dword_value
 	mov	al,[edi+24]
@@ -199,11 +210,10 @@ get_memory_address:
 	or	bl,bl
 	jnz	address_register_error
 	mov	bl,al
-	mov	ecx,[edx]
-	cmp	ecx,255
+	mov	cl,[edx]
+	cmp	dword [edx],255
 	ja	address_register_error
-	clc
-	ret
+	jmp	address_register_ok
       address_register_error:
 	add	esp,4
 	jmp	bad_expression
@@ -227,16 +237,19 @@ get_memory_address:
       value_positive:
 	mov	al,10h
 	stosb
+	mov	byte [edi+26],0
 	jmp	get_value
       value_negative:
 	mov	al,11h
 	stosb
+	mov	byte [edi+26],0
 	jmp	get_value
       value_start:
 	lodsb
 	cmp	al,20h
 	je	value_start
 	dec	esi
+	mov	byte [edi+26],0
 	mov	ebp,edi
 	mov	edi,single_operand_operators
 	call	get_operator
@@ -291,6 +304,7 @@ get_memory_address:
       store_symbol_value:
 	mov	dword [ds:ebp],eax
 	mov	dword [ds:ebp+4],edx
+	mov	byte [ds:ebp+26],ch
       value_operator:
 	mov	edi,operators
 	call	get_operator
@@ -343,6 +357,11 @@ get_memory_address:
 	je	calculate_shr
 	jmp	calculate_done
       calculate_add:
+	mov	al,[esi+26]
+	and	al,[edi+26]
+	jnz	invalid_use_of_symbol
+	mov	al,[edi+26]
+	or	[esi+26],al
 	mov	eax,[edi]
 	add	[esi],eax
 	mov	eax,[edi+4]
@@ -396,6 +415,19 @@ get_memory_address:
 	add	esp,4
 	jmp	calculate_error
       calculate_sub:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jz	sub_allowed
+	cmp	al,1
+	jne	invalid_use_of_symbol
+	mov	al,[esi+26]
+	and	al,[esi+26]
+	cmp	al,1
+	jne	invalid_use_of_symbol
+	xor	al,al
+	mov	[esi+26],al
+	mov	[edi+26],al
+      sub_allowed:
 	mov	eax,[edi]
 	sub	[esi],eax
 	mov	eax,[edi+4]
@@ -416,6 +448,9 @@ get_memory_address:
 	adc	dword [ebx+4],0
 	jmp	add_register_start
       calculate_mul:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	cmp	word [esi+24],0
 	jne	mul_start
 	mov	eax,[esi]
@@ -511,6 +546,9 @@ get_memory_address:
 	stc
 	ret
       calculate_div:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	call	div_64
 	cmp	word [edi+24],0
 	jne	calculate_error
@@ -597,23 +635,35 @@ get_memory_address:
       div_ok:
 	ret
       calculate_mod:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	call	div_64
 	mov	[esi],eax
 	mov	[esi+4],edx
 	jmp	calculate_done
       calculate_and:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	mov	eax,[edi]
 	and	[esi],eax
 	mov	eax,[edi+4]
 	and	[esi+4],eax
 	jmp	calculate_done
       calculate_or:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	mov	eax,[edi]
 	or	[esi],eax
 	mov	eax,[edi+4]
 	or	[esi+4],eax
 	jmp	calculate_done
       calculate_xor:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	cmp	[value_size],1
 	je	xor_byte
 	cmp	[value_size],2
@@ -661,6 +711,8 @@ get_memory_address:
 	xor	[esi+4],ax
 	jmp	calculate_done
       calculate_not:
+	cmp	byte [esi+26],0
+	jnz	invalid_use_of_symbol
 	mov	dword [esi],0
 	mov	dword [esi+4],0
 	cmp	[value_size],1
@@ -717,6 +769,9 @@ get_memory_address:
 	mov	[esi+4],ax
 	jmp	calculate_done
       calculate_shl:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	mov	eax,dword [edi+4]
 	test	eax,1 shl 31
 	jnz	shl_negative
@@ -747,6 +802,9 @@ get_memory_address:
 	add	dword [edi],1
 	adc	dword [edi+4],0
       calculate_shr:
+	mov	al,[esi+26]
+	or	al,[edi+26]
+	jnz	invalid_use_of_symbol
 	mov	eax,dword [edi+4]
 	test	eax,1 shl 31
 	jnz	shr_negative
@@ -982,3 +1040,5 @@ expression_start dd 0
 number_start dd 0
 value_size db 0
 value dd 0
+value_type db 0
+import_value dd 0

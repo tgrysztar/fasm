@@ -134,11 +134,20 @@ jump_operators:
 
 special_operators:
  db 2,'at',1
+ db 4,'from',2
+ db 0
+
+end_operators:
+ db 7,'virtual',1
  db 0
 
 code_types:
  db 2,'16',16
  db 2,'32',32
+ db 0
+
+program_types:
+ db 11,'relocatable',1
  db 0
 
 index_registers:
@@ -274,6 +283,10 @@ instructions:
  dd simple_instruction
  db 3,'aas',3Fh
  dd simple_instruction
+ db 3,'aam',D4h
+ dd aa_instruction
+ db 3,'aad',D5h
+ dd aa_instruction
  db 5,'pusha',60h
  dd simple_instruction
  db 4,'popa',61h
@@ -371,6 +384,8 @@ instructions:
  db 5,'scasd',AFh
  dd simple_instruction_32bit
  db 4,'xlat',D7h
+ dd xlat_instruction
+ db 5,'xlatb',D7h
  dd simple_instruction
  db 4,'lock',F0h
  dd prefix_instruction
@@ -864,6 +879,8 @@ instructions:
  dd prefix_instruction
  db 3,'org',0
  dd org_directive
+ db 7,'virtual',0
+ dd virtual_directive
  db 4,'code',0
  dd code_directive
  db 5,'label',0
@@ -872,6 +889,12 @@ instructions:
  dd times_directive
  db 5,'entry',0
  dd entry_directive
+ db 6,'export',0
+ dd export_directive
+ db 6,'import',0
+ dd import_directive
+ db 3,'end',0
+ dd end_directive
 data_instructions:
  db 2,'db',1
  dd data_bytes
