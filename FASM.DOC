@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.04
+			flat assembler	version 1.05
 
 	 Copyright (c) 1999-2000, Tomasz Grysztar. All rights reserved.
 
@@ -236,29 +236,32 @@ to use 'label' directive before data definition, for example:
 	label argv dword
 	times 10 dd 0
 
-    There's no struc directive in fasm, but when you really need, in most
-cases you can do the same thing easily using macros:
+    There's no struc directive in fasm, but you can do the same thing
+using labeled macros:
 
-	macro pixel name,x,y,color
+	macro pixel x,y,color
 	 {
-	  name:
 	  .x dw x
 	  .y dw y
 	  .color db color
 	 }
 
+	mypix pixel 10,10,4
+
+	; so we have defined mypix.x, mypix.y and mypix.color variables
+
 	virtual at 0
-	 pixel pixel,?,?,?
+	  virtpix pixel ?,?,?
 	end virtual
 
-	; so we have pixel.x, pixel.y and pixel.color offsets defined
+	; and now also virtpix.x, virtpix.y, virtpix.color offsets
 
-	pixel mypix,10,10,4
-
-	; and now also mypix.x, mypix.y, mypix.color variables
-
+    Preprocessor will insert macro label at the beginning of every symbol
+starting with a single dot. This option should be used instead of standard
+local labels mechanism, because it allows definition of structures inside
+other structures. See 2.2.1 for more information about macros.
     To handle cases, when one or more of macro params are empty (for
-example just: 'pixel mypix'), you can write something like '.x dw x+0',
+example just: 'mypix pixel'), you can write something like '.x dw x+0',
 or use 'if <x> equ <>'.
     To create union of some variables, you can use label directive with
 'at <address>' phrase, or virtual directive, for example:
@@ -379,16 +382,17 @@ equ - defines symbolic constant.
 
 use16 - set code type to 16-bit (this is default code setting).
 
-use32 - set code type to 32-bit.
+use32 - set code type to 32-bit (this is default code setting for PE format).
 
 org - argument must be an address value; set from what address this
       code will start in memory.
 
 format - set output file format, can be set binary, MZ or PE; binary
-	 is the default format, MZ is an EXE file format, PE is an portable
+	 is the default format, MZ is an EXE file format, PE is a portable
 	 executable file format.  When specified format is PE, more format
-	 settings can be specified, use 'console' or 'GUI' words to set
-	 target subsystem type, 'DLL' to create dynamic link library.
+	 settings can follow; use 'console' or 'GUI' words to set target
+	 subsystem type, 'i386', 'i486' or 'i586' to specify target machine
+	 type, 'DLL' to create dynamic link library.
 
 label - define label, needed argument is a name of label, optional
 	arguments are size of label and 'at <address>' phrase.
@@ -409,16 +413,16 @@ entry - define program entry point (only in MZ and PE formats). In MZ format
 stack - define program stack size (only in MZ and PE formats), when no stack
 	is defined, default size of 1000h bytes is used.  In MZ format the
 	stack location can be defined in segment:offset form.  In PE format
-	second argument is allowed to define stack reserve (first argument
-	defines stack commit).
+	second argument is allowed to define stack commit (first argument
+	defines stack reserve).
 
 heap - define 'heap' size in paragraphs (only in MZ and PE formats).  In MZ
        format argument is a 16-bit value, defining maximum size of additional
        heap in paragraphs (note that this is heap in addition to stack and
        undefined data; use 'heap 0' to always allocate only memory program
        really needs); default value of 'heap' is FFFFh.  In PE format
-       argument is a 32-bit value, defining heap commit; second argument is
-       allowed to define heap reserve.
+       argument is a 32-bit value, defining heap reserve; second argument is
+       allowed to define heap commit.
 
 2.2.3  Other directives
 

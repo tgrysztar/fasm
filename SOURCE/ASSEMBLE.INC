@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.04
+; flat assembler  version 1.05
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -117,11 +117,18 @@ assemble_line:
 	mov	ebx,eax
 	lods	byte [esi]
 	mov	dl,al
+	xor	ch,ch
+	cmp	[reloc_labels],0
+	je	.reloc_ok
+	mov	ch,2
+      .reloc_ok:
+	xchg	ch,[ebx+11]
 	mov	al,[current_pass]
 	cmp	byte [ebx+8],0
 	je	.new
 	cmp	al,[ebx+9]
 	je	symbol_already_defined
+	mov	[ebx+9],al
 	mov	eax,edi
 	sub	eax,[org_start]
 	xchg	[ebx],eax
@@ -131,6 +138,8 @@ assemble_line:
 	jne	.changed
 	or	edx,edx
 	jnz	.changed
+	cmp	ch,[ebx+11]
+	jne	.changed
 	jmp	assemble_line
       .changed:
 	mov	[next_pass_needed],1
@@ -143,9 +152,6 @@ assemble_line:
 	sub	eax,[org_start]
 	mov	[ebx],eax
 	mov	dword [ebx+4],0
-	cmp	[reloc_labels],0
-	je	assemble_line
-	mov	byte [ebx+11],2
 	jmp	assemble_line
       define_constant:
 	lods	dword [esi]
@@ -159,19 +165,17 @@ assemble_line:
 	mov	cl,[current_pass]
 	cmp	byte [ebx+8],0
 	je	.new
+	cmp	byte [ebx+12],1
+	je	.redefine
 	cmp	cl,[ebx+9]
 	je	symbol_already_defined
+      .redefine:
+	mov	[ebx+9],cl
 	xchg	[ebx],eax
 	xchg	[ebx+4],edx
-	cmp	eax,[ebx]
-	jne	.changed
-	or	edx,edx
-	jnz	.changed
-	jmp	instruction_assembled
-      .changed:
-	mov	[next_pass_needed],1
 	jmp	assemble_line
       .new:
+	mov	byte [ebx+12],1
 	mov	byte [ebx+8],1
 	mov	word [ebx+9],cx
 	mov	[ebx],eax
@@ -312,13 +316,8 @@ label_directive:
 	mov	ch,[operand_size]
 	mov	eax,edi
 	sub	eax,[org_start]
-	mov	byte [ebx+11],0
-	cmp	[reloc_labels],0
-	je	label_reloc_ok
-	mov	byte [ebx+11],2
-      label_reloc_ok:
 	cmp	word [esi],13h
-	jne	define_label_symbol
+	jne	.define
 	add	esi,2
 	lods	byte [esi]
 	cmp	al,'('
@@ -329,18 +328,25 @@ label_directive:
 	je	invalid_value
 	call	get_dword_value
 	pop	cx ebx
-	mov	dl,[value_type]
-	cmp	dl,1
-	je	invalid_use_of_symbol
-	jb	define_label_symbol
-	mov	byte [ebx+11],2
-      define_label_symbol:
 	mov	dl,al
+	mov	dh,[value_type]
+	cmp	dh,1
+	je	invalid_use_of_symbol
+	jb	.reloc_ok
+      .define:
+	xor	dh,dh
+	cmp	[reloc_labels],0
+	je	.reloc_ok
+	mov	dh,2
+      .reloc_ok:
+	xchg	dh,[ebx+11]
 	mov	cl,[current_pass]
 	cmp	byte [ebx+8],0
 	je	.new
 	cmp	cl,[ebx+9]
 	je	symbol_already_defined
+	mov	ch,dh
+	mov	[ebx+9],cl
 	xchg	[ebx],eax
 	xor	edx,edx
 	xchg	[ebx+4],edx
@@ -348,6 +354,8 @@ label_directive:
 	jne	.changed
 	or	edx,edx
 	jnz	.changed
+	cmp	ch,[ebx+11]
+	jne	.changed
 	jmp	instruction_assembled
       .changed:
 	mov	[next_pass_needed],1

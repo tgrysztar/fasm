@@ -1,4 +1,13 @@
 
+Questions or comments please send to:
+  grysztar@omega.im.uj.edu.pl
+
+version 1.05
+------------
+[-] fixed some bugs with PE format
+[+] numeric constants redefinition allowed
+[+] labeled macroinstructions
+
 version 1.04
 ------------
 [+] PE output format support

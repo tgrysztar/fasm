@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.04
+; flat assembler  version 1.05
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -347,11 +347,12 @@ initial_ss_defined db ?
 
 format_pe:
 	mov	[pe_flags],818Eh
-	mov	[subsystem_type],3
+	mov	[machine],14Ch		; intel 80386
+	mov	[subsystem_type],3	; console
 	mov	[subsystem_version],3 + 10 shl 16
 	mov	[image_base],400000h
 	mov	[number_of_dirs],16
-	mov	[stack_reserve],10000h
+	mov	[stack_reserve],1000h
 	mov	[stack_commit],1000h
 	mov	[heap_reserve],10000h
 	mov	[heap_commit],0
@@ -373,8 +374,10 @@ format_pe:
 	jne	instruction_assembled
 	lods	word [esi]
 	shr	ax,8
-	test	al,80h
+	test	al,0C0h
 	jz	subsystem_setting
+	test	al,80h
+	jz	machine_setting
 	cmp	al,80h
 	je	pe_dll
 	jmp	pe_settings
@@ -383,6 +386,11 @@ format_pe:
 	jmp	pe_settings
       subsystem_setting:
 	mov	[subsystem_type],ax
+	jmp	pe_settings
+      machine_setting:
+	and	ax,3Fh
+	add	ax,149h
+	mov	[machine],ax
 	jmp	pe_settings
 section_directive:
 	cmp	[output_format],3
@@ -540,9 +548,9 @@ pe_stack:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-	mov	[stack_commit],eax
+	mov	[stack_reserve],eax
 	cmp	byte [esi],','
-	jne	default_stack_reserve
+	jne	default_stack_commit
 	lods	byte [esi]
 	call	get_operand_size
 	lods	byte [esi]
@@ -556,16 +564,16 @@ pe_stack:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-	mov	[stack_reserve],eax
-	cmp	eax,[stack_commit]
-	jb	value_out_of_range
+	mov	[stack_commit],eax
+	cmp	eax,[stack_reserve]
+	ja	value_out_of_range
 	jmp	instruction_assembled
-      default_stack_reserve:
-	mov	[stack_reserve],10000h
-	mov	eax,[stack_commit]
-	cmp	eax,10000h
-	jbe	instruction_assembled
-	mov	[stack_reserve],eax
+      default_stack_commit:
+	mov	[stack_commit],1000h
+	mov	eax,[stack_reserve]
+	cmp	eax,1000h
+	ja	instruction_assembled
+	mov	[stack_commit],eax
 	jmp	instruction_assembled
 pe_heap:
 	call	get_operand_size
@@ -580,9 +588,9 @@ pe_heap:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-	mov	[heap_commit],eax
+	mov	[heap_reserve],eax
 	cmp	byte [esi],','
-	jne	default_heap_reserve
+	jne	default_heap_commit
 	lods	byte [esi]
 	call	get_operand_size
 	lods	byte [esi]
@@ -596,16 +604,12 @@ pe_heap:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-	mov	[heap_reserve],eax
-	cmp	eax,[heap_commit]
-	jb	value_out_of_range
+	mov	[heap_commit],eax
+	cmp	eax,[heap_reserve]
+	ja	value_out_of_range
 	jmp	instruction_assembled
-      default_heap_reserve:
-	mov	[heap_reserve],10000h
-	mov	eax,[heap_commit]
-	cmp	eax,10000h
-	jbe	instruction_assembled
-	mov	[heap_reserve],eax
+      default_heap_commit:
+	mov	[heap_commit],0
 	jmp	instruction_assembled
 
 mark_pe_relocation:
@@ -639,14 +643,19 @@ make_pe_reloc:
 	mov	esi,[additional_memory_end]
 	mov	ecx,[number_of_relocations]
 	lea	esi,[esi+ecx*4-4]
-	jecxz	pe_reloc_done
 	mov	edx,1000h
+	mov	ebp,edi
       make_fixups:
-	mov	eax,[esi]
-	sub	esi,4
-	mov	ebp,eax
-	cmp	ebp,edx
+	cmp	[esi],edx
 	jb	store_fixup
+	mov	eax,edi
+	sub	eax,ebp
+	test	eax,11b
+	jz	fixups_block
+	xor	ax,ax
+	stos	word [edi]
+	add	dword [ebx],2
+      fixups_block:
 	mov	eax,edx
 	add	edx,1000h
 	stos	dword [edi]
@@ -655,12 +664,12 @@ make_pe_reloc:
 	stos	dword [edi]
       store_fixup:
 	add	dword [ebx],2
-	mov	eax,ebp
+	mov	eax,[esi]
+	sub	esi,4
 	and	ax,0FFFh
 	or	ax,3000h
 	stos	word [edi]
 	loop	make_fixups
-      pe_reloc_done:
 	call	close_section
       pe_reloc_ok:
 	ret
@@ -682,7 +691,8 @@ write_pe_header:
 	rep	stos byte [edi]
 	mov	edx,[additional_memory]
 	mov	word [edx],'PE' 	; signature
-	mov	word [edx+4],14Ch	; machine - intel386
+	mov	ax,[machine]
+	mov	[edx+4],ax		; CPU type
 	movzx	ecx,[number_of_sections]
 	mov	[edx+6],cx		; count of sections
 	mov	ax,si
@@ -854,5 +864,6 @@ heap_reserve dd ?
 heap_commit dd ?
 file_alignment dd ?
 pe_flags dw ?
+machine dw ?
 subsystem_type dw ?
 subsystem_version dd ?

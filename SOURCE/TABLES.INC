@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.04
+; flat assembler  version 1.05
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -310,6 +310,9 @@ symbols:
  db 3,'far',12h,2
  db 2,'fs',10h,65h
  db 2,'gs',10h,66h
+ db 4,'i386',1Bh,43h
+ db 4,'i486',1Bh,44h
+ db 4,'i586',1Bh,45h
  db 6,'import',1Ah,1
  db 3,'mm0',16h,0
  db 3,'mm1',16h,1

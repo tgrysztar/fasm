@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.04
+; flat assembler  version 1.05
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -778,6 +778,12 @@ calculate_expression:
 	mov	ebx,eax
 	cmp	byte [ebx+8],0
 	je	label_undefined
+	mov	al,[current_pass]
+	cmp	al,[ebx+9]
+	je	label_defined
+	cmp	byte [ebx+12],1
+	je	invalid_value
+      label_defined:
 	mov	al,[ebx+11]
 	cmp	[next_pass_needed],0
 	je	label_type_ok

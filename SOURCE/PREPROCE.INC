@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.04
+; flat assembler  version 1.05
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -201,6 +201,7 @@ preprocess_instruction:
 	push	ecx esi edi ebp
 	mov	esi,[current_line]
 	add	esi,5
+	mov	[macro_struc_name],0
       find_directive:
 	call	skip_spaces
 	lods	byte [esi]
@@ -225,6 +226,9 @@ preprocess_instruction:
 	sub	ecx,esi
 	or	ecx,ecx
 	jz	instruction_preprocessed
+	mov	ebp,ecx
+	cmp	[macro_struc_name],0
+	jne	no_directive
 	mov	edi,preprocessor_directives
 	call	get_symbol
 	jc	no_directive
@@ -267,6 +271,12 @@ preprocess_instruction:
 	inc	eax
 	jmp	get_macro
       no_macro:
+	cmp	[macro_struc_name],0
+	jne	no_macro_struc
+	mov	[macro_struc_name],esi
+	cmp	ebp,255
+	ja	name_too_long
+	mov	[macro_struc_name_size],bp
 	add	esi,ebp
 	call	skip_spaces
 	lods	byte [esi]
@@ -276,16 +286,9 @@ preprocess_instruction:
 	je	instruction_preprocessed
 	dec	esi
 	mov	edx,esi
-      find_equ_symbol_end:
-	lods	byte [esi]
-	mov	ebx,characters
-	xlatb
-	or	al,al
-	jz	find_equ_symbol_end
-	lea	ecx,[esi-1]
-	mov	esi,edx
-	sub	ecx,esi
-	jecxz	instruction_preprocessed
+	jmp	find_directive_end
+      no_macro_struc:
+	mov	ecx,ebp
 	mov	edi,symbols
 	call	get_symbol
 	jc	instruction_preprocessed
@@ -540,8 +543,17 @@ define_macro:
 	dec	esi
 	jmp	find_macro_end
       special_character_in_macro:
+	cmp	al,';'
+	jne	check_macro_line_end
+      skip_comment_in_macro:
+	lods	byte [esi]
+	or	al,al
+	jnz	skip_comment_in_macro
+	jmp	macro_line_end
+      check_macro_line_end:
 	or	al,al
 	jnz	check_macro_end
+      macro_line_end:
 	mov	ebp,esp
 	call	get_macro_line
 	jc	unexpected_end_of_file
@@ -922,6 +934,19 @@ use_macro:
 	mov	[macro_directive_allowed],1
 	mov	ebx,locals_counter
 	call	increase_counter
+	cmp	[macro_struc_name],0
+	je	macro_process
+	mov	cx,[macro_struc_name_size]
+	or	ch,ch
+	jnz	macro_process
+	push	esi
+	mov	esi,[macro_struc_name]
+	movzx	ecx,cl
+	rep	movs byte [edi],[esi]
+	mov	al,':'
+	stos	byte [edi]
+	mov	byte [macro_struc_name_size+1],1
+	pop	esi
       macro_process:
 	lods	byte [esi]
 	stos	byte [edi]
@@ -952,6 +977,18 @@ use_macro:
 	je	skip_string
 	dec	esi
 	dec	edi
+	cmp	al,'.'
+	jne	no_struc_field
+	cmp	byte [esi+1],'.'
+	je	no_struc_field
+	cmp	[macro_struc_name],0
+	je	no_struc_field
+	push	esi
+	mov	esi,[macro_struc_name]
+	movzx	ecx,byte [macro_struc_name_size]
+	rep	movs byte [edi],[esi]
+	pop	esi
+      no_struc_field:
 	push	edi
 	mov	edi,[names_list]
 	mov	ebx,edi
@@ -1200,7 +1237,11 @@ use_macro:
 	push	[multi_macro_count]
 	push	[multi_macro_line]
 	push	[macro_instructions]
+	push	[macro_struc_name]
+	push	[macro_struc_name_size]
 	call	preprocess_instruction
+	pop	[macro_struc_name_size]
+	pop	[macro_struc_name]
 	pop	[macro_instructions]
 	pop	[multi_macro_line]
 	pop	[multi_macro_count]
@@ -1229,6 +1270,8 @@ names_list dd ?
 macro_defined db ?
 macro_directive_allowed db ?
 macro_instructions dd ?
+macro_struc_name dd ?
+macro_struc_name_size dw ?
 multi_macro_current dw ?
 multi_macro_count dw ?
 multi_macro_arguments dd ?
