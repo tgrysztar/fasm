@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2003, Tomasz Grysztar.
+; Copyright (c) 1999-2004, Tomasz Grysztar.
 ; All rights reserved.
 
 assembler:
@@ -31,7 +31,8 @@ assembler:
 	xor	eax,eax
 	mov	dword [adjustment],eax
 	mov	dword [adjustment+4],eax
-	mov	[org_origin],edi
+	mov	dword [org_origin],edi
+	mov	dword [org_origin+4],eax
 	mov	[org_start],edi
 	mov	[org_registers],eax
 	mov	[org_symbol],eax
@@ -173,8 +174,9 @@ assemble_line:
 	lods	byte [esi]
 	mov	cl,al
 	mov	eax,edi
-	sub	eax,[org_origin]
-	cdq
+	xor	edx,edx
+	sub	eax,dword [org_origin]
+	sbb	edx,dword [org_origin+4]
 	xor	ch,ch
 	cmp	[reloc_labels],0
 	je	make_label
@@ -342,6 +344,7 @@ assemble_line:
       assemble_instruction:
 	mov	[operand_size],0
 	mov	[forced_size],0
+	mov	[operand_prefix],0
 	movzx	ebx,word [esi]
 	mov	al,[esi+2]
 	add	ebx,assembler
@@ -457,8 +460,11 @@ org_directive:
 	mov	[reloc_labels],1
       org_ok:
 	mov	ecx,edi
+	xor	edx,edx
 	sub	ecx,eax
-	mov	[org_origin],ecx
+	sbb	edx,0
+	mov	dword [org_origin],ecx
+	mov	dword [org_origin+4],edx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	edx,[symbol_identifier]
@@ -495,8 +501,9 @@ label_directive:
 	mov	cl,ah
       label_size_ok:
 	mov	eax,edi
-	sub	eax,[org_origin]
-	cdq
+	xor	edx,edx
+	sub	eax,dword [org_origin]
+	sbb	edx,dword [org_origin+4]
 	mov	ebp,[org_registers]
 	cmp	byte [esi],80h
 	je	get_free_label_value
@@ -539,7 +546,6 @@ label_directive:
 	mov	bp,bx
 	pop	ecx ebx
 	pop	dword [ebx+8]
-	cdq
 	mov	ch,[value_type]
 	or	ch,ch
 	jz	make_free_label
@@ -835,7 +841,9 @@ virtual_directive:
       virtual_at_current:
 	dec	esi
 	mov	eax,edi
-	sub	eax,[org_origin]
+	xor	edx,edx
+	sub	eax,dword [org_origin]
+	sbb	edx,dword [org_origin+4]
 	xor	bx,bx
 	xor	cx,cx
 	mov	[value_type],0
@@ -844,25 +852,32 @@ virtual_directive:
 	mov	[value_type],2
 	mov	ebp,[org_symbol]
       set_virtual:
-	mov	edx,[org_registers]
+	push	[org_registers]
 	mov	byte [org_registers],bh
 	mov	byte [org_registers+1],bl
 	mov	byte [org_registers+2],ch
 	mov	byte [org_registers+3],cl
 	call	allocate_structure_data
 	mov	word [ebx],virtual_directive-assembler
-	neg	eax
+	not	eax
+	not	edx
+	add	eax,1
+	adc	edx,0
 	add	eax,edi
-	xchg	[org_origin],eax
+	adc	edx,0
+	xchg	dword [org_origin],eax
+	xchg	dword [org_origin+4],edx
 	mov	[ebx+10h],eax
 	mov	[ebx+14h],edx
+	pop	eax
+	mov	[ebx+18h],eax
 	mov	al,[virtual_data]
 	mov	[ebx+2],al
 	mov	al,[reloc_labels]
 	mov	[ebx+3],al
 	mov	eax,edi
 	xchg	eax,[org_start]
-	mov	[ebx+18h],eax
+	mov	[ebx+0Ch],eax
 	xchg	ebp,[org_symbol]
 	mov	[ebx+1Ch],ebp
 	mov	[ebx+8],edi
@@ -916,10 +931,12 @@ virtual_directive:
 	mov	al,[ebx+3]
 	mov	[reloc_labels],al
 	mov	eax,[ebx+10h]
-	mov	[org_origin],eax
+	mov	dword [org_origin],eax
 	mov	eax,[ebx+14h]
-	mov	[org_registers],eax
+	mov	dword [org_origin+4],eax
 	mov	eax,[ebx+18h]
+	mov	[org_registers],eax
+	mov	eax,[ebx+0Ch]
 	mov	[org_start],eax
 	mov	eax,[ebx+1Ch]
 	mov	[org_symbol],eax
@@ -1774,7 +1791,7 @@ align_directive:
 	cmp	eax,1
 	je	instruction_assembled
 	mov	ecx,edi
-	sub	ecx,[org_origin]
+	sub	ecx,dword [org_origin]
 	cmp	[org_registers],0
 	jne	section_not_aligned_enough
 	cmp	[reloc_labels],0

@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2003, Tomasz Grysztar.
+; Copyright (c) 1999-2004, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -298,6 +298,7 @@ preprocess_line:
 	dec	al
 	jz	skip_macro_block
       preprocess_instruction:
+	mov	[current_offset],esi
 	lods	byte [esi]
 	movzx	ecx,byte [esi]
 	inc	esi
@@ -453,8 +454,7 @@ preprocess_line:
 	inc	esi
 	jmp	preprocess_instruction
       not_preprocessor_symbol:
-	mov	esi,[current_line]
-	add	esi,16
+	mov	esi,[current_offset]
 	call	process_equ_constants
       line_preprocessed:
 	pop	esi ecx

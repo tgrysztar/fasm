@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2003, Tomasz Grysztar.
+; Copyright (c) 1999-2004, Tomasz Grysztar.
 ; All rights reserved.
 
 convert_expression:
@@ -883,8 +883,6 @@ calculate_expression:
 	mov	[edi],eax
 	mov	[edi+4],eax
       expression_value_ok:
-	mov	eax,[edi+16]
-	mov	[symbol_identifier],eax
 	ret
       get_byte_number:
 	mov	word [edi+8],0
@@ -1005,8 +1003,9 @@ calculate_expression:
 	mov	[edi+16],eax
       get_current_offset:
 	mov	eax,[current_offset]
-	sub	eax,[org_origin]
-	cdq
+	xor	edx,edx
+	sub	eax,dword [org_origin]
+	sbb	edx,dword [org_origin+4]
 	stos	dword [edi]
 	mov	eax,edx
 	stos	dword [edi]
@@ -1596,10 +1595,10 @@ calculate_expression:
       div_high_loop:
 	cmp	ecx,edx
 	ja	div_high_done
-	jb	div_high_change
+	jb	div_high_large_correction
 	cmp	ebx,eax
 	jae	div_high_done
-      div_high_change:
+      div_high_correction:
 	dec	dword [esi]
 	sub	eax,[edi]
 	sbb	edx,[edi+4]
@@ -1610,6 +1609,27 @@ calculate_expression:
 	mov	edx,ecx
 	mov	eax,ebx
 	ret
+      div_high_large_correction:
+	push	eax edx
+	mov	eax,edx
+	sub	eax,ecx
+	xor	edx,edx
+	div	dword [edi+4]
+	shr	eax,1
+	jz	div_high_small_correction
+	sub	[esi],eax
+	push	eax
+	mul	dword [edi+4]
+	sub	dword [esp+4],eax
+	pop	eax
+	mul	dword [edi]
+	sub	dword [esp+4],eax
+	sbb	dword [esp],edx
+	pop	edx eax
+	jmp	div_high_loop
+      div_high_small_correction:
+	pop	edx eax
+	jmp	div_high_correction
       div_done:
 	or	bl,bl
 	jz	div_ok
@@ -1715,6 +1735,8 @@ get_byte_value:
 	mov	[value_size],1
 	mov	[forced_size],2
 	call	calculate_expression
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	mov	[value_type],0
 	cmp	word [edi+8],0
 	jne	invalid_value
@@ -1727,9 +1749,10 @@ get_byte_value:
 	mov	[error],invalid_use_of_symbol
       check_byte_value:
 	mov	eax,[edi]
-	cmp	dword [edi+4],0
-	je	byte_positive
-	cmp	dword [edi+4],-1
+	mov	edx,[edi+4]
+	or	edx,edx
+	jz	byte_positive
+	cmp	edx,-1
 	jne	range_exceeded
 	cmp	eax,-80h
 	jb	range_exceeded
@@ -1750,6 +1773,8 @@ get_word_value:
 	mov	[value_size],2
 	mov	[forced_size],2
 	call	calculate_expression
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	cmp	word [edi+8],0
 	jne	invalid_value
 	mov	al,[edi+12]
@@ -1765,9 +1790,10 @@ get_word_value:
 	mov	[error],invalid_use_of_symbol
       check_word_value:
 	mov	eax,[edi]
-	cmp	dword [edi+4],0
-	je	word_positive
-	cmp	dword [edi+4],-1
+	mov	edx,[edi+4]
+	or	edx,edx
+	jz	word_positive
+	cmp	edx,-1
 	jne	range_exceeded
 	cmp	eax,-8000h
 	jb	range_exceeded
@@ -1780,15 +1806,18 @@ get_dword_value:
 	mov	[value_size],4
 	mov	[forced_size],2
 	call	calculate_expression
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	cmp	word [edi+8],0
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
       check_dword_value:
 	mov	eax,[edi]
-	cmp	dword [edi+4],0
-	je	dword_positive
-	cmp	dword [edi+4],-1
+	mov	edx,[edi+4]
+	or	edx,edx
+	jz	dword_positive
+	cmp	edx,-1
 	jne	range_exceeded
 	bt	eax,31
 	jnc	range_exceeded
@@ -1798,6 +1827,8 @@ get_pword_value:
 	mov	[value_size],6
 	mov	[forced_size],2
 	call	calculate_expression
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	cmp	word [edi+8],0
 	jne	invalid_value
 	mov	al,[edi+12]
@@ -1813,6 +1844,8 @@ get_qword_value:
 	mov	[value_size],8
 	mov	[forced_size],2
 	call	calculate_expression
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	cmp	word [edi+8],0
 	jne	invalid_value
 	mov	al,[edi+12]
@@ -1861,37 +1894,9 @@ get_value:
 	xor	edx,edx
 	movzx	eax,al
 	ret
-
-get_address:
-	mov	[segment_register],0
-	mov	[address_size],0
-	mov	[value_size],4
-	push	address_ok
-	mov	al,[esi]
-	and	al,11110000b
-	cmp	al,60h
-	jne	get_size_prefix
-	lods	byte [esi]
-	sub	al,60h
-	mov	[segment_register],al
-	mov	al,[esi]
-	and	al,11110000b
-      get_size_prefix:
-	cmp	al,70h
-	jne	calculate_address
-	lods	byte [esi]
-	sub	al,70h
-	cmp	al,2
-	jb	invalid_address_size
-	cmp	al,4
-	ja	invalid_address_size
-	mov	[address_size],al
-	mov	[value_size],al
-	jmp	calculate_address
 get_address_value:
 	mov	[address_size],0
 	mov	[value_size],4
-	push	address_ok
       calculate_address:
 	call	calculate_expression
 	mov	eax,[edi+16]
@@ -1986,9 +1991,6 @@ get_address_value:
 	mov	bl,al
 	mov	cl,dl
 	jmp	address_register_ok
-      address_ok:
-	mov	edx,eax
-	ret
 get_relative_offset:
 	mov	[value_size],4
 	mov	[forced_size],2
@@ -2010,10 +2012,13 @@ get_relative_offset:
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	mov	eax,[edi]
-	cmp	dword [edi+4],0
-	je	offset_positive
-	cmp	dword [edi+4],-1
+	mov	edx,[edi+4]
+	or	edx,edx
+	jz	offset_positive
+	cmp	edx,-1
 	jne	range_exceeded
 	bt	eax,31
 	jnc	range_exceeded

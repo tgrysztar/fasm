@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2003, Tomasz Grysztar.
+; Copyright (c) 1999-2004, Tomasz Grysztar.
 ; All rights reserved.
 
 formatter:
@@ -404,7 +404,8 @@ segment_directive:
 	mov	edx,edi
 	xor	al,al
 	rep	stos byte [edi]
-	mov	[org_origin],edi
+	mov	dword [org_origin],edi
+	mov	dword [org_origin+4],0
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	eax,edx
@@ -910,10 +911,17 @@ format_pe:
 	mov	[ebx+14h],edi
 	mov	[ebx+0Ch],eax
 	mov	dword [ebx+24h],0E0000060h
-	neg	eax
+	xor	ecx,ecx
+	not	eax
+	not	ecx
+	add	eax,1
+	adc	ecx,0
 	add	eax,edi
+	adc	ecx,0
 	sub	eax,[edx+34h]
-	mov	[org_origin],eax
+	sbb	ecx,0
+	mov	dword [org_origin],eax
+	mov	dword [org_origin+4],ecx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	or	[reloc_labels],-1
@@ -997,9 +1005,13 @@ pe_section:
 	mov	[ebx+14h],edi
 	mov	edx,[code_start]
 	mov	eax,edi
+	xor	ecx,ecx
 	sub	eax,[ebx+0Ch]
+	sbb	ecx,0
 	sub	eax,[edx+34h]
-	mov	[org_origin],eax
+	sbb	ecx,0
+	mov	dword [org_origin],eax
+	mov	dword [org_origin+4],ecx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	or	[reloc_labels],-1
@@ -1923,7 +1935,8 @@ format_coff:
 	mov	dword [ebx+14h],eax
 	mov	[current_section],ebx
 	mov	[number_of_sections],0
-	mov	[org_origin],edi
+	mov	dword [org_origin],edi
+	mov	dword [org_origin+4],0
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
@@ -1942,7 +1955,8 @@ coff_section:
 	xor	eax,eax
 	mov	[ebx],al
 	mov	[ebx+8],edi
-	mov	[org_origin],edi
+	mov	dword [org_origin],edi
+	mov	dword [org_origin+4],0
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
@@ -2500,7 +2514,8 @@ format_elf:
 	mov	[ebx+14h],eax
 	mov	[current_section],ebx
 	mov	[number_of_sections],0
-	mov	[org_origin],edi
+	mov	dword [org_origin],edi
+	mov	dword [org_origin+4],0
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
@@ -2522,7 +2537,8 @@ elf_section:
 	xor	eax,eax
 	mov	[ebx],al
 	mov	[ebx+8],edi
-	mov	[org_origin],edi
+	mov	dword [org_origin],edi
+	mov	dword [org_origin+4],0
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
@@ -3004,9 +3020,15 @@ format_elf_exe:
 	mov	[ebx+8],eax
 	mov	[ebx+0Ch],eax
 	mov	[edx+18h],eax
-	neg	eax
+	xor	edx,edx
+	not	eax
+	not	edx
+	add	eax,1
+	adc	edx,0
 	add	eax,edi
-	mov	[org_origin],eax
+	adc	edx,0
+	mov	dword [org_origin],eax
+	mov	dword [org_origin+4],edx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[symbols_stream],edi
@@ -3072,9 +3094,16 @@ elf_exe_section:
 	add	edx,eax
 	mov	[ebx+8],edx
 	mov	[ebx+0Ch],edx
-	neg	edx
-	add	edx,edi
-	mov	[org_origin],edx
+	mov	eax,edx
+	xor	edx,edx
+	not	eax
+	not	edx
+	add	eax,1
+	adc	edx,0
+	add	eax,edi
+	adc	edx,0
+	mov	dword [org_origin],eax
+	mov	dword [org_origin+4],edx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	inc	[number_of_sections]

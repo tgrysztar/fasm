@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2003, Tomasz Grysztar.
+; Copyright (c) 1999-2004, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF executable
@@ -174,7 +174,7 @@ labels_list dd ?
 label_hash dd ?
 label_leaf dd ?
 hash_tree dd ?
-org_origin dd ?
+org_origin dq ?
 org_registers dd ?
 org_start dd ?
 org_symbol dd ?
@@ -230,10 +230,10 @@ extended_code db ?
 postbyte_register db ?
 segment_register db ?
 operand_size db ?
+mmx_size db ?
 imm_sized db ?
 jump_type db ?
-mmx_size db ?
-mmx_prefix db ?
+operand_prefix db ?
 nextbyte db ?
 
 characters rb 100h
