@@ -1,6 +1,13 @@
 
 Visit http://fasm.sourceforge.net for more information
 
+version 1.45
+[06-02-2003]
+------------
+[+] checking any expression with "defined" operator allowed
+[-] less strict intermediate passes
+[-] major code cleanup
+
 version 1.44
 [19-01-2003]
 ------------

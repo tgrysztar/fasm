@@ -7,8 +7,7 @@ assembler:
 	mov	ecx,[memory_end]
 	mov	edi,ecx
 	sub	ecx,[labels_list]
-	shr	ecx,3
-	imul	ecx,20
+	imul	ecx,3
 	sub	edi,ecx
 	cmp	edi,[code_start]
 	jbe	out_of_memory
@@ -68,11 +67,11 @@ assembler:
 	test	byte [eax+8],8
 	jz	symbol_defined_ok
 	mov	cl,[current_pass]
-	cmp	cl,[eax+16]
+	cmp	cl,[eax+18]
 	jne	symbol_defined_ok
 	test	byte [eax+8],1
 	jz	symbol_defined_ok
-	sub	cl,[eax+9]
+	sub	cl,[eax+16]
 	cmp	cl,1
 	jne	symbol_defined_ok
 	and	byte [eax+8],not 1
@@ -81,11 +80,10 @@ assembler:
 	test	byte [eax+8],10h
 	jz	check_next_symbol
 	mov	cl,[current_pass]
-	cmp	cl,[eax+17]
-	jne	check_next_symbol
+	and	byte [eax+8],not 10h
 	test	byte [eax+8],20h
 	jnz	check_used_prediction
-	cmp	cl,[eax+16]
+	cmp	cl,[eax+18]
 	jne	check_next_symbol
 	test	byte [eax+8],8
 	jz	check_next_symbol
@@ -93,12 +91,12 @@ assembler:
       check_used_prediction:
 	test	byte [eax+8],8
 	jz	not_as_predicted
-	cmp	cl,[eax+16]
+	cmp	cl,[eax+18]
 	je	check_next_symbol
       not_as_predicted:
 	or	[next_pass_needed],-1
       check_next_symbol:
-	add	eax,20
+	add	eax,24
 	jmp	check_symbols
       symbols_checked:
 	cmp	[next_pass_needed],0
@@ -151,58 +149,61 @@ assemble_line:
 	mov	ebx,eax
 	lods	byte [esi]
 	mov	cl,al
-	shl	ecx,16
 	mov	eax,edi
 	sub	eax,[org_origin]
 	cdq
 	xor	ch,ch
 	cmp	[reloc_labels],0
-	je	label_reloc_ok
+	je	make_label
 	mov	ch,2
+      make_label:
+	cmp	eax,[ebx]
+	mov	[ebx],eax
+	setne	ah
+	cmp	edx,[ebx+4]
+	mov	[ebx+4],edx
+	setne	al
+	or	ah,al
+	cmp	cl,[ebx+10]
+	mov	[ebx+10],cl
+	setne	al
+	or	ah,al
+	cmp	ch,[ebx+11]
+	mov	[ebx+11],ch
+	setne	al
+	or	ah,al
+	mov	edx,[org_sib]
+	cmp	edx,[ebx+12]
+	mov	[ebx+12],edx
+	setne	al
+	or	ah,al
+	or	ch,ch
+	jz	label_symbol_ok
 	mov	edx,[current_section]
-      label_reloc_ok:
-	xchg	ch,[ebx+11]
-	mov	cl,[current_pass]
+	cmp	edx,[ebx+20]
+	mov	[ebx+20],edx
+	setne	al
+	or	ah,al
+      label_symbol_ok:
+	mov	al,[current_pass]
+	xchg	[ebx+16],al
 	test	byte [ebx+8],1
 	jz	new_label
-	cmp	cl,[ebx+9]
+	cmp	al,[ebx+16]
 	je	symbol_already_defined
-	mov	[ebx+9],cl
-	xchg	[ebx],eax
-	xchg	[ebx+4],edx
-	mov	ebp,[org_sib]
-	xchg	[ebx+12],ebp
-	cmp	[current_pass],0
-	je	continue_line
-	cmp	eax,[ebx]
-	jne	changed_label
-	cmp	edx,[ebx+4]
-	jne	changed_label
-	cmp	ebp,[ebx+12]
-	jne	changed_label
-	cmp	ch,[ebx+11]
-	jne	changed_label
-	shr	ecx,16
-	cmp	cl,[ebx+10]
-	je	continue_line
-	mov	[ebx+10],cl
-      changed_label:
+	inc	al
+	sub	al,[ebx+16]
+	or	ah,al
+	jz	continue_line
 	test	byte [ebx+8],8
 	jz	continue_line
 	mov	al,[current_pass]
-	cmp	al,[ebx+16]
+	cmp	al,[ebx+18]
 	jne	continue_line
 	or	[next_pass_needed],-1
 	jmp	continue_line
       new_label:
 	or	byte [ebx+8],1
-	mov	[ebx+9],cl
-	shr	ecx,16
-	mov	[ebx+10],cl
-	mov	[ebx],eax
-	mov	dword [ebx+4],edx
-	mov	eax,[org_sib]
-	mov	[ebx+12],eax
 	jmp	continue_line
       define_constant:
 	lods	dword [esi]
@@ -219,7 +220,7 @@ assemble_line:
 	test	dl,4
 	jnz	get_constant_value
 	mov	dh,[current_pass]
-	cmp	dh,[eax+9]
+	cmp	dh,[eax+16]
 	je	get_constant_value
 	and	dl,not 1
 	mov	[eax+8],dl
@@ -237,57 +238,63 @@ assemble_line:
 	cmp	ebx,0Fh
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
-	mov	cl,[value_type]
-	or	cl,cl
-	jz	make_constant
-	mov	ebp,eax
-	shr	ebp,31
-	neg	ebp
-	cmp	ebp,edx
-	jne	value_out_of_range
-	mov	edx,[symbol_identifier]
+	xor	cl,cl
+	mov	ch,[value_type]
       make_constant:
+	cmp	eax,[ebx]
+	mov	[ebx],eax
+	setne	ah
+	cmp	edx,[ebx+4]
+	mov	[ebx+4],edx
+	setne	al
+	or	ah,al
+	cmp	cl,[ebx+10]
+	mov	[ebx+10],cl
+	setne	al
+	or	ah,al
+	cmp	ch,[ebx+11]
+	mov	[ebx+11],ch
+	setne	al
+	or	ah,al
+	xor	edx,edx
+	cmp	edx,[ebx+12]
+	mov	[ebx+12],edx
+	setne	al
+	or	ah,al
+	or	ch,ch
+	jz	constant_symbol_ok
+	mov	edx,[symbol_identifier]
+	cmp	edx,[ebx+20]
+	mov	[ebx+20],edx
+	setne	al
+	or	ah,al
+      constant_symbol_ok:
+	mov	al,[current_pass]
+	xchg	[ebx+16],al
 	test	byte [ebx+8],1
 	jz	new_constant
-	mov	ch,[current_pass]
-	cmp	ch,[ebx+9]
-	jne	redefine_constant
+	cmp	al,[ebx+16]
+	jne	redeclare_constant
 	test	byte [ebx+8],2
 	jz	symbol_already_defined
 	or	byte [ebx+8],4
-      redefine_constant:
-	mov	[ebx+9],ch
-	xchg	[ebx+11],cl
-	xchg	[ebx],eax
-	xchg	[ebx+4],edx
-	cmp	[current_pass],0
-	je	continue_line
-	cmp	eax,[ebx]
-	jne	changed_constant
-	cmp	edx,[ebx+4]
-	jne	changed_constant
-	cmp	cl,[ebx+11]
-	jne	changed_constant
-	cmp	byte [ebx+10],0
-	je	continue_line
-	mov	byte [ebx+10],0
-      changed_constant:
+	jmp	continue_line
+      redeclare_constant:
+	inc	al
+	sub	al,[ebx+16]
+	or	ah,al
+	jz	continue_line
 	test	byte [ebx+8],4
 	jnz	continue_line
 	test	byte [ebx+8],8
 	jz	continue_line
 	mov	al,[current_pass]
-	cmp	al,[ebx+16]
+	cmp	al,[ebx+18]
 	jne	continue_line
 	or	[next_pass_needed],-1
 	jmp	continue_line
       new_constant:
 	or	byte [ebx+8],1+2
-	mov	[ebx+11],cl
-	mov	cl,[current_pass]
-	mov	word [ebx+9],cx
-	mov	[ebx],eax
-	mov	[ebx+4],edx
 	jmp	continue_line
       assemble_instruction:
 	mov	[operand_size],0
@@ -452,7 +459,6 @@ label_directive:
 	sub	eax,[org_origin]
 	cdq
 	mov	ebp,[org_sib]
-	shl	ecx,16
 	cmp	byte [esi],80h
 	jne	define_free_label
 	inc	esi
@@ -475,59 +481,65 @@ label_directive:
 	pop	ecx ebx
 	pop	dword [ebx+8]
 	cdq
-	or	ch,[value_type]
-	jz	free_label_reloc_ok
+	mov	ch,[value_type]
+	jz	make_free_label
 	cmp	ch,1
 	je	invalid_use_of_symbol
-	mov	edx,[symbol_identifier]
-	jmp	free_label_reloc_ok
+	jmp	make_free_label
       define_free_label:
 	xor	ch,ch
 	cmp	[reloc_labels],0
-	je	free_label_reloc_ok
+	je	make_free_label
 	mov	ch,2
-	mov	edx,[current_section]
-      free_label_reloc_ok:
-	xchg	ch,[ebx+11]
-	mov	cl,[current_pass]
+	push	[current_section]
+	pop	[symbol_identifier]
+      make_free_label:
+	cmp	eax,[ebx]
+	mov	[ebx],eax
+	setne	ah
+	cmp	edx,[ebx+4]
+	mov	[ebx+4],edx
+	setne	al
+	or	ah,al
+	cmp	cl,[ebx+10]
+	mov	[ebx+10],cl
+	setne	al
+	or	ah,al
+	cmp	ch,[ebx+11]
+	mov	[ebx+11],ch
+	setne	al
+	or	ah,al
+	cmp	ebp,[ebx+12]
+	mov	[ebx+12],ebp
+	setne	al
+	or	ah,al
+	or	ch,ch
+	jz	free_label_symbol_ok
+	mov	edx,[symbol_identifier]
+	cmp	edx,[ebx+20]
+	mov	[ebx+20],edx
+	setne	al
+	or	ah,al
+      free_label_symbol_ok:
+	mov	al,[current_pass]
+	xchg	[ebx+16],al
 	test	byte [ebx+8],1
 	jz	new_free_label
-	cmp	cl,[ebx+9]
+	cmp	al,[ebx+16]
 	je	symbol_already_defined
-	mov	[ebx+9],cl
-	xchg	[ebx],eax
-	xchg	[ebx+4],edx
-	xchg	[ebx+12],ebp
-	cmp	[current_pass],0
-	je	instruction_assembled
-	cmp	eax,[ebx]
-	jne	changed_free_label
-	cmp	edx,[ebx+4]
-	jne	changed_free_label
-	cmp	ebp,[ebx+12]
-	jne	changed_free_label
-	cmp	ch,[ebx+11]
-	jne	changed_free_label
-	shr	ecx,16
-	cmp	cl,[ebx+10]
-	je	instruction_assembled
-	mov	[ebx+10],cl
-      changed_free_label:
+	inc	al
+	sub	al,[ebx+16]
+	or	ah,al
+	jz	instruction_assembled
 	test	byte [ebx+8],8
 	jz	instruction_assembled
 	mov	al,[current_pass]
-	cmp	al,[ebx+16]
+	cmp	al,[ebx+18]
 	jne	instruction_assembled
 	or	[next_pass_needed],-1
 	jmp	instruction_assembled
       new_free_label:
 	or	byte [ebx+8],1
-	mov	[ebx+9],cl
-	shr	ecx,16
-	mov	[ebx+10],cl
-	mov	[ebx],eax
-	mov	dword [ebx+4],edx
-	mov	[ebx+12],ebp
 	jmp	instruction_assembled
 load_directive:
 	lods	byte [esi]

@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.44
+                              flat assembler 1.45
                               Programmer's Manual
 
 
@@ -119,21 +119,21 @@ compilation summary. It includes the information of how many passes was done,
 how much time it took, and how many bytes were written into destination file.
 Here is an example of the compilation summary:
 
-flat assembler  version 1.44
+flat assembler  version 1.45
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, program will display an error
 message. For example, when compiler can't find the input file, it will display
 the following message:
 
-flat assembler  version 1.44
+flat assembler  version 1.45
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.44
+flat assembler  version 1.45
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -143,7 +143,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also number of erroneous line inside the
 macroinstruction is gived:
 
-flat assembler  version 1.44
+flat assembler  version 1.45
 example.asm [6] stoschar [2]:
         stoschar 7
 error: illegal instruction.
@@ -2061,9 +2061,11 @@ the same. The "in" operator checks whether given symbol is a member of the
 list of symbols following this operator, the list should be enclosed between
 "<" and ">" characters, its members should be separated with commas. The
 "eqtype" operator compares any two symbols whether they are of the same type.
-The "defined" and "used" operators should be followed by a symbol name,
-"defined" checks whether given symbol was defined, "used" checks whether
-given symbol is used somewhere.
+The "used" operator should be followed by a symbol name, it checks whether the
+given symbol is used somewhere (it returns correct result even if symbol is
+used only after this check). The "defined" operator can be followed by any
+expression, usually just by a single symbol name; it checks whether the given
+expression contains only symbols that were defined prior to it.
   The following simple example uses the "count" constant that should be
 defined somewhere in source:
 
@@ -2324,6 +2326,8 @@ definition, so "mov es,ds,dx" will be assembled as "push ds", "pop es" and
 "mov ds,dx".
   When it's needed to provide macroinstruction with argument that contains
 some commas, such argument should be enclosed between "<" and ">" characters.
+If it contains more than one "<" character, the same number of ">" should be
+used to tell that the value of argument ends.
   "purge" directive allows removing the last definition of specified
 macroinstruction. It should be followed by one or more names of
 macroinstructions, separated with commas. If such macroinstruction has not

@@ -253,8 +253,6 @@ parse_line:
 	stos	byte [edi]
 	cmp	al,80h
 	je	forced_expression
-	cmp	al,88h
-	je	parse_label_operator
 	cmp	al,89h
 	je	parse_label_operator
 	jmp	argument_parsed
@@ -497,7 +495,7 @@ parse_line:
 	cmp	byte [esi],'='
 	jne	separator
 	inc	esi
-	mov	al,'ò'
+	mov	al,0F2h
 	jmp	separator
       less:
 	cmp	byte [edi-1],83h
@@ -507,11 +505,11 @@ parse_line:
 	cmp	byte [esi],'='
 	jne	separator
 	inc	esi
-	mov	al,'ó'
+	mov	al,0F3h
 	jmp	separator
       not_equal:
 	inc	esi
-	mov	al,'ö'
+	mov	al,0F1h
 	jmp	separator
       argument_parsed:
 	cmp	[parenthesis_stack],0
@@ -660,7 +658,7 @@ get_instruction:
 	mov	ebp,ecx
 	call	lower_case
 	mov	ecx,ebp
-	cmp	ecx,11
+	cmp	cl,11
 	ja	no_instruction
 	sub	cl,2
 	jc	no_instruction
@@ -900,8 +898,7 @@ get_label_id:
 	mov	ebx,[eax+4]
       make_label_id:
 	sub	eax,[memory_end]
-	sar	eax,3
-	imul	eax,20
+	imul	eax,3
 	add	eax,[memory_end]
 	ret
 
@@ -929,10 +926,10 @@ directive_operators:
  db 2,'as',86h
  db 2,'at',80h
  db 7,'defined',88h
- db 2,'eq',81h
- db 6,'eqtype',87h
+ db 2,'eq',0F0h
+ db 6,'eqtype',0F7h
  db 4,'from',82h
- db 2,'in',83h
+ db 2,'in',0F6h
  db 2,'on',84h
  db 3,'ptr',85h
  db 4,'used',89h

@@ -198,28 +198,14 @@ extrn_directive:
 	cmp	al,11h
 	jne	invalid_argument
       extrn_size_ok:
-	mov	[ebx+10],ah
-	movzx	eax,ah
-	mov	[edx+8],eax
-	mov	byte [ebx+11],2
-	mov	cl,[current_pass]
-	test	byte [ebx+8],1
-	jz	new_extrn
-	cmp	cl,[ebx+9]
-	je	symbol_already_defined
-	mov	[ebx+9],cl
-	xchg	[ebx+4],edx
-	cmp	[current_pass],0
-	je	instruction_assembled
-	cmp	edx,[ebx+4]
-	je	instruction_assembled
-	or	[next_pass_needed],-1
-	jmp	instruction_assembled
-      new_extrn:
-	or	byte [ebx+8],1
-	mov	[ebx+9],cl
-	mov	dword [ebx+4],edx
-	jmp	instruction_assembled
+	mov	[symbol_identifier],edx
+	movzx	ecx,ah
+	mov	[edx+8],ecx
+	mov	ch,2
+	xor	eax,eax
+	xor	edx,edx
+	xor	ebp,ebp
+	jmp	make_free_label
 mark_relocation:
 	cmp	[value_type],0
 	je	relocation_ok
@@ -312,40 +298,7 @@ segment_directive:
 	shr	eax,4
 	cmp	eax,10000h
 	jae	value_out_of_range
-	mov	cl,[current_pass]
-	test	byte [ebx+8],1
-	jz	new_segment
-	cmp	cl,[ebx+9]
-	je	symbol_already_defined
-	mov	[ebx+9],cl
-	xchg	[ebx],eax
-	xor	edx,edx
-	xchg	[ebx+4],edx
-	cmp	eax,[ebx]
-	jne	changed_segment
-	or	edx,edx
-	jnz	changed_segment
-	cmp	byte [ebx+11],1
-	jne	changed_segment
-	cmp	byte [ebx+10],0
-	je	segment_ok
-      changed_segment:
-	mov	word [ebx+10],0100h
-	test	byte [ebx+8],8
-	jz	segment_ok
-	mov	al,[current_pass]
-	cmp	al,[ebx+16]
-	jne	segment_ok
-	or	[next_pass_needed],-1
-	jmp	segment_ok
-      new_segment:
-	or	byte [ebx+8],1
-	mov	[ebx+9],cl
-	mov	byte [ebx+10],0
-	mov	byte [ebx+11],1
-	mov	[ebx],eax
-	mov	dword [ebx+4],0
-      segment_ok:
+	mov	edx,eax
 	mov	al,16
 	cmp	byte [esi],13h
 	jne	segment_type_ok
@@ -353,7 +306,12 @@ segment_directive:
 	lods	byte [esi]
       segment_type_ok:
 	mov	[code_type],al
-	jmp	instruction_assembled
+	mov	eax,edx
+	mov	cx,0100h
+	xor	edx,edx
+	xor	ebp,ebp
+	mov	[symbol_identifier],edx
+	jmp	make_free_label
 mz_entry:
 	lods	byte [esi]
 	cmp	al,'('
@@ -1407,9 +1365,9 @@ coff_formatter:
 	test	byte [eax+8],1
 	jz	find_references_to_default_section
 	mov	cl,[current_pass]
-	cmp	cl,[eax+9]
+	cmp	cl,[eax+16]
 	jne	find_references_to_default_section
-	cmp	edx,[eax+4]
+	cmp	edx,[eax+20]
 	je	default_section_ok
 	jmp	find_references_to_default_section
       skip_other_section:
@@ -1575,20 +1533,27 @@ coff_formatter:
 	test	byte [eax+8],1
 	jz	undefined_symbol
 	mov	cl,[current_pass]
-	cmp	cl,[eax+9]
+	cmp	cl,[eax+16]
 	jne	undefined_symbol
 	mov	cl,[eax+11]
 	or	cl,cl
 	jz	public_constant
 	cmp	cl,2
 	jne	invalid_use_of_symbol
-	mov	ecx,[eax+4]
+	mov	ecx,[eax+20]
 	mov	ecx,[ecx]
 	or	cl,cl
 	jnz	invalid_use_of_symbol
 	shr	ecx,8
 	inc	cx
 	mov	[ebx+0Ch],cx
+      public_symbol_section_ok:
+	cmp	dword [eax+4],0
+	je	store_public_symbol
+	cmp	dword [eax+4],-1
+	jne	value_out_of_range
+	bt	dword [eax],31
+	jnc	value_out_of_range
       store_public_symbol:
 	mov	eax,[eax]
 	mov	[ebx+8],eax
@@ -1598,13 +1563,7 @@ coff_formatter:
 	jmp	make_symbols_table
       public_constant:
 	mov	word [ebx+0Ch],0FFFFh
-	cmp	dword [eax+4],0
-	je	store_public_symbol
-	cmp	dword [eax+4],-1
-	jne	value_out_of_range
-	bt	dword [eax],31
-	jnc	value_out_of_range
-	jmp	store_public_symbol
+	jmp	public_symbol_section_ok
       symbols_table_ok:
 	mov	eax,edi
 	sub	eax,edx
@@ -1858,14 +1817,14 @@ elf_formatter:
 	test	byte [ebx+8],1
 	jz	undefined_symbol
 	mov	al,[current_pass]
-	cmp	al,[ebx+9]
+	cmp	al,[ebx+16]
 	jne	undefined_symbol
 	mov	al,[ebx+11]
 	or	al,al
 	jz	public_absolute
 	cmp	al,2
 	jne	invalid_use_of_symbol
-	mov	eax,[ebx+4]
+	mov	eax,[ebx+20]
 	cmp	byte [eax],0
 	jne	invalid_use_of_symbol
 	mov	eax,[eax+4]
@@ -1873,16 +1832,17 @@ elf_formatter:
 	jmp	section_for_public_ok
       public_absolute:
 	mov	dx,0FFF1h
-	cmp	dword [ebx+4],0
-	je	section_for_public_ok
-	cmp	dword [ebx+4],-1
-	jne	value_out_of_range
-	bt	dword [ebx],31
-	jnc	value_out_of_range
       section_for_public_ok:
 	mov	eax,[esi+4]
 	stos	dword [edi]
 	mov	eax,[ebx]
+	cmp	dword [ebx+4],0
+	je	store_public_value
+	cmp	dword [ebx+4],-1
+	jne	value_out_of_range
+	bt	eax,31
+	jnc	value_out_of_range
+      store_public_value:
 	stos	dword [edi]
 	xor	eax,eax
 	mov	al,[ebx+10]

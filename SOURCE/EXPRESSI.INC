@@ -822,11 +822,14 @@ calculate_expression:
 	je	calculate_add
 	cmp	al,81h
 	je	calculate_sub
-	cmp	[next_pass_needed],0
-	jne	absolute_values_calculation
 	mov	ah,[ebx+12]
 	or	ah,[edi+12]
-	jnz	invalid_use_of_symbol
+	jz	absolute_values_calculation
+	cmp	[error_line],0
+	jne	absolute_values_calculation
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       absolute_values_calculation:
 	cmp	al,90h
 	je	calculate_mul
@@ -906,9 +909,9 @@ calculate_expression:
 	jmp	calculation_loop
       get_label:
 	xor	eax,eax
-	mov	[edi+8],ax
+	mov	[edi+8],eax
 	mov	[edi+12],al
-	mov	[edi+16],eax
+	mov	[edi+20],eax
 	lods	dword [esi]
 	or	eax,eax
 	jz	current_offset_label
@@ -920,28 +923,24 @@ calculate_expression:
 	je	reserved_word_used_as_symbol
 	mov	ebx,eax
 	mov	al,[current_pass]
-	mov	[ebx+16],al
+	mov	[ebx+18],al
 	or	byte [ebx+8],8
 	test	byte [ebx+8],1
 	jz	label_undefined
 	test	byte [ebx+8],4
 	jz	label_defined
-	cmp	al,[ebx+9]
+	cmp	al,[ebx+16]
 	jne	label_undefined
       label_defined:
-	mov	edx,[ebx+4]
 	mov	al,[ebx+11]
 	mov	[edi+12],al
 	mov	eax,[ebx+12]
 	mov	[edi+8],eax
+	mov	eax,[ebx+20]
+	mov	[edi+16],eax
 	mov	eax,[ebx]
-	cmp	byte [ebx+11],0
-	je	label_value_ok
-	mov	[edi+16],edx
-	cdq
-      label_value_ok:
 	stos	dword [edi]
-	mov	eax,edx
+	mov	eax,[ebx+4]
 	stos	dword [edi]
 	add	edi,0Ch
 	mov	al,[ebx+10]
@@ -988,8 +987,16 @@ calculate_expression:
 	jmp	calculation_loop
       label_undefined:
 	cmp	[current_pass],0
-	jne	undefined_symbol
+	je	force_second_pass
+	cmp	[error_line],0
+	jne	undefined_value
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],undefined_symbol
+	jmp	undefined_value
+      force_second_pass:
 	or	[next_pass_needed],-1
+      undefined_value:
 	mov	byte [edi+12],0
 	or	[value_undefined],-1
 	xor	eax,eax
@@ -1002,10 +1009,13 @@ calculate_expression:
 	cmp	byte [edi+12],0
 	je	add_values
 	mov	ecx,[edi+16]
-	cmp	[next_pass_needed],0
-	jne	add_values
 	cmp	byte [ebx+12],0
-	jne	invalid_use_of_symbol
+	je	add_values
+	cmp	[error_line],0
+	jne	add_values
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       add_values:
 	mov	al,[edi+12]
 	or	[ebx+12],al
@@ -1094,9 +1104,12 @@ calculate_expression:
 	pop	esi
 	jmp	calculation_loop
       invalid_sub:
-	cmp	[next_pass_needed],0
+	cmp	[error_line],0
 	jne	sub_values
-	jmp	invalid_use_of_symbol
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
+	jmp	sub_values
       sub_register:
 	or	cl,cl
 	jz	add_register_done
@@ -1385,12 +1398,15 @@ calculate_expression:
 	mov	dword [ebx+4],0
 	jmp	calculation_loop
       calculate_not:
-	cmp	[next_pass_needed],0
-	jne	not_ok
 	cmp	word [edi+8],0
 	jne	invalid_expression
 	cmp	byte [edi+12],0
-	jne	invalid_use_of_symbol
+	je	not_ok
+	cmp	[error_line],0
+	jne	not_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       not_ok:
 	cmp	[value_size],1
 	je	not_byte
@@ -1437,12 +1453,15 @@ calculate_expression:
 	add	edi,14h
 	jmp	calculation_loop
       calculate_neg:
-	cmp	[next_pass_needed],0
-	jne	neg_ok
 	cmp	word [edi+8],0
 	jne	invalid_expression
 	cmp	byte [edi+12],0
-	jne	invalid_use_of_symbol
+	je	neg_ok
+	cmp	[error_line],0
+	jne	neg_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       neg_ok:
 	mov	eax,[edi]
 	mov	edx,[edi+4]
@@ -1455,12 +1474,15 @@ calculate_expression:
       calculate_rva:
 	cmp	[output_format],3
 	jne	invalid_expression
-	cmp	[next_pass_needed],0
-	jne	rva_ok
 	cmp	word [edi+8],0
 	jne	invalid_expression
 	cmp	byte [edi+12],2
-	jne	invalid_use_of_symbol
+	je	rva_ok
+	cmp	[error_line],0
+	jne	rva_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       rva_ok:
 	mov	byte [edi+12],0
 	mov	eax,[code_start]
@@ -1989,19 +2011,19 @@ get_logical_value:
 	je	compare_values
 	cmp	al,'<'
 	je	compare_values
-	cmp	al,'ò'
+	cmp	al,0F1h
 	je	compare_values
-	cmp	al,'ó'
+	cmp	al,0F2h
 	je	compare_values
-	cmp	al,'ö'
+	cmp	al,0F3h
 	je	compare_values
 	dec	esi
       find_eq_symbol:
-	cmp	byte [esi],81h
+	cmp	byte [esi],0F0h
 	je	compare_symbols
-	cmp	byte [esi],87h
+	cmp	byte [esi],0F7h
 	je	compare_symbol_types
-	cmp	byte [esi],83h
+	cmp	byte [esi],0F6h
 	je	scan_symbols_list
 	call	check_character
 	jc	logical_number
@@ -2064,7 +2086,7 @@ get_logical_value:
 	xchg	esi,ebx
 	jmp	type_comparision
       types_compared:
-	cmp	byte [ebx],87h
+	cmp	byte [ebx],0F7h
 	jne	return_false
 	jmp	return_true
       scan_symbols_list:
@@ -2163,12 +2185,12 @@ get_logical_value:
 	je	check_greater
 	cmp	[compare_type],'<'
 	je	check_less
-	cmp	[compare_type],'ò'
-	je	check_not_less
-	cmp	[compare_type],'ó'
-	je	check_not_greater
-	cmp	[compare_type],'ö'
+	cmp	[compare_type],0F1h
 	je	check_not_equal
+	cmp	[compare_type],0F2h
+	je	check_not_less
+	cmp	[compare_type],0F3h
+	je	check_not_greater
 	jmp	invalid_expression
       check_equal:
 	cmp	eax,ebx
@@ -2219,25 +2241,58 @@ get_logical_value:
 	jnz	return_true
 	jmp	return_false
       check_for_defined:
+	or	bl,-1
 	lods	word [esi]
-	cmp	ah,2
+	cmp	ah,'('
 	jne	invalid_expression
-	lods	dword [esi]
+      check_expression:
+	lods	byte [esi]
+	or	al,al
+	jz	defined_string
+	cmp	al,'.'
+	je	defined_fp_value
+	cmp	al,')'
+	je	expression_checked
+	cmp	al,0Fh
+	je	check_expression
+	cmp	al,10h
+	je	defined_register
+	cmp	al,11h
+	je	check_if_symbol_defined
+	cmp	al,80h
+	jae	check_expression
+	movzx	eax,al
+	add	esi,eax
+	jmp	check_expression
+      defined_register:
 	inc	esi
+	jmp	check_expression
+      defined_fp_value:
+	add	esi,12
+	jmp	expression_checked
+      defined_string:
+	lods	dword [esi]
+	add	esi,eax
+	inc	esi
+	jmp	expression_checked
+      check_if_symbol_defined:
+	lods	dword [esi]
+	cmp	eax,-1
+	je	invalid_expression
 	cmp	eax,0Fh
+	jb	check_expression
 	je	reserved_word_used_as_symbol
-	jb	return_true
 	test	byte [eax+8],1
-	jnz	symbol_defined
-	cmp	[current_pass],0
-	jne	return_false
-	or	[next_pass_needed],-1
-	jmp	return_false
-      symbol_defined:
-	mov	bl,[current_pass]
-	cmp	bl,[eax+9]
-	jne	return_false
-	jmp	return_true
+	jz	symbol_undefined
+	mov	bh,[current_pass]
+	cmp	bh,[eax+16]
+	je	check_expression
+      symbol_undefined:
+	xor	bl,bl
+	jmp	check_expression
+      expression_checked:
+	mov	al,bl
+	jmp	logical_value_ok
       check_for_used:
 	lods	word [esi]
 	cmp	ah,2
@@ -2247,21 +2302,17 @@ get_logical_value:
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
 	inc	esi
-	or	byte [eax+8],10h
 	test	byte [eax+8],8
 	jz	not_used
 	mov	cl,[current_pass]
-	sub	cl,[eax+16]
+	sub	cl,[eax+18]
+	jz	return_true
 	cmp	cl,1
-	jb	return_true
 	ja	not_used
-	mov	cl,[current_pass]
-	mov	[eax+17],cl
-	or	byte [eax+8],20h
+	or	byte [eax+8],10h+20h
 	jmp	return_true
       not_used:
-	mov	cl,[current_pass]
-	mov	[eax+17],cl
+	or	byte [eax+8],10h
 	and	byte [eax+8],not 20h
       return_false:
 	xor	al,al

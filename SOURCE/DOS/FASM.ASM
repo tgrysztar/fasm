@@ -157,6 +157,7 @@ macros_list dd ?
 macro_constants dd ?
 macro_block dd ?
 macro_block_line_number dd ?
+macro_embed_level dd ?
 struc_name dd ?
 current_locals_prefix dd ?
 anonymous_reverse dd ?
