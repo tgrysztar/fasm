@@ -1453,7 +1453,6 @@ use_macro:
 	or	[macro_status],al
 	pop	[counter_limit] [counter]
 	pop	[macro_block_line_number] [macro_block_line] [macro_block] [macro_constants]
-
 	jmp	line_preprocessed
 
 include_file:

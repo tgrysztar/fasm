@@ -1,6 +1,15 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.53
+[22-07-2004]
+------------
+[+] floating point values allowed as address fields
+[-] fixed the MZ stub bug in PE formatter
+[-] fixed the section linking in ELF executable formatter
+[-] fixed the "movsldup xmm,xmm" problem
+[-] other small fixes
+
 version 1.52
 [03-04-2004]
 ------------

@@ -400,28 +400,16 @@ parse_line:
 	jmp	expression_parsed
       not_string:
 	cmp	byte [esi],'('
-	jne	parse_expression
+	jne	expression
 	push	esi edi
 	inc	esi
 	mov	al,'{'
 	stos	byte [edi]
 	inc	[parenthesis_stack]
 	jmp	parse_arguments
-      parse_expression:
+      expression:
 	mov	al,'('
 	stos	byte [edi]
-	call	get_fp_value
-	jc	expression
-	mov	al,'.'
-	stos	byte [edi]
-	mov	eax,[fp_value]
-	stos	dword [edi]
-	mov	eax,[fp_value+4]
-	stos	dword [edi]
-	mov	eax,[fp_value+8]
-	stos	dword [edi]
-	jmp	expression_parsed
-      expression:
 	call	convert_expression
 	mov	al,')'
 	stos	byte [edi]
@@ -528,7 +516,7 @@ parse_line:
 	jne	argument_parsed
 	dec	[parenthesis_stack]
 	pop	edi esi
-	jmp	parse_expression
+	jmp	expression
       empty_instruction:
 	lods	byte [esi]
 	or	al,al

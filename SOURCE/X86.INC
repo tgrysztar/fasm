@@ -5297,6 +5297,8 @@ sse_instruction:
 	je	mmx_imm8
 	jmp	instruction_assembled
       sse_xmmreg_xmmreg:
+	cmp	[mmx_prefix],66h
+	jne	sse_xmmreg_xmmreg_ok
 	cmp	[extended_code],12h
 	je	invalid_operand
 	cmp	[extended_code],16h

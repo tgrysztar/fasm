@@ -553,8 +553,9 @@ make_stub:
 	shl	ecx,9
 	sub	ecx,eax
 	movzx	eax,word [esi+2]
-	add	ecx,eax
 	mov	edx,edi
+	add	ecx,eax
+	jz	read_stub_code
 	push	ecx
 	dec	ecx
 	shr	ecx,3
@@ -566,6 +567,7 @@ make_stub:
 	xor	eax,eax
 	rep	stos dword [edi]
 	pop	ecx
+     read_stub_code:
 	call	read
 	call	close
 	mov	edx,edi
@@ -686,7 +688,7 @@ format_pe:
 	push	edx
 	call	fp_to_version
 	pop	edx
-	add	esi,12
+	add	esi,13
 	mov	[subsystem_version],eax
 	jmp	pe_settings
       get_pe_base:
@@ -2359,7 +2361,7 @@ format_elf:
 	mov	[ebx+4],eax
 	mov	[ebx+8],edi
 	mov	al,4
-	mov	[ebx+10h],al
+	mov	[ebx+10h],eax
 	mov	al,111b
 	mov	[ebx+14h],eax
 	mov	[current_section],ebx
@@ -2889,6 +2891,7 @@ elf_entry:
 	jmp	instruction_assembled
 elf_exe_section:
 	call	close_elf_exe_section
+	push	eax
 	mov	ebx,[number_of_sections]
 	shl	ebx,5
 	add	ebx,[code_start]
@@ -2930,19 +2933,14 @@ elf_exe_section:
 	mov	eax,edi
 	sub	eax,[code_start]
 	mov	[ebx+4],eax
-	add	eax,[image_base]
-	cmp	[number_of_sections],0
-	je	elf_exe_section_address_ok
-	shrd	edx,eax,12
-	add	eax,0FFFh
-	shr	eax,12
-	shld	eax,edx,12
-      elf_exe_section_address_ok:
-	mov	[ebx+8],eax
-	mov	[ebx+0Ch],eax
-	neg	eax
-	add	eax,edi
-	mov	[org_origin],eax
+	pop	edx
+	and	eax,0FFFh
+	add	edx,eax
+	mov	[ebx+8],edx
+	mov	[ebx+0Ch],edx
+	neg	edx
+	add	edx,edi
+	mov	[org_origin],edx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	inc	[number_of_sections]
@@ -2959,6 +2957,7 @@ elf_exe_section:
 	xor	eax,eax
 	rep	stos dword [edi]
 	pop	edi
+	mov	eax,[image_base]
 	ret
       first_elf_exe_section_ok:
 	inc	[number_of_sections]
@@ -2976,10 +2975,16 @@ elf_exe_section:
 	jne	elf_exe_section_size_ok
 	mov	edi,[undefined_data_start]
       elf_exe_section_size_ok:
-	sub	edx,edi
 	mov	[ebx+14h],eax
+	add	eax,edi
 	sub	eax,edx
 	mov	[ebx+10h],eax
+	mov	eax,[ebx+8]
+	add	eax,[ebx+14h]
+	dec	eax
+	shr	eax,12
+	inc	eax
+	shl	eax,12
 	ret
 close_elf_exe:
 	call	close_elf_exe_section
@@ -3020,5 +3025,6 @@ formatter_symbols:
  db 8,'resource',1Ah,2
  db 9,'shareable',19h,28
  db 3,'wdm',1Bh,81h
+ db 8,'writable',19h,31
  db 9,'writeable',19h,31
  db 0

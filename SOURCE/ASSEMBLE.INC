@@ -1378,7 +1378,7 @@ data_twords:
 	shl	bx,15
 	or	ax,bx
 	stos	word [edi]
-	add	esi,12
+	add	esi,13
 	jmp	tbyte_ok
       fp_zero_tbyte:
 	xor	eax,eax
@@ -1387,7 +1387,7 @@ data_twords:
 	mov	al,[esi+11]
 	shl	ax,15
 	stos	word [edi]
-	add	esi,12
+	add	esi,13
       tbyte_ok:
 	cmp	edi,[display_buffer]
 	ja	out_of_memory

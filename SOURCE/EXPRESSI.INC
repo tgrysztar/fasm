@@ -5,6 +5,8 @@
 
 convert_expression:
 	push	ebp
+	call	get_fp_value
+	jnc	fp_expression
 	mov	ebp,esp
       expression_loop:
 	push	ebp edi
@@ -61,6 +63,17 @@ convert_expression:
 	stos	byte [edi]
 	jmp	expression_end
       expression_converted:
+	pop	ebp
+	ret
+      fp_expression:
+	mov	al,'.'
+	stos	byte [edi]
+	mov	eax,[fp_value]
+	stos	dword [edi]
+	mov	eax,[fp_value+4]
+	stos	dword [edi]
+	mov	eax,[fp_value+8]
+	stos	dword [edi]
 	pop	ebp
 	ret
 
@@ -1323,37 +1336,47 @@ calculate_expression:
 	xor	[ebx+4],eax
 	jmp	calculation_loop
       xor_byte:
-	cmp	dword [edi+4],0
-	jne	xor_qword
-	cmp	word [edi+2],0
-	jne	xor_qword
-	cmp	byte [edi+1],0
-	jne	xor_qword
+	mov	eax,[edi+4]
+	or	eax,[ebx+4]
+	jnz	xor_qword
+	mov	eax,[edi]
+	or	eax,[ebx]
+	and	eax,not 0FFh
+	jnz	xor_qword
 	mov	al,[edi]
 	xor	[ebx],al
 	jmp	calculation_loop
       xor_word:
-	cmp	dword [edi+4],0
-	jne	xor_qword
-	cmp	word [edi+2],0
-	jne	xor_qword
+	mov	eax,[edi+4]
+	or	eax,[ebx+4]
+	jnz	xor_qword
+	mov	ax,[edi+2]
+	or	ax,[ebx+2]
+	jnz	xor_qword
 	mov	ax,[edi]
 	xor	[ebx],ax
 	jmp	calculation_loop
       xor_dword:
-	cmp	dword [edi+4],0
-	jne	xor_qword
+	mov	eax,[edi+4]
+	or	eax,[ebx+4]
+	jnz	xor_qword
 	mov	eax,[edi]
 	xor	[ebx],eax
 	jmp	calculation_loop
       xor_pword:
-	cmp	word [edi+6],0
-	jne	xor_qword
+	mov	ax,[edi+6]
+	or	ax,[ebx+6]
+	jnz	xor_qword
 	mov	eax,[edi]
 	xor	[ebx],eax
 	mov	ax,[edi+4]
 	xor	[ebx+4],ax
 	jmp	calculation_loop
+      shr_negative:
+	not	dword [edi]
+	not	dword [edi+4]
+	add	dword [edi],1
+	adc	dword [edi+4],0
       calculate_shl:
 	mov	eax,dword [edi+4]
 	bt	eax,31
@@ -1409,12 +1432,6 @@ calculate_expression:
 	mov	[ebx],eax
 	mov	dword [ebx+4],0
 	jmp	calculation_loop
-      shr_negative:
-	not	dword [edi]
-	not	dword [edi+4]
-	add	dword [edi],1
-	adc	dword [edi+4],0
-	jmp	calculate_shl
       zero_value:
 	mov	dword [ebx],0
 	mov	dword [ebx+4],0
@@ -1625,7 +1642,7 @@ calculate_expression:
 	mov	[edi],eax
 	xor	eax,eax
 	mov	[edi+4],eax
-	add	esi,12
+	add	esi,13
 	ret
       convert_fp_qword:
 	xor	eax,eax
@@ -1661,7 +1678,7 @@ calculate_expression:
 	or	edx,ebx
 	mov	[edi],eax
 	mov	[edi+4],edx
-	add	esi,12
+	add	esi,13
 	ret
       get_string_value:
 	lods	dword [esi]
@@ -1706,11 +1723,11 @@ get_byte_value:
       byte_positive:
 	cmp	eax,100h
 	jae	range_exceeded
-      return_value:
+      return_byte_value:
 	ret
       range_exceeded:
 	cmp	[error_line],0
-	jne	return_value
+	jne	return_byte_value
 	mov	eax,[current_line]
 	mov	[error_line],eax
 	mov	[error],value_out_of_range
