@@ -199,9 +199,6 @@ lseek:
 	mov	dl,al
 	mov	eax,19
 	int	0x80
-	test	eax,eax
-	js	file_error
-	clc
 	ret
 
 display_string:

@@ -278,10 +278,11 @@ basic_instruction:
 	je	basic_reg_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	basic_reg_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	basic_reg_imm_32bit
       basic_reg_imm_8bit:
 	call	get_byte_value
@@ -399,10 +400,11 @@ single_operand_instruction:
 	je	single_mem_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	single_mem_8bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       single_mem_8bit:
 	call	store_instruction
 	jmp	instruction_assembled
@@ -590,10 +592,11 @@ mov_instruction:
 	je	mov_mem_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	mov_mem_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	mov_mem_imm_32bit
       mov_mem_imm_8bit:
 	call	get_byte_value
@@ -810,10 +813,11 @@ mov_instruction:
 	je	mov_reg_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	mov_reg_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	mov_reg_imm_32bit
       mov_reg_imm_8bit:
 	call	get_byte_value
@@ -1060,10 +1064,11 @@ test_instruction:
 	je	test_mem_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	test_mem_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	test_mem_imm_32bit
       test_mem_imm_8bit:
 	call	get_byte_value
@@ -1152,10 +1157,11 @@ test_instruction:
 	je	test_reg_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	test_reg_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	test_reg_imm_32bit
       test_reg_imm_8bit:
 	call	get_byte_value
@@ -1344,10 +1350,11 @@ push_instruction:
 	je	push_mem_16bit
 	cmp	ah,4
 	je	push_mem_32bit
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	push_mem_16bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       push_mem_16bit:
 	cmp	ah,4
 	je	invalid_operand_size
@@ -1539,10 +1546,11 @@ pop_instruction:
 	je	pop_mem_16bit
 	cmp	ah,4
 	je	pop_mem_32bit
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	pop_mem_16bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       pop_mem_16bit:
 	cmp	ah,4
 	je	invalid_operand_size
@@ -1663,10 +1671,11 @@ inc_instruction:
 	je	inc_mem_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	inc_mem_8bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       inc_mem_8bit:
 	mov	al,0FEh
 	xchg	al,[base_code]
@@ -2036,10 +2045,11 @@ sh_instruction:
 	je	sh_mem_cl_32bit
 	or	ah,ah
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	sh_mem_cl_8bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       sh_mem_cl_8bit:
 	mov	[base_code],0D2h
 	call	store_instruction
@@ -2072,10 +2082,11 @@ sh_instruction:
 	je	sh_mem_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	sh_mem_imm_8bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       sh_mem_imm_8bit:
 	cmp	byte [value],1
 	je	sh_mem_1_8bit
@@ -2467,10 +2478,11 @@ movx_instruction:
 	je	movx_32bit_mem_16bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	movx_32bit_mem_8bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       movx_32bit_mem_8bit:
 	call	operand_32bit_prefix
 	call	store_instruction
@@ -2582,10 +2594,11 @@ bt_instruction:
 	je	bt_mem_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	bt_mem_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	bt_mem_imm_32bit
       bt_mem_imm_16bit:
 	call	operand_16bit_prefix
@@ -2670,10 +2683,11 @@ bt_instruction:
 	je	bt_reg_imm_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	bt_reg_imm_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
 	jmp	bt_reg_imm_32bit
       bt_reg_imm_16bit:
 	call	operand_16bit_prefix
@@ -2777,6 +2791,12 @@ pm_word_instruction:
       pm_reg:
 	lods	byte [esi]
 	call	convert_register
+	mov	bl,al
+	cmp	[extended_code],1
+	jne	pm_reg16
+	cmp	[postbyte_register],4
+	je	smsw_reg
+      pm_reg16:
 	cmp	ah,2
 	jne	invalid_operand_size
 	mov	bl,al
@@ -2787,6 +2807,22 @@ pm_word_instruction:
 	shl	al,3
 	or	al,bl
 	or	al,11000000b
+	stos	byte [edi]
+	jmp	instruction_assembled
+      smsw_reg:
+	cmp	ah,2
+	je	smsw_reg16
+	cmp	ah,4
+	jne	invalid_operand_size
+	call	operand_32bit_prefix
+	jmp	smsw_reg_store
+      smsw_reg16:
+	call	operand_16bit_prefix
+      smsw_reg_store:
+	mov	ax,010Fh
+	stos	word [edi]
+	mov	al,11100000b
+	or	al,bl
 	stos	byte [edi]
 	jmp	instruction_assembled
 pm_pword_instruction:
@@ -2827,10 +2863,11 @@ imul_instruction:
 	je	imul_mem_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	imul_mem_8bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       imul_mem_8bit:
 	call	store_instruction
 	jmp	instruction_assembled
@@ -3091,6 +3128,7 @@ imul_instruction:
 	call	get_word_value
 	pop	dx bx
 	mov	word [value],ax
+	call	operand_16bit_prefix
 	cmp	[value_type],0
 	jne	imul_reg_reg_imm_16bit_forced
 	cmp	[imm_sized],0
@@ -3100,7 +3138,6 @@ imul_instruction:
 	cmp	ax,80h
 	jl	imul_reg_reg_imm_8bit_store
       imul_reg_reg_imm_16bit_forced:
-	call	operand_16bit_prefix
 	mov	al,69h
 	stos	byte [edi]
 	mov	al,dl
@@ -3117,6 +3154,7 @@ imul_instruction:
 	call	get_dword_value
 	pop	dx bx
 	mov	dword [value],eax
+	call	operand_32bit_prefix
 	cmp	[value_type],0
 	jne	imul_reg_reg_imm_32bit_forced
 	cmp	[imm_sized],0
@@ -3126,7 +3164,6 @@ imul_instruction:
 	cmp	eax,80h
 	jl	imul_reg_reg_imm_8bit_store
       imul_reg_reg_imm_32bit_forced:
-	call	operand_32bit_prefix
 	mov	al,69h
 	stos	byte [edi]
 	mov	al,dl
@@ -3666,10 +3703,11 @@ jmp_instruction:
 	je	jmp_mem_far
 	cmp	[jump_type],1
 	je	jmp_mem_near
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	jmp_mem_near
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       jmp_mem_near:
 	cmp	[code_type],16
 	je	jmp_mem_16bit
@@ -4212,10 +4250,11 @@ basic_fpu_instruction:
 	je	basic_fpu_mem_64bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	basic_fpu_mem_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       basic_fpu_mem_32bit:
 	mov	[base_code],0D8h
 	call	store_instruction
@@ -4301,10 +4340,11 @@ fi_instruction:
 	je	fi_mem_32bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	fi_mem_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       fi_mem_32bit:
 	mov	[base_code],0DAh
 	call	store_instruction
@@ -4331,10 +4371,11 @@ fld_instruction:
 	je	fld_mem_80bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	fld_mem_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       fld_mem_32bit:
 	mov	[base_code],0D9h
 	call	store_instruction
@@ -4388,10 +4429,11 @@ fild_instruction:
 	je	fild_mem_64bit
 	or	al,al
 	jnz	invalid_operand_size
-	cmp	[current_pass],0
-	jne	operand_size_not_specified
-	cmp	[next_pass_needed],0
-	je	operand_size_not_specified
+	cmp	[error_line],0
+	jne	fild_mem_32bit
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],operand_size_not_specified
       fild_mem_32bit:
 	mov	[base_code],0DBh
 	call	store_instruction
@@ -5464,22 +5506,22 @@ sse_cmp_instruction:
 	lods	byte [esi]
 	cmp	al,','
 	jne	invalid_operand
+	mov	[operand_size],0
 	lods	byte [esi]
 	call	get_size_operator
 	cmp	al,10h
 	je	sse_cmp_xmmreg_xmmreg
 	cmp	al,'['
 	jne	invalid_operand
-	mov	[operand_size],0
 	call	get_address
 	pop	eax
 	mov	[postbyte_register],al
-	cmp	[operand_size],0
-	je	sse_cmp_xmmreg_mem_store
-	mov	al,[mmx_size]
-	cmp	[operand_size],al
+	mov	al,[operand_size]
+	or	al,al
+	jz	sse_cmp_size_ok
+	cmp	al,[mmx_size]
 	jne	invalid_operand_size
-      sse_cmp_xmmreg_mem_store:
+      sse_cmp_size_ok:
 	call	store_mmx_instruction
       sse_cmp_nextbyte:
 	mov	al,[nextbyte]
@@ -5919,14 +5961,14 @@ get_jump_operator:
 operand_16bit_prefix:
 	cmp	[code_type],16
 	je	size_prefix_ok
-	mov	al,66h
-	stos	byte [edi]
+	mov	byte [edi],66h
+	inc	edi
 	ret
 operand_32bit_prefix:
 	cmp	[code_type],32
 	je	size_prefix_ok
-	mov	al,66h
-	stos	byte [edi]
+	mov	byte [edi],66h
+	inc	edi
       size_prefix_ok:
 	ret
 store_segment_prefix_if_necessary:

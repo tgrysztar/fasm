@@ -1664,7 +1664,13 @@ get_byte_value:
 	cmp	word [edi+8],0
 	jne	invalid_value
 	cmp	byte [edi+12],0
-	jne	invalid_use_of_symbol
+	je	check_byte_value
+	cmp	[error_line],0
+	jne	check_byte_value
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
+      check_byte_value:
 	mov	eax,[edi]
 	cmp	dword [edi+4],0
 	je	byte_positive
@@ -1696,7 +1702,12 @@ get_word_value:
 	or	al,al
 	jz	check_word_value
 	test	al,1
-	jz	invalid_use_of_symbol
+	jnz	check_word_value
+	cmp	[error_line],0
+	jne	check_word_value
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       check_word_value:
 	mov	eax,[edi]
 	cmp	dword [edi+4],0

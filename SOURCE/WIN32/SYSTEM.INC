@@ -249,8 +249,6 @@ lseek:
 	push	edx
 	push	ebx
 	call	[SetFilePointer]
-	cmp	eax,-1
-	je	file_error
 	ret
 
 display_string:
