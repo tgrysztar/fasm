@@ -1,18 +1,19 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler core
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 parser:
 	mov	eax,[memory_end]
 	mov	[labels_list],eax
+	mov	eax,[additional_memory]
+	mov	[free_additional_memory],eax
 	xor	eax,eax
 	mov	[current_locals_prefix],eax
 	mov	[anonymous_reverse],eax
 	mov	[anonymous_forward],eax
 	mov	esi,[source_start]
 	mov	edi,[code_start]
-	push	[additional_memory]
      parser_loop:
 	mov	[current_line],esi
 	cmp	edi,[labels_list]
@@ -29,7 +30,6 @@ parser:
 	stos	byte [edi]
 	cmp	[anonymous_forward],0
 	jne	unexpected_end_of_file
-	pop	[additional_memory]
 	mov	eax,[code_start]
 	mov	[source_start],eax
 	mov	[code_start],edi
@@ -182,7 +182,7 @@ parse_line:
 	cmp	bx,segment_directive-assembler
 	je	parse_label_directive
 	cmp	bx,extrn_directive-assembler
-	je	parse_public_directive
+	je	parse_extrn_directive
 	cmp	bx,public_directive-assembler
 	je	parse_public_directive
       parse_arguments:
@@ -216,6 +216,8 @@ parse_line:
 	cmp	al,'}'
 	je	unallowed_character
 	cmp	al,'#'
+	je	unallowed_character
+	cmp	al,'`'
 	je	unallowed_character
 	dec	esi
 	cmp	al,1Ah
@@ -259,7 +261,42 @@ parse_line:
 	jmp	argument_parsed
       parse_public_directive:
 	cmp	byte [esi],1Ah
-	jne	invalid_argument
+	jne	parse_arguments
+	inc	esi
+	push	esi
+	movzx	ecx,byte [esi]
+	lods	byte [esi]
+	mov	al,2
+	stos	byte [edi]
+	call	get_label_id
+	stos	dword [edi]
+	mov	ax,8600h
+	stos	word [edi]
+	pop	ebx
+	push	ebx esi edi
+	mov	edi,directive_operators
+	call	get_operator
+	pop	edi edx ebx
+	cmp	al,86h
+	je	argument_parsed
+	mov	esi,edx
+	xchg	esi,ebx
+	movzx	ecx,byte [esi]
+	inc	esi
+	mov	ax,'('
+	stos	word [edi]
+	mov	eax,ecx
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	xor	al,al
+	stos	byte [edi]
+	xchg	esi,ebx
+	jmp	argument_parsed
+      parse_extrn_directive:
+	cmp	byte [esi],22h
+	je	parse_quoted_extrn
+	cmp	byte [esi],1Ah
+	jne	parse_arguments
 	push	esi
 	movzx	ecx,byte [esi+1]
 	add	esi,2
@@ -268,17 +305,15 @@ parse_line:
 	mov	eax,ecx
 	stos	dword [edi]
 	rep	movs byte [edi],[esi]
-	xor	al,al
-	stos	byte [edi]
+	mov	ax,8600h
+	stos	word [edi]
 	pop	esi
       parse_label_operator:
 	cmp	byte [esi],1Ah
 	jne	argument_parsed
-	push	edi
 	inc	esi
 	movzx	ecx,byte [esi]
 	lods	byte [esi]
-	pop	edi
 	mov	al,2
 	stos	byte [edi]
 	call	get_label_id
@@ -286,6 +321,26 @@ parse_line:
 	xor	al,al
 	stos	byte [edi]
 	jmp	argument_parsed
+      parse_quoted_extrn:
+	inc	esi
+	mov	ax,'('
+	stos	word [edi]
+	lods	dword [esi]
+	mov	ecx,eax
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	xor	al,al
+	stos	byte [edi]
+	push	esi edi
+	mov	edi,directive_operators
+	call	get_operator
+	mov	edx,esi
+	pop	edi esi
+	cmp	al,86h
+	jne	argument_parsed
+	stos	byte [edi]
+	mov	esi,edx
+	jmp	parse_label_operator
       ptr_argument:
 	call	parse_address
 	mov	al,']'
@@ -518,7 +573,7 @@ get_operator:
 	call	lower_case
 	pop	edi
       check_operator:
-	mov	esi,buffer
+	mov	esi,converted
 	movzx	ecx,byte [edi]
 	jecxz	no_operator
 	inc	edi
@@ -545,6 +600,8 @@ get_operator:
 	ret
       simple_operator:
 	mov	al,[esi]
+	cmp	al,22h
+	je	no_simple_operator
       simple_check_operator:
 	cmp	byte [edi],1
 	jb	no_simple_operator
@@ -567,7 +624,7 @@ get_symbol:
 	call	lower_case
 	pop	edi
       scan_symbols:
-	mov	esi,buffer
+	mov	esi,converted
 	movzx	eax,byte [edi]
 	or	al,al
 	jz	no_symbol
@@ -611,7 +668,7 @@ get_instruction:
 	movzx	edi,word [instructions+ecx*2]
 	add	edi,instructions
       scan_instructions:
-	mov	esi,buffer
+	mov	esi,converted
 	mov	al,[edi]
 	or	al,al
 	jz	no_instruction
@@ -631,7 +688,7 @@ get_instruction:
 	stc
 	ret
       lower_case:
-	mov	edi,buffer
+	mov	edi,converted
 	mov	ebx,characters
       convert_case:
 	lods	byte [esi]
@@ -660,7 +717,7 @@ get_label_id:
 	je	standard_label
 	push	edi
 	push	ecx esi
-	mov	edi,[additional_memory]
+	mov	edi,[free_additional_memory]
 	xor	al,al
 	stos	byte [edi]
 	mov	esi,[current_locals_prefix]
@@ -678,7 +735,7 @@ get_label_id:
 	cmp	ebp,[additional_memory_end]
 	jae	out_of_memory
 	rep	movs byte [edi],[esi]
-	mov	[additional_memory],edi
+	mov	[free_additional_memory],edi
 	pop	edi
 	push	esi
 	movzx	ecx,al
@@ -758,11 +815,16 @@ get_label_id:
 	xor	ebp,ebp
       hash_label:
 	movzx	eax,byte [esi+ebx]
+	rol	ebp,12
+	mov	edx,ebp
+	shr	ebp,8
+	and	edx,1111b
+	or	ebp,edx
 	add	ebp,eax
 	inc	bl
 	cmp	bl,cl
 	jb	hash_label
-	shl	ebx,20
+	shl	ebx,24
 	or	ebp,ebx
 	mov	[label_hash],ebp
 	push	edi
@@ -833,9 +895,6 @@ get_label_id:
 	pop	edi
 	ret
 
-symbol_characters db 26
- db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#'
-
 operators:
  db 1,'+',80h
  db 1,'-',81h
@@ -857,6 +916,7 @@ single_operand_operators:
  db 0
 
 directive_operators:
+ db 2,'as',86h
  db 2,'at',80h
  db 7,'defined',88h
  db 2,'eq',81h

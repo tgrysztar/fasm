@@ -1,26 +1,12 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler interface for Linux
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-	program_base = 0x8048000
-
-	org	program_base
-	use32
+	format	ELF executable
+	entry	start
 
 	macro	align value { rb (value-1) - ($ + value-1) mod value }
-
-file_header:
-	db	0x7F,'ELF',1,1,1,3
-	rb	file_header+0x10-$
-	dw	2,3
-	dd	1,start
-	dd	program_header-file_header,0,0
-	dw	program_header-file_header,0x20,1,0,0,0
-
-program_header:
-	dd	1,0,program_base,0
-	dd	bss-program_base,program_end-program_base,7,0x1000
 
 start:
 
@@ -148,21 +134,19 @@ _bytes_suffix db ' bytes.',0xA,0
 
 _counter db 8,'00000000'
 
-bss:
-
 align 4
 
 memory_start dd ?
 memory_end dd ?
 additional_memory dd ?
 additional_memory_end dd ?
+free_additional_memory dd ?
 input_file dd ?
 output_file dd ?
 environment dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
-real_code_start dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
@@ -196,11 +180,11 @@ fp_value rd 8
 symbol_identifier dd ?
 address_symbol dd ?
 format_flags dd ?
+symbols_stream dd ?
 number_of_relocations dd ?
 number_of_sections dd ?
 stub_size dd ?
-header_data dd ?
-sections_data dd ?
+stub_file dd ?
 current_section dd ?
 machine dw ?
 subsystem dw ?
@@ -210,7 +194,6 @@ image_base dd ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?
-selected_format db ?
 code_type db ?
 current_pass db ?
 next_pass_needed db ?
@@ -237,6 +220,5 @@ mmx_prefix db ?
 nextbyte db ?
 
 characters rb 100h
+converted rb 100h
 buffer rb 1000h
-
-program_end:

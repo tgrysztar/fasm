@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler interface for DOS
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 	org	100h
@@ -113,42 +113,6 @@ information:
 	mov	al,1
 	jmp	exit_program
 
-get_params:
-	mov	si,81h
-	mov	di,params
-    find_param:
-	lodsb
-	cmp	al,20h
-	je	find_param
-	cmp	al,0Dh
-	je	all_params
-	or	al,al
-	jz	all_params
-	inc	di
-	mov	bx,di
-    copy_param:
-	stosb
-	lodsb
-	cmp	al,20h
-	je	param_end
-	cmp	al,0Dh
-	je	param_end
-	or	al,al
-	jz	param_end
-	jmp	copy_param
-    param_end:
-	dec	si
-	xor	al,al
-	stosb
-	mov	ax,di
-	sub	ax,bx
-	mov	[bx-1],al
-	jmp	find_param
-    all_params:
-	xor	al,al
-	stosb
-	ret
-
 include 'system.inc'
 
 include '..\version.inc'
@@ -178,12 +142,12 @@ memory_start dd ?
 memory_end dd ?
 additional_memory dd ?
 additional_memory_end dd ?
+free_additional_memory dd ?
 input_file dd ?
 output_file dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
-real_code_start dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
@@ -217,11 +181,11 @@ fp_value rd 8
 symbol_identifier dd ?
 address_symbol dd ?
 format_flags dd ?
+symbols_stream dd ?
 number_of_relocations dd ?
 number_of_sections dd ?
 stub_size dd ?
-header_data dd ?
-sections_data dd ?
+stub_file dd ?
 current_section dd ?
 machine dw ?
 subsystem dw ?
@@ -231,7 +195,6 @@ image_base dd ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?
-selected_format db ?
 code_type db ?
 current_pass db ?
 next_pass_needed db ?
@@ -259,6 +222,7 @@ nextbyte db ?
 
 characters rb 100h
 params rb 100h
+converted rb 100h
 buffer rb 1000h
 
 rb 400h

@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler core
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 convert_expression:
@@ -905,8 +905,10 @@ calculate_expression:
 	add	edi,0Ch
 	jmp	calculation_loop
       get_label:
-	mov	word [edi+8],0
-	mov	byte [edi+12],0
+	xor	eax,eax
+	mov	[edi+8],ax
+	mov	[edi+12],al
+	mov	[edi+16],eax
 	lods	dword [esi]
 	or	eax,eax
 	jz	current_offset_label
@@ -927,18 +929,12 @@ calculate_expression:
 	cmp	al,[ebx+9]
 	jne	label_undefined
       label_defined:
+	mov	edx,[ebx+4]
 	mov	al,[ebx+11]
-	cmp	[next_pass_needed],0
-	je	label_type_ok
-	cmp	[current_pass],0
-	jne	label_type_ok
-	xor	al,al
-      label_type_ok:
 	mov	[edi+12],al
 	mov	eax,[ebx+12]
 	mov	[edi+8],eax
 	mov	eax,[ebx]
-	mov	edx,[ebx+4]
 	cmp	byte [ebx+11],0
 	je	label_value_ok
 	mov	[edi+16],edx
@@ -992,7 +988,7 @@ calculate_expression:
 	jmp	calculation_loop
       label_undefined:
 	cmp	[current_pass],0
-	jne	invalid_value
+	jne	undefined_symbol
 	or	[next_pass_needed],-1
 	mov	byte [edi+12],0
 	or	[value_undefined],-1
@@ -1073,8 +1069,6 @@ calculate_expression:
 	cmp	al,ah
 	jne	invalid_sub
 	xor	ah,ah
-	cmp	[output_format],4
-	jne	sub_values
 	mov	ecx,[edi+16]
 	cmp	ecx,[ebx+16]
 	je	sub_values
@@ -1459,13 +1453,8 @@ calculate_expression:
 	add	edi,14h
 	jmp	calculation_loop
       calculate_rva:
-	cmp	[selected_format],3
-	je	rva_available
-	cmp	[current_pass],0
-	jne	invalid_use_of_symbol
-	xor	eax,eax
-	jmp	rva_base_ok
-      rva_available:
+	cmp	[output_format],3
+	jne	invalid_expression
 	cmp	[next_pass_needed],0
 	jne	rva_ok
 	cmp	word [edi+8],0
@@ -1474,9 +1463,8 @@ calculate_expression:
 	jne	invalid_use_of_symbol
       rva_ok:
 	mov	byte [edi+12],0
-	mov	eax,[header_data]
+	mov	eax,[code_start]
 	mov	eax,[eax+34h]
-      rva_base_ok:
 	sub	[edi],eax
 	sbb	dword [edi+4],0
 	add	edi,14h
@@ -2086,6 +2074,8 @@ get_logical_value:
 	or	al,al
 	jz	invalid_expression
 	cmp	al,0Fh
+	je	invalid_expression
+	cmp	al,'<'
 	je	invalid_expression
 	cmp	al,'>'
 	je	list_return_false

@@ -1,6 +1,17 @@
 
 Visit http://fasm.sourceforge.net for more information
 
+version 1.43
+[10-01-2002]
+------------
+[+] introduced ELF output format
+[+] extended public and extrn syntax
+[+] allowed macro arguments containing commas (with < and > characters)
+[+] added some more missing instructions and syntax options
+[-] label hashing corrected
+[-] formatter revised once again
+[-] many other fixes
+
 version 1.42
 [05-12-2002]
 ------------

@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler interface for DOS
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 init_flatrm:
@@ -246,6 +246,42 @@ exit_program:
 xms_call dd ?				; XMS driver pointer
 xms_handle dw ? 			; handle of XMS memory block
 
+get_params:
+	mov	si,81h
+	mov	di,params
+    find_param:
+	lodsb
+	cmp	al,20h
+	je	find_param
+	cmp	al,0Dh
+	je	all_params
+	or	al,al
+	jz	all_params
+	inc	di
+	mov	bx,di
+    copy_param:
+	stosb
+	lodsb
+	cmp	al,20h
+	je	param_end
+	cmp	al,0Dh
+	je	param_end
+	or	al,al
+	jz	param_end
+	jmp	copy_param
+    param_end:
+	dec	si
+	xor	al,al
+	stosb
+	mov	ax,di
+	sub	ax,bx
+	mov	[bx-1],al
+	jmp	find_param
+    all_params:
+	xor	al,al
+	stosb
+	ret
+
 open:
 	push	esi di
 	call	convert_path
@@ -434,7 +470,7 @@ display_block:
 	mov	dl,al
 	mov	ah,2
 	int	21h
-	loop	display_block
+	loopd	display_block
 	ret
 display_number:
 	push	ebx

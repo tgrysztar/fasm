@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler core
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 assembler:
@@ -11,14 +11,14 @@ assembler:
 	xor	eax,eax
 	rep	stos dword [edi]
 	mov	[stub_size],eax
-	mov	eax,[code_start]
-	mov	[real_code_start],eax
-	mov	[current_pass],0
-	mov	[number_of_sections],0
-	mov	[times_working],0
+	mov	[number_of_sections],eax
+	mov	[current_pass],al
+	mov	[times_working],al
       assembler_loop:
 	mov	eax,[labels_list]
 	mov	[display_buffer],eax
+	mov	eax,[additional_memory]
+	mov	[free_additional_memory],eax
 	mov	eax,[additional_memory_end]
 	mov	[structures_buffer],eax
 	mov	[next_pass_needed],0
@@ -26,13 +26,11 @@ assembler:
 	mov	[reloc_labels],0
 	mov	[virtual_data],0
 	mov	esi,[source_start]
-	mov	edi,[real_code_start]
-	xor	al,al
-	xchg	[output_format],al
-	mov	[selected_format],al
+	mov	edi,[code_start]
+	xor	eax,eax
+	mov	[output_format],al
 	mov	[org_origin],edi
 	mov	[org_start],edi
-	xor	eax,eax
 	mov	[org_sib],eax
 	mov	[error_line],eax
 	mov	[counter],eax
@@ -135,6 +133,9 @@ assemble_line:
       new_line:
 	lods	dword [esi]
 	mov	[current_line],eax
+      continue_line:
+	cmp	byte [esi],0Fh
+	je	line_assembled
 	jmp	assemble_line
       define_label:
 	lods	dword [esi]
@@ -166,7 +167,7 @@ assemble_line:
 	mov	ebp,[org_sib]
 	xchg	[ebx+12],ebp
 	cmp	[current_pass],0
-	je	assemble_line
+	je	continue_line
 	cmp	eax,[ebx]
 	jne	changed_label
 	cmp	edx,[ebx+4]
@@ -175,10 +176,18 @@ assemble_line:
 	jne	changed_label
 	cmp	ch,[ebx+11]
 	jne	changed_label
-	jmp	assemble_line
+	shr	ecx,16
+	cmp	cl,[ebx+10]
+	je	continue_line
+	mov	[ebx+10],cl
       changed_label:
+	test	byte [ebx+8],8
+	jz	continue_line
+	mov	al,[current_pass]
+	cmp	al,[ebx+16]
+	jne	continue_line
 	or	[next_pass_needed],-1
-	jmp	assemble_line
+	jmp	continue_line
       new_label:
 	or	byte [ebx+8],1
 	mov	[ebx+9],cl
@@ -188,7 +197,7 @@ assemble_line:
 	mov	dword [ebx+4],edx
 	mov	eax,[org_sib]
 	mov	[ebx+12],eax
-	jmp	assemble_line
+	jmp	continue_line
       define_constant:
 	lods	dword [esi]
 	mov	edx,[eax+8]
@@ -226,37 +235,48 @@ assemble_line:
 	jne	value_out_of_range
 	mov	edx,[symbol_identifier]
       make_constant:
-	mov	[ebx+11],cl
-	mov	cl,[current_pass]
 	test	byte [ebx+8],1
 	jz	new_constant
-	cmp	cl,[ebx+9]
+	mov	ch,[current_pass]
+	cmp	ch,[ebx+9]
 	jne	redefine_constant
 	test	byte [ebx+8],2
 	jz	symbol_already_defined
 	or	byte [ebx+8],4
       redefine_constant:
-	mov	[ebx+9],cl
+	mov	[ebx+9],ch
+	xchg	[ebx+11],cl
 	xchg	[ebx],eax
 	xchg	[ebx+4],edx
 	cmp	[current_pass],0
-	je	assemble_line
+	je	continue_line
 	cmp	eax,[ebx]
 	jne	changed_constant
 	cmp	edx,[ebx+4]
 	jne	changed_constant
-	jmp	assemble_line
+	cmp	cl,[ebx+11]
+	jne	changed_constant
+	cmp	byte [ebx+10],0
+	je	continue_line
+	mov	byte [ebx+10],0
       changed_constant:
 	test	byte [ebx+8],4
-	jnz	assemble_line
+	jnz	continue_line
+	test	byte [ebx+8],8
+	jz	continue_line
+	mov	al,[current_pass]
+	cmp	al,[ebx+16]
+	jne	continue_line
 	or	[next_pass_needed],-1
-	jmp	assemble_line
+	jmp	continue_line
       new_constant:
 	or	byte [ebx+8],1+2
+	mov	[ebx+11],cl
+	mov	cl,[current_pass]
 	mov	word [ebx+9],cx
 	mov	[ebx],eax
 	mov	[ebx+4],edx
-	jmp	assemble_line
+	jmp	continue_line
       assemble_instruction:
 	mov	[operand_size],0
 	mov	[forced_size],0
@@ -275,6 +295,7 @@ assemble_line:
 	clc
 	ret
       source_end:
+	dec	esi
 	stc
 	ret
 skip_line:
@@ -475,8 +496,16 @@ label_directive:
 	jne	changed_free_label
 	cmp	ch,[ebx+11]
 	jne	changed_free_label
-	jmp	instruction_assembled
+	shr	ecx,16
+	cmp	cl,[ebx+10]
+	je	instruction_assembled
+	mov	[ebx+10],cl
       changed_free_label:
+	test	byte [ebx+8],8
+	jz	instruction_assembled
+	mov	al,[current_pass]
+	cmp	al,[ebx+16]
+	jne	instruction_assembled
 	or	[next_pass_needed],-1
 	jmp	instruction_assembled
       new_free_label:
@@ -555,8 +584,11 @@ load_directive:
 	je	invalid_value
 	call	get_relative_offset
 	neg	eax
+	cmp	[next_pass_needed],0
+	jne	load_address_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      load_address_ok:
 	push	esi edi
 	mov	esi,edi
 	sub	esi,eax
@@ -644,8 +676,11 @@ times_directive:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	times_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      times_value_ok:
 	cmp	eax,0
 	je	zero_times
 	jl	negative_times
@@ -659,7 +694,7 @@ times_directive:
       times_loop:
 	push	esi
 	or	[times_working],-1
-	call	assemble_line
+	call	continue_line
 	mov	eax,[counter_limit]
 	cmp	[counter],eax
 	je	times_done
@@ -738,7 +773,7 @@ virtual_directive:
       allocate_structure_data:
 	mov	ebx,[structures_buffer]
 	sub	ebx,14h
-	cmp	ebx,[additional_memory]
+	cmp	ebx,[free_additional_memory]
 	jb	out_of_memory
 	mov	[structures_buffer],ebx
 	ret
@@ -801,8 +836,11 @@ repeat_directive:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	repeat_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      repeat_value_ok:
 	cmp	eax,0
 	je	zero_repeat
 	jl	negative_repeat
@@ -1373,8 +1411,11 @@ reserve_bytes:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	rb_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      rb_value_ok:
 	cmp	eax,0
 	jl	reserve_negative
 	mov	ecx,eax
@@ -1417,8 +1458,11 @@ reserve_words:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	rw_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      rw_value_ok:
 	cmp	eax,0
 	jl	reserve_negative
 	mov	ecx,eax
@@ -1449,8 +1493,11 @@ reserve_dwords:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	rd_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      rd_value_ok:
 	cmp	eax,0
 	jl	reserve_negative
 	mov	ecx,eax
@@ -1479,8 +1526,11 @@ reserve_pwords:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	rp_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      rp_value_ok:
 	cmp	eax,0
 	jl	reserve_negative
 	mov	ecx,eax
@@ -1506,8 +1556,11 @@ reserve_qwords:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	rq_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      rq_value_ok:
 	cmp	eax,0
 	jl	reserve_negative
 	mov	ecx,eax
@@ -1534,8 +1587,11 @@ reserve_twords:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	cmp	[next_pass_needed],0
+	jne	rt_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+      rt_value_ok:
 	cmp	eax,0
 	jl	reserve_negative
 	mov	ecx,eax

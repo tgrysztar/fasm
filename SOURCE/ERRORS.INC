@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler core
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 out_of_memory:
@@ -9,12 +9,15 @@ out_of_memory:
 main_file_not_found:
 	call	fatal_error
 	dm	"source file not found"
-code_cannot_be_generated:
-	call	fatal_error
-	dm	"code cannot be generated"
 unexpected_end_of_file:
 	call	fatal_error
 	dm	"unexpected end of file"
+code_cannot_be_generated:
+	call	fatal_error
+	dm	"code cannot be generated"
+format_limitations_exceeded:
+	call	fatal_error
+	dm	"format limitations exceeded"
 write_failed:
 	call	fatal_error
 	dm	"write failed"
@@ -57,6 +60,9 @@ invalid_address_size:
 address_sizes_do_not_agree:
 	call	assembler_error
 	dm	"address sizes do not agree"
+relative_jump_out_of_range:
+	call	assembler_error
+	dm	"relative jump out of range"
 invalid_expression:
 	call	assembler_error
 	dm	"invalid expression"
@@ -69,15 +75,12 @@ invalid_value:
 value_out_of_range:
 	call	assembler_error
 	dm	"value out of range"
+undefined_symbol:
+	call	assembler_error
+	dm	"undefined symbol"
 invalid_use_of_symbol:
 	call	assembler_error
 	dm	"invalid use of symbol"
-relative_jump_out_of_range:
-	call	assembler_error
-	dm	"relative jump out of range"
-extra_characters_on_line:
-	call	assembler_error
-	dm	"extra characters on line"
 name_too_long:
 	call	assembler_error
 	dm	"name too long"
@@ -90,6 +93,15 @@ reserved_word_used_as_symbol:
 symbol_already_defined:
 	call	assembler_error
 	dm	"symbol already defined"
+setting_already_specified:
+	call	assembler_error
+	dm	"setting already specified"
+data_already_defined:
+	call	assembler_error
+	dm	"data already defined"
 missing_end_quote:
 	call	assembler_error
 	dm	"missing end quote"
+extra_characters_on_line:
+	call	assembler_error
+	dm	"extra characters on line"

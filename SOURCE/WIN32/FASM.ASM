@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler interface for Win32
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	PE console on '..\dos\fasm.com'
@@ -95,75 +95,6 @@ information:
 	mov	al,1
 	jmp	exit_program
 
-get_params:
-	call	[GetCommandLine]
-	mov	esi,eax
-	mov	edi,params
-    find_command_start:
-	lodsb
-	cmp	al,20h
-	je	find_command_start
-	cmp	al,22h
-	je	skip_quoted_name
-    skip_name:
-	lodsb
-	cmp	al,20h
-	je	find_param
-	or	al,al
-	jz	all_params
-	jmp	skip_name
-    skip_quoted_name:
-	lodsb
-	cmp	al,22h
-	je	find_param
-	or	al,al
-	jz	all_params
-	jmp	skip_quoted_name
-    find_param:
-	lodsb
-	cmp	al,20h
-	je	find_param
-	cmp	al,22h
-	je	string_param
-	cmp	al,0Dh
-	je	all_params
-	or	al,al
-	jz	all_params
-	inc	edi
-	mov	ebx,edi
-    copy_param:
-	stosb
-	lodsb
-	cmp	al,20h
-	je	param_end
-	or	al,al
-	jz	param_end
-	jmp	copy_param
-    string_param:
-	inc	edi
-	mov	ebx,edi
-    copy_string_param:
-	lodsb
-	cmp	al,22h
-	je	string_param_end
-	or	al,al
-	jz	param_end
-	stosb
-	jmp	copy_string_param
-    param_end:
-	dec	esi
-    string_param_end:
-	xor	al,al
-	stosb
-	mov	eax,edi
-	sub	eax,ebx
-	mov	[ebx-1],al
-	jmp	find_param
-    all_params:
-	xor	al,al
-	stosb
-	ret
-
 include 'system.inc'
 
 include '..\version.inc'
@@ -192,12 +123,12 @@ memory_start dd ?
 memory_end dd ?
 additional_memory dd ?
 additional_memory_end dd ?
+free_additional_memory dd ?
 input_file dd ?
 output_file dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
-real_code_start dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
@@ -207,6 +138,7 @@ macros_list dd ?
 macro_constants dd ?
 macro_block dd ?
 macro_block_line_number dd ?
+macro_embed_level dd ?
 struc_name dd ?
 anonymous_reverse dd ?
 anonymous_forward dd ?
@@ -231,10 +163,11 @@ fp_value rd 8
 symbol_identifier dd ?
 address_symbol dd ?
 format_flags dd ?
+symbols_stream dd ?
 number_of_relocations dd ?
 number_of_sections dd ?
 stub_size dd ?
-header_data dd ?
+stub_file dd ?
 sections_data dd ?
 current_section dd ?
 machine dw ?
@@ -245,7 +178,6 @@ image_base dd ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?
-selected_format db ?
 code_type db ?
 current_pass db ?
 next_pass_needed db ?
@@ -273,6 +205,7 @@ nextbyte db ?
 
 characters rb 100h
 params rb 1000h
+converted rb 100h
 buffer rb 4000h
 
 stack 4000h,4000h

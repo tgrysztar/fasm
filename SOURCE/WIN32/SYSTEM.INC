@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler interface for Win32
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 CREATE_NEW	       =   1
@@ -72,6 +72,75 @@ exit_program:
 	movzx	eax,al
 	push	eax
 	call	[ExitProcess]
+
+get_params:
+	call	[GetCommandLine]
+	mov	esi,eax
+	mov	edi,params
+    find_command_start:
+	lodsb
+	cmp	al,20h
+	je	find_command_start
+	cmp	al,22h
+	je	skip_quoted_name
+    skip_name:
+	lodsb
+	cmp	al,20h
+	je	find_param
+	or	al,al
+	jz	all_params
+	jmp	skip_name
+    skip_quoted_name:
+	lodsb
+	cmp	al,22h
+	je	find_param
+	or	al,al
+	jz	all_params
+	jmp	skip_quoted_name
+    find_param:
+	lodsb
+	cmp	al,20h
+	je	find_param
+	cmp	al,22h
+	je	string_param
+	cmp	al,0Dh
+	je	all_params
+	or	al,al
+	jz	all_params
+	inc	edi
+	mov	ebx,edi
+    copy_param:
+	stosb
+	lodsb
+	cmp	al,20h
+	je	param_end
+	or	al,al
+	jz	param_end
+	jmp	copy_param
+    string_param:
+	inc	edi
+	mov	ebx,edi
+    copy_string_param:
+	lodsb
+	cmp	al,22h
+	je	string_param_end
+	or	al,al
+	jz	param_end
+	stosb
+	jmp	copy_string_param
+    param_end:
+	dec	esi
+    string_param_end:
+	xor	al,al
+	stosb
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[ebx-1],al
+	jmp	find_param
+    all_params:
+	xor	al,al
+	stosb
+	ret
 
 open:
 	call	convert_path

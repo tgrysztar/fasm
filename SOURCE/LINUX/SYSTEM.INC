@@ -1,6 +1,6 @@
 
-; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar.
+; flat assembler interface for Linux
+; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 00003

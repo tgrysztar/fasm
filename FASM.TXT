@@ -5,7 +5,7 @@
 			   €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €	€  €
 			   €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €	€  €
 
-			      flat assembler 1.42
+			      flat assembler 1.43
 			      Programmer's Manual
 
 
@@ -64,6 +64,7 @@ Chapter 2  Instruction set
 	2.4.1  MZ executable
 	2.4.2  Portable Executable
 	2.4.3  Common Object File Format
+	2.4.4  Executable and Linkable Format
 
 
 Chapter 1  Introduction
@@ -445,7 +446,9 @@ for signed 8-bit values. It also can be overridden by putting the "word" or
 is by default treated as a word value if assembler is in 16-bit mode and as a
 double word value if assembler is in 32-bit mode, shorter 8-bit form of this
 instruction is used if possible, "word" or "dword" size operator forces the
-"push" instruction to be generated in longer form for specified size.
+"push" instruction to be generated in longer form for specified size. "pushw"
+and "pushd" mnemonics force assembler to generate 16-bit or 32-bit code
+without forcing it to use the longer form of instruction.
 
 
 Chapter 2  Instruction set
@@ -468,6 +471,11 @@ the destination operand and second is the source operand. Each operand can be
 register, memory or immediate value (see 1.2 for details about syntax of
 operands). After description of each instruction there are provided examples
 of different combinations of operands (if the instruction has any).
+  Some instructions act as prefixes and can be followed by other instruction
+in the same line, and there can be more than one prefix in a line. Each name
+of the segment register is also a mnemonic of instruction prefix, altough it
+is recommended to use segment overrides inside the square brackets instead of
+these prefixes.
 
 
 2.1.1  Data movement instructions
@@ -508,10 +516,11 @@ the operand to the top of stack indicated by ESP. The operand can be memory,
 general register, segment register or immediate value of word or double word
 size. If operand is an immediate value and no size is specified, it is by
 default treated as a word value if assembler is in 16-bit mode and as a double
-word value if assembler is in 32-bit mode. If more operands follow in the same
-line (separated only with spaces, not commas), compiler will assemble chain of
-the "push" instructions with these operands. The examples are with single
-operands:
+word value if assembler is in 32-bit mode. "pushw" and "pushd" mnemonics are
+variants of this instruction that store the values of word or double word size
+respectively. If more operands follow in the same line (separated only with
+spaces, not commas), compiler will assemble chain of the "push" instructions
+with these operands. The examples are with single operands:
 
     push ax	    ; store general register
     push es	    ; store segment register
@@ -529,9 +538,11 @@ BP, SI and DI. The 32-bit version pushes equivalent 32-bit general registers
 in the same order.
   "pop" transfers the word or double word at the current top of stack to the
 destination operand, and then increments ESP to point to the new top of stack.
-The operand can be memory, general register or segment register. If more
-operands separated with spaces follow in the same line, compiler will
-assemble chain of the "pop" instructions with these operands.
+The operand can be memory, general register or segment register. "popw" and
+"popd" mnemonics are variants of this instruction for restoring the values of
+word or double word size respectively. If more operands separated with spaces
+follow in the same line, compiler will assemble chain of the "pop"
+instructions with these operands.
 
     pop bx	    ; restore general register
     pop ds	    ; restore segment register
@@ -741,8 +752,8 @@ complement. The first operand can be word or double word.
 and store the index of this bit into destination operand, which must be
 general register. The bit string being scanned is specified by source operand,
 it may be either general register or memory. The ZF flag is set if the entire
-string is zero (no set bits are found); otherwise it is set. If no set bit is
-found, the value of the destination register is undefined. "bsf" scans from
+string is zero (no set bits are found); otherwise it is cleared. If no set bit
+is found, the value of the destination register is undefined. "bsf" scans from
 low order to high order (starting from bit index zero). "bsr" scans from high
 order to low order (starting from bit index 15 of a word or index 31 of a
 double word).
@@ -1507,7 +1518,7 @@ can be also a MMX register or 64-bit memory location.
 
   "movd" copies a double word from the source operand to the destination
 operand. One of the operands must be a MMX register, the second one can be a
-general register or 32-bit memory location. Only low double word of MMX
+general register or 32-bit memory location. Only lo double word of MMX
 register is used.
   All general MMX operations have two operands, the destination operand should
 be a MMX register, the source operand can be a MMX register or 64-bit memory
@@ -1867,7 +1878,7 @@ operand. "cvtpd2dq" and "cvttpd2dq" convert packed double precision floating
 point values to packed two double word integers, storing the result in the low
 quad word of the destination operand. "cvtdq2ps" converts packed four
 double word integers to packed single precision floating point values.
-"cvtdq2pd" converts packed two double word integers from the low quad word
+"cvtdq2pd" converts packed tw double word integers from the low quad word
 of the source operand to packed double precision floating point values.
 For all these instruction destination operand must be a SSE register, the
 source operand can be a 128-bit memory location or SSE register.
@@ -2043,7 +2054,7 @@ logical operators are "~" for logical negation, "&" for logical and, "|" for
 logical or. The negation has the highest priority. Logical value can be a
 numerical expression, it will be false if it is equal to zero, otherwise it
 will be true. Two numerical expression can be compared using one of the
-following operators to make the logical value: "=" (equal), "<" (less),
+following operators to make the looical value: "=" (equal), "<" (less),
 ">" (greater), "<=" (less or equal), ">=" (greater or equal),
 "<>" (not equal). The "eq" compares any two symbol whether they are exactly
 the same. The "in" operator checks whether given symbol is a member of the
@@ -2310,6 +2321,8 @@ needs, the rest of arguments will have empty values. When three operands are
 given, this macroinstruction will become two macroinstructions of the previous
 definition, so "mov es,ds,dx" will be assembled as "push ds", "pop es" and
 "mov ds,dx".
+  When it's needed to provide macroinstruction with argument that contains
+some commas, such argument should be enclosed between "<" and ">" characters.
   "purge" directive allows removing the last definition of specified
 macroinstruction. It should be followed by one or more names of
 macroinstructions, separated with commas. If such macroinstruction has not
@@ -2607,9 +2620,30 @@ follow. Available flags are: "code" and "data" for both COFF variants,
 Microsoft COFF variant. The origin of section is aligned to page (4096 bytes).
   "extrn" directive defines the external symbol, it should be followed by the
 name of symbol and optionally the size operator specifying the size of data
-labelled by this symbol.
+labelled by this symbol. The name of symbol can be also preceded by quoted
+string containing name of the external symbol and the "as" operator.
   "public" directive declares the existing symbol as public, it should be
-followed by the name of symbol.
+followed by the name of symbol, optionally it can be followed by the "as"
+operator and the quoted string containing name under which symbol should be
+available as public.
 
 
-EOF
+2.4.4  Executable and Linkable Format
+
+To select ELF output format, use "format ELF" directive. The default code
+setting for this format is 32-bit.
+  "section" directive defines a new section, it should be followed by quoted
+string defining the name of section, then can follow one or both of the
+"executable" and "writeable" flags. The origin of section is aligned to
+double word (4 bytes).
+  "extrn" and "public" directives have the same meaning and syntax as when the
+COFF output format is selected (described in previous section).
+  To create executable file, use "format ELF executable" directive. It allows
+to use "entry" directive followed by the value to set as entry point of
+program. On the other hand it makes "extrn" and "public" directives
+unavailable. "section" directive in this case can be followed only by one or
+more section flags and its origin is aligned to page (4096 bytes). Available
+flags for section are: "readable", "writeable" and "executable".
+
+
+EOF
