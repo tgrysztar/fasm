@@ -65,7 +65,10 @@ address_sizes_do_not_agree:
 	dm	"address sizes do not agree"
 prefix_conflict:
 	call	assembler_error
-	dm	"prefix conflict"
+	dm	"disallowed combination of registers"
+long_immediate_not_encodable:
+	call	assembler_error
+	dm	"not encodable with long immediate"
 relative_jump_out_of_range:
 	call	assembler_error
 	dm	"relative jump out of range"

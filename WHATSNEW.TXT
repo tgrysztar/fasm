@@ -1,6 +1,15 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.60
+[12-03-2005]
+------------
+[+] x86-64 long mode instructions added
+[+] added ELF64 output format
+[+] added $$ symbol
+[-] revised symbol table management in parser and preprocessor
+[-] no entry point by default in PE DLL
+
 version 1.58
 [12-02-2005]
 ------------
@@ -41,7 +50,6 @@ version 1.53
 [-] fixed the MZ stub bug in PE formatter
 [-] fixed the section linking in ELF executable formatter
 [-] fixed the "movsldup xmm,xmm" problem
-[-] other small fixes
 
 version 1.52
 [03-04-2004]
@@ -58,7 +66,6 @@ version 1.51
 ------------
 [+] added SSE3 instructions
 [-] speed improvements
-[-] few more bugs fixed
 
 version 1.50
 [08-12-2003]
@@ -69,21 +76,20 @@ version 1.50
 [+] added %t symbol
 [-] behaviour of "defined" operator changed a bit
 [-] several formatter revisions
-[-] some other fixes
 
 version 1.49
 [16-09-2003]
 ------------
 [+] better error information for macro-generated lines
 [+] support for test registers
-[+] fix constant redefinition improved for speed
+[+] "fix" constant redefinition improved for speed
 [+] some improvements for PE formatter
 [-] several small fixes
 
 version 1.48
 [24-07-2003]
 ------------
-[+] added fix directive
+[+] added "fix" directive
 [-] fixed small bug with symbolic constants
 
 version 1.47
@@ -92,7 +98,6 @@ version 1.47
 [+] added some rare instructions
 [-] changed program exit codes
 [-] changed memory allocation for Win32 console version
-[-] more small fixes
 
 version 1.46
 [09-04-2003]
@@ -111,24 +116,21 @@ version 1.44
 ------------
 [+] added "eqtype" operator
 [-] fixed cache waste in label parser
-[-] small fixes and optimizations
 
 version 1.43
 [30-12-2002]
 ------------
 [+] introduced ELF output format
-[+] extended public and extrn syntax
-[+] allowed macro arguments containing commas (with < and > characters)
+[+] extended "public" and "extrn" syntax
+[+] allowed macro arguments containing commas (enclosed with "<" and ">")
 [+] added some more missing instructions and syntax options
 [-] label hashing corrected
 [-] formatter revised once again
-[-] many other fixes
 
 version 1.42
 [05-12-2002]
 ------------
 [+] improved optimization algorithms
-[-] more small fixes
 
 version 1.41
 [14-11-2002]
@@ -136,44 +138,41 @@ version 1.41
 [+] new documentation
 [+] added AMD 3DNow! instructions
 [+] added missing syntax options for some FPU and MMX instructions
-[+] added defined and used operators
+[+] added "defined" and "used" operators
 [-] parser algorithms corrected
-[-] minor bugs fixed
 
 version 1.40
 [28-08-2002]
 ------------
-[+] added restore directive
+[+] added "restore" directive
 [+] concatenations processed before symbolic constants now
 [+] timestamps generated for COFF and PE
 [+] custom base of PE image allowed
 [+] added support for anonymous labels
-[+] load directive extended for code loading
+[+] "load" directive extended for code loading
 [+] environment variables in paths allowed
 [-] concatenations allowed in macroinstructions only
-[-] more fixes
 
 version 1.39
 [08-07-2002]
 ------------
 [+] introduced COFF output format
-[+] automatic udata section marking
+[+] automatic uinitialized data section marking
 [+] relocatable symbols support improved
-[+] added missing syntax for test instruction
-[+] added missing df and rf symbols
-[-] label directive bugs fixed
-[-] even more small fixes and improvements
+[+] added missing syntax for "test" instruction
+[+] added missing "df" and "rf" symbols
+[-] "label" directive bugs fixed
 
 version 1.37
 [12-06-2002]
 ------------
-[+] introduced linux version
+[+] introduced Linux version
 [-] minor fixes
 
 version 1.36
 [22-05-2002]
 ------------
-[+] ptr operator for addressing allowed
+[+] "ptr" operator for addressing allowed
 
 version 1.35
 [06-05-2002]
@@ -184,21 +183,20 @@ version 1.34
 [19-04-2002]
 ------------
 [+] case insensitive mnemonics
-[+] symbols concatenation operator # added
+[+] symbols concatenation operator added
 [-] number parser improved
 
 version 1.33
 [07-04-2002]
 ------------
-[+] added support for $-prefixed hexadecimal numbers
-[+] allowed $ definition using = operator (works as org directive)
+[+] added support for pascal-style hexadecimal numbers
 [-] large 64-bit decimal numbers bug fixed
 
 version 1.32
 [06-03-2002]
 ------------
 [+] changed memory management for Win32
-[+] mandelbrot example added
+[+] Mandelbrot example added
 [-] fixed scientific notation support for case insensitive version
 
 version 1.31
@@ -206,19 +204,19 @@ version 1.31
 ------------
 [+] updated includes in Win32 examples
 [+] expression parser slightly improved
-[-] fixed bugs with bound and bswap instructions
-[-] fixed fsub and fdiv bugs
+[-] fixed bugs with "bound" and "bswap" instructions
+[-] fixed "fsub" and "fdiv" bugs
 
 version 1.30
 [18-01-2002]
 ------------
 [+] custom stub allowed for PE format
+[+] common fasm executable for DOS and Win32
 [-] preprocessor completely rewritten
 [-] parser revised
 [-] assembler structures handling improved
 [-] PE formatter revised
 [-] fixups in PE generated only if declared
-[-] common fasm executable for DOS and Win32
 
 version 1.20
 [16-12-2001]
@@ -230,79 +228,73 @@ version 1.20
 [+] fixed display directive to work with error messages
 [-] segment prefixes only if necessary
 [-] removed short form size overrides
-[-] other general revisions and improvements
 
 version 1.14
 [17-10-2001]
 ------------
 [+] partial SSE2 instructions support
-[-] display directive revised
+[-] "display" directive revised
 [-] parsing instruction preceded by a colon fixed
-[-] eq operator for logical expressions
+[-] "eq" operator for logical expressions
 
 version 1.13
 [27-08-2001]
 ------------
-[+] added display directive
-[+] added data directive for PE format
+[+] added "display" directive
+[+] added "data" directive for PE format
 [-] string and number parsing revised
 [-] far jumps processing revised
 [-] aligned assembler data for faster access
-[-] cmov register to register fixed
+[-] "cmov" register to register fixed
 [-] list of preprocessor directives fixed
 [-] expression calculator bugs fixed
-[-] more little bugs fixed
 
 version 1.12
 [30-06-2001]
 ------------
 [+] better Win32 examples
-[+] added load directive
+[+] added "load" directive
 [+] improved locals counter
-[-] some small bugs fixed
 
 version 1.11
 [25-06-2001]
 ------------
 [+] allowed double quotes to define strings
-[-] really fixed constant definition bugs
-[+] some other small corrections
+[-] fixed constant definition bugs
 
 version 1.10
 [22-03-2001]
 ------------
 [+] SSE instructions support
 [+] added some missed FPU instructions
-[-] fixed labels redefinition bug
 
 version 1.09
 [04-01-2001]
 ------------
-[-] really fixed macros redefinition
+[-] fixed macros redefinition
 [-] fixed some bugs with segment registers
 [-] changed optimization methods
 
 version 1.08
 [16-11-2000]
 ------------
-[+] added missed retn instruction
-[-] fixed some bugs with mov and arpl instructions
+[+] added missed "retn" instruction
+[-] fixed some bugs with "mov" and "arpl" instructions
 
 version 1.07
 [07-10-2000]
 ------------
-[-] PE header size bug fixed
 [+] octal constants now supported
 [+] subsystem version setting for PE
-[+] in - symbol comparing operator added
-[-] allowed virtual directive without any arguments
-[-] fixed macros redefinition
+[+] "in" - symbol comparing operator added
+[+] allowed "virtual" directive without any arguments
+[-] PE header size bug fixed
 [-] some minor fixes and improvements
 
 version 1.06
 [23-08-2000]
 ------------
-[+] struc directive instead of labeled macros
+[+] "struc" directive instead of labeled macros
 
 version 1.05
 [16-08-2000]
@@ -324,14 +316,14 @@ version 1.04
 version 1.03
 [19-07-2000]
 ------------
-[-] more bugs fixed
 [+] allowed empty labels to separate local symbols
+[-] more bugs fixed
 
 version 1.02
 [06-07-2000]
 ------------
-[-] minor bugs fixed
 [+] some documentation changes
+[-] minor bugs fixed
 
 version 1.01
 [01-07-2000]

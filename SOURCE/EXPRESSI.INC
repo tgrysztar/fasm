@@ -993,13 +993,27 @@ calculate_expression:
 	jne	operand_sizes_do_not_match
 	jmp	calculation_loop
       current_offset_label:
-	cmp	[reloc_labels],0
-	je	get_current_offset
-	mov	byte [edi+12],2
+	mov	al,[labels_type]
+	mov	[edi+12],al
 	mov	eax,[org_symbol]
 	mov	[edi+16],eax
-      get_current_offset:
 	mov	eax,[current_offset]
+	xor	edx,edx
+	sub	eax,dword [org_origin]
+	sbb	edx,dword [org_origin+4]
+	stos	dword [edi]
+	mov	eax,edx
+	stos	dword [edi]
+	mov	eax,[org_registers]
+	stos	dword [edi]
+	add	edi,8
+	jmp	calculation_loop
+      org_origin_label:
+	mov	al,[labels_type]
+	mov	[edi+12],al
+	mov	eax,[org_symbol]
+	mov	[edi+16],eax
+	mov	eax,[org_start]
 	xor	edx,edx
 	sub	eax,dword [org_origin]
 	sbb	edx,dword [org_origin+4]
@@ -1028,6 +1042,8 @@ calculate_expression:
 	je	counter_label
 	cmp	eax,2
 	je	timestamp_label
+	cmp	eax,3
+	je	org_origin_label
       label_undefined:
 	cmp	[current_pass],1
 	jbe	force_next_pass
@@ -1127,8 +1143,8 @@ calculate_expression:
 	je	sub_values
 	cmp	ecx,[org_symbol]
 	jne	invalid_sub
-	cmp	byte [ebx+12],2
-	jne	invalid_sub
+	test	byte [ebx+12],1
+	jnz	invalid_sub
 	mov	ah,3
       sub_values:
 	mov	[ebx+12],ah
@@ -1783,10 +1799,8 @@ get_word_value:
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
-	or	al,al
-	jz	check_word_value
-	test	al,1
-	jnz	check_word_value
+	cmp	al,2
+	jb	check_word_value
 	cmp	[error_line],0
 	jne	check_word_value
 	mov	eax,[current_line]
@@ -1816,6 +1830,13 @@ get_dword_value:
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
+	cmp	al,4
+	jb	check_dword_value
+	cmp	[error_line],0
+	jne	check_dword_value
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       check_dword_value:
 	mov	eax,[edi]
 	mov	edx,[edi+4]
@@ -1837,6 +1858,13 @@ get_pword_value:
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
+	cmp	al,4
+	jb	check_pword_value
+	cmp	[error_line],0
+	jne	check_pword_value
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
       check_pword_value:
 	mov	eax,[edi]
 	mov	edx,[edi+4]
@@ -1901,20 +1929,21 @@ get_value:
 	ret
 get_address_value:
 	mov	[address_size],0
-	mov	[value_size],4
+	mov	[value_size],8
       calculate_address:
+	cmp	byte [esi],'.'
+	je	invalid_address
 	call	calculate_expression
 	mov	eax,[edi+16]
 	mov	[address_symbol],eax
 	mov	al,[edi+12]
-	cmp	al,3
-	je	invalid_use_of_symbol
+	test	al,1
+	jnz	invalid_use_of_symbol
 	mov	[value_type],al
-	cmp	al,1
-	je	invalid_use_of_symbol
 	or	al,al
 	jz	address_symbol_ok
-	mov	al,84h
+	shl	al,1
+	or	al,80h
 	xchg	[address_size],al
 	or	al,al
 	jz	address_symbol_ok

@@ -3,11 +3,7 @@
 ; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 
-; Initialized variables:
-
-locals_counter db 7,'0000000'
-
-; Uninitialized variables which have to be set up by interface:
+; Variables which have to be set up by interface:
 
 memory_start dd ?
 memory_end dd ?
@@ -20,7 +16,7 @@ output_file dd ?
 
 passes_limit dw ?
 
-; Uninitialized internal core variables:
+; Internal core variables:
 
 current_pass dw ?
 
@@ -34,17 +30,14 @@ written_size dd ?
 headers_size dd ?
 
 current_line dd ?
-macros_list dd ?
-macro_constants dd ?
 macro_line dd ?
 macro_block dd ?
 macro_block_line dd ?
 macro_block_line_number dd ?
-macro_embed_level dd ?
+macro_symbols dd ?
 struc_name dd ?
+locals_counter rb 8
 current_locals_prefix dd ?
-fix_constants_count dd ?
-equ_constants_count dd ?
 anonymous_reverse dd ?
 anonymous_forward dd ?
 labels_list dd ?
@@ -82,6 +75,7 @@ machine dw ?
 subsystem dw ?
 subsystem_version dd ?
 image_base dd ?
+image_base_high dd ?
 resource_data dd ?
 resource_size dd ?
 
@@ -90,26 +84,28 @@ macro_status db ?
 parenthesis_stack db ?
 output_format db ?
 code_type db ?
-reloc_labels db ?
+labels_type db ?
 times_working db ?
 virtual_data db ?
 fp_sign db ?
 fp_format db ?
 value_size db ?
 size_override db ?
+address_size db ?
+operand_size db ?
+size_declared db ?
 value_undefined db ?
 value_type db ?
-address_size db ?
 compare_type db ?
 base_code db ?
 extended_code db ?
 postbyte_register db ?
 segment_register db ?
-operand_size db ?
 mmx_size db ?
-imm_sized db ?
 jump_type db ?
 operand_prefix db ?
+rex_prefix db ?
+immediate_size db ?
 
 characters rb 100h
 converted rb 100h

@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.58
+                              flat assembler 1.60
                               Programmer's Manual
 
 
@@ -49,11 +49,13 @@ Chapter 2  Instruction set
         2.1.16  SSE2 instructions
         2.1.17  SSE3 instructions
         2.1.18  AMD 3DNow! instructions
+        2.1.19  The x86-64 long mode instructions
 
         2.2  Control directives
         2.2.1  Repeating blocks of instructions
         2.2.2  Conditional assembly
-        2.2.3  Other directives
+        2.2.3  Addressing spaces
+        2.2.4  Other directives
 
         2.3  Preprocessor directives
         2.3.1  Including source files
@@ -131,21 +133,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.58
+flat assembler  version 1.60
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.58
+flat assembler  version 1.60
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.58
+flat assembler  version 1.60
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -155,7 +157,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.58
+flat assembler  version 1.60
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -226,6 +228,7 @@ brackets or after the "ptr" operator).
   ≥ fword    ≥ 48   ≥ 6     ≥
   ≥ pword    ≥ 48   ≥ 6     ≥
   ≥ qword    ≥ 64   ≥ 8     ≥
+  ≥ tbyte    ≥ 80   ≥ 10    ≥
   ≥ tword    ≥ 80   ≥ 10    ≥
   ≥ dqword   ≥ 128  ≥ 16    ≥
   ¿ƒƒƒƒƒƒƒƒƒƒ¡ƒƒƒƒƒƒ¡ƒƒƒƒƒƒƒŸ
@@ -268,8 +271,10 @@ will define the three bytes of values 61, 62 and 63.
 numerical expressions separated with colon, the first value will become the
 high word and the second value will become the low double word of the far
 pointer value. Also "dd" accepts such pointers consisting of two word values
-separated with colon. The "dt" directive accepts only floating point values
-and creates data in FPU double extended precision format.
+separated with colon, and "dt" accepts the word and quad word value separated
+with colon, the quad word is stored first. The "dt" directive with single
+expression as parameter accepts only floating point values and creates data in
+FPU double extended precision format.
   The "file" is a special directive and its syntax is different. This
 directive includes a chain of bytes from file and it should be followed by the
 quoted file name, then optionally numerical expression specifying offset in
@@ -361,14 +366,6 @@ don't become the new prefix for local labels.
 the source. Symbol "@b" (or equivalent "@r") references the nearest preceding
 anonymous label, symbol "@f" references the nearest following anonymous label.
 These special symbol are case-insensitive.
-  The "load" directive allows to define constant with a binary value loaded
-from the already assembled code. This directive should be followed by the name
-of the constant, then optionally size operator, then "from" operator and a
-numerical expression specifying a valid address in currently generated code
-space. The size operator has unusual meaning in this case - it states how many
-bytes (up to 8) have to be loaded to form the binary value of constant. If no
-size operator is specified, one byte is loaded (thus value is in range from 0
-to 255). The loaded data cannot exceed current offset.
 
 
 1.2.4  Numerical expressions
@@ -396,8 +393,9 @@ general registers used for addressing, they can be added and multiplied by
 appropriate values, as it is allowed for the x86 architecture instructions.
   There are also some special symbols that can be used inside the numerical
 expression. First is "$", which is always equal to the value of current
-offset. Second is "%", which is the number of current repeat in parts of code
-that are repeated using some special directives (see 2.2). There's also "%t"
+offset, while "$$" is equal to base address of current addressing space. The
+other one is "%", which is the number of current repeat in parts of code that
+are repeated using some special directives (see 2.2). There's also "%t"
 symbol, which is always equal to the current time stamp.
   Any numerical expression can also consist of single floating point value
 (flat assembler does not allow any floating point operations at compilation
@@ -1980,8 +1978,8 @@ quad word of the destination operand. The destination operand should be SSE
 register, the source operand can be SSE register or 64-bit memory location.
   "lddqu" is functionally equivalent to "movdqu" instruction with memory as
 source operand, but it may improve performance when the source operand crosses
-a cacheline boundary. The destination operand has to be SSE register, the source
-operand must be 128-bit memory location.
+a cacheline boundary. The destination operand has to be SSE register, the
+source operand must be 128-bit memory location.
   "addsubps" performs single precision addition of second and fourth pairs and
 single precision substracion of the first and third pairs of floating point
 values in the operands. "addsubpd" performs double precision addition of the
@@ -2058,6 +2056,129 @@ otherwise the "prefetch" instruction should be used. The operand should be an
 8-bit memory location.
   "femms" performs a fast clear of MMX state. This instruction has no
 operands.
+
+
+2.1.19  The x86-64 long mode instructions
+
+The AMD64 and EM64T architectures (we will use the common name x86-64 for them
+both) extend the x86 instruction set for the 64-bit processing. While legacy
+and compatibility modes use the same set of registers and instructions, the
+new long mode extends the x86 operations to 64 bits and introduces several new
+registers. You can turn on generating the code for this mode with the "use64"
+directive.
+  Each of the general purpose registers is extended to 64 bits and the eight
+whole new general purpose registers and also eight new SSE registers are added.
+See table 2.4 for the summary of new registers (only the ones that was not
+listed in table 1.2). The general purpose registers of smallers sizes are the
+low order portions of the larger ones. You can still access the "ah", "bh",
+"ch" and "dh" registers in long mode, but you cannot use them in the same
+instruction with any of the new registers.
+
+   Table 2.4  New registers in long mode
+  ⁄ƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒø
+  ≥ Type ≥          General          ≥  SSE  ≥
+  √ƒƒƒƒƒƒ≈ƒƒƒƒƒƒ¬ƒƒƒƒƒƒ¬ƒƒƒƒƒƒ¬ƒƒƒƒƒƒ≈ƒƒƒƒƒƒƒ¥
+  ≥ Bits ≥  8   ≥  16  ≥  32  ≥  64  ≥  128  ≥
+  ∆ÕÕÕÕÕÕÿÕÕÕÕÕÕÿÕÕÕÕÕÕÿÕÕÕÕÕÕÿÕÕÕÕÕÕÿÕÕÕÕÕÕÕµ
+  ≥      ≥      ≥      ≥      ≥ rax  ≥       ≥
+  ≥      ≥      ≥      ≥      ≥ rcx  ≥       ≥
+  ≥      ≥      ≥      ≥      ≥ rdx  ≥       ≥
+  ≥      ≥      ≥      ≥      ≥ rbx  ≥       ≥
+  ≥      ≥ spl  ≥      ≥      ≥ rsp  ≥       ≥
+  ≥      ≥ bpl  ≥      ≥      ≥ rbp  ≥       ≥
+  ≥      ≥ sil  ≥      ≥      ≥ rsi  ≥       ≥
+  ≥      ≥ dil  ≥      ≥      ≥ rdi  ≥       ≥
+  ≥      ≥ r8b  ≥ r8w  ≥ r8d  ≥ r8   ≥ xmm8  ≥
+  ≥      ≥ r9b  ≥ r9w  ≥ r9d  ≥ r9   ≥ xmm9  ≥
+  ≥      ≥ r10b ≥ r10w ≥ r10d ≥ r10  ≥ xmm10 ≥
+  ≥      ≥ r11b ≥ r11w ≥ r11d ≥ r11  ≥ xmm11 ≥
+  ≥      ≥ r12b ≥ r12w ≥ r12d ≥ r12  ≥ xmm12 ≥
+  ≥      ≥ r13b ≥ r13w ≥ r13d ≥ r13  ≥ xmm13 ≥
+  ≥      ≥ r14b ≥ r14w ≥ r14d ≥ r14  ≥ xmm14 ≥
+  ≥      ≥ r15b ≥ r15w ≥ r15d ≥ r15  ≥ xmm15 ≥
+  ¿ƒƒƒƒƒƒ¡ƒƒƒƒƒƒ¡ƒƒƒƒƒƒ¡ƒƒƒƒƒƒ¡ƒƒƒƒƒƒ¡ƒƒƒƒƒƒƒŸ
+
+   In general any instruction from x86 architecture, which allowed 16-bit or
+32-bit operand sizes, in long mode allows also the 64-bit operands. The 64-bit
+registers should be used for addressing in long mode, the 32-bit addressing
+is also allowed, but it's not possible to use the addresses based on 16-bit
+registers. Below are the samples of new operations possible in long mode on the
+example of "mov" instruction:
+
+    mov rax,r8   ; transfer 64-bit general register
+    mov al,[rbx] ; transfer memory addressed by 64-bit register
+
+The long mode uses also the instruction pointer based addresses, you can
+specify it manually with the special RIP register symbol, but such addressing
+is also automatically generated by flat assembler, since there is no 64-bit
+absolute addressing in long mode. You can still force the assembler to use the
+32-bit absolute addressing by putting the "dword" size override for address
+inside the square brackets. There is also one exception, where the 64-bit
+absolute addressing is possible, it's the "mov" instruction with one of the
+operand being accumulator register, and second being the memory operand.
+To force the assembler to use the 64-bit absolute addressing there, use the
+"qword" size operator for address inside the square brackets. When no size
+operator is applied to address, assembler generates the optimal form
+automatically.
+
+    mov [qword 0],rax  ; absolute 64-bit addressing
+    mov [dword 0],r15d ; absolute 32-bit addressing
+    mov [0],rsi        ; automatic RIP-relative addressing
+    mov [rip+3],sil    ; manual RIP-relative addressing
+
+  Also as the immediate operands for 64-bit operations only the signed 32-bit
+values are possible, with the only exception being the "mov" instruction with
+destination operand being 64-bit general purpose register. Trying to force the
+64-bit immediate with any other instruction will cause an error.
+  If any operation is performed on the 32-bit general registers in long mode,
+the upper 32 bits of the 64-bit registers containing them are filled with
+zeros. This is unlike the operations on 16-bit or 8-bit portions of those
+registers, which preserve the upper bits.
+  Three new type conversion instructions are available. The "cdqe" sign extends
+the double word in EAX into quad word and stores the result in RAX register.
+"cqo" sign extends the quad word in RAX into double quad word and stores the
+extra bits in the RDX register. These instructions have no operands. "movsxd"
+sign extends the double word source operand, being either the 32-bit register
+or memory, into 64-bit destination operand, which has to be register.
+No analogous instruction is needed for the zero extension, since it is done
+automatically by any operations on 32-bit registers, as noted in previous
+paragraph. And the "movzx" and "movsx" instructions, conforming to the general
+rule, can be used with 64-bit destination operand, allowing extension of byte
+or word values into quad words.
+  All the binary arithmetic and logical instruction are promoted to allow
+64-bit operands in long mode. The use of decimal arithmetic instructions in
+long mode prohibited.
+  The stack operations, like "push" and "pop" in long mode default to 64-bit
+operands and it's not possible to use 32-bit operands with them. The "pusha"
+and "popa" are disallowed in long mode.
+  The indirect near jumps and calls in long mode default to 64-bit operands and
+it's not possible to use the 32-bit operands with them. On the other hand, the
+indirect far jumps and calls allow any operands that were allowed by the x86
+architecture and also 80-bit memory operand is allowed (though only EM64T seems
+to implement such variant), with the first eight bytes defining the offset and
+two last bytes specifying the selector. The direct far jumps and calls are not
+allowed in long mode.
+  The I/O instructions, "in", "out", "ins" and "outs" are the exceptional
+instructions that are not extended to accept quad word operands in long mode.
+But all other string operations are, and there are new short forms "movsq",
+"cmpsq", "scasq", "lodsq" and "stosq" introduced for the variants of string
+operations for 64-bit string elements. The RSI and RDI registers are used by
+default to address the string elements.
+  The "lfs", "lgs" and "lss" instructions are extended to accept 80-bit source
+memory operand with 64-bit destination register (though only EM64T seems to
+implement such variant). The "lds" and "les" are disallowed in long mode.
+  The system instructions like "lgdt" which required the 48-bit memory operand,
+in long mode require the 80-bit memory operand.
+  The instructions that are not allowed in long mode include also "lahf",
+"sahf" and "arpl".
+  The "cmpxchg16b" is the 64-bit equivalent of "cmpxchg8b" instruction, it uses
+the double quad word memory operand and 64-bit registers to perform the
+analoguous operation.
+  "swapgs" is the new instruction, which swaps the contents of GS register and
+the KernelGSbase model-specific register (MSR address 0C0000102h).
+  "syscall" and "sysret" is the pair of new instructions that provide the
+functionality similar to "sysenter" and "sysexit" in long mode, where the
+latter pair is disallowed.
 
 
 2.2  Control directives
@@ -2168,19 +2289,47 @@ The first block of instructions will be assembled only if the value of
 assembled whether the value of "reg" is AX register or not.
 
 
-2.2.3  Other directives
+2.2.3  Addressing spaces
 
-"align" directive aligns code or data to the specified boundary. It should
-be followed by a numerical expression specyfing the number of bytes, to the
-multiply of which the current address has to be aligned. The boundary value
-has to be the power of two.
+  "org" directive sets address at which the following code is expected to
+appear in memory. It should be followed by numerical expression specifying
+the address. This directive begins the new addressing space, the following
+code itself is not moved in any way, but all the labels defined within it
+and the value of "$" symbol are affected as if it was put at the given
+address. However it's the responsibility of programmer to put the code at
+correct address at run-time.
+  The "load" directive allows to define constant with a binary value loaded
+from the already assembled code. This directive should be followed by the name
+of the constant, then optionally size operator, then "from" operator and a
+numerical expression specifying a valid address in current addressing space.
+The size operator has unusual meaning in this case - it states how many bytes
+(up to 8) have to be loaded to form the binary value of constant. If no size
+operator is specified, one byte is loaded (thus value is in range from 0 to
+255). The loaded data cannot exceed current offset.
+  The "store" directive can modify the already generated code by replacing
+some of the previously generated data with the value defined by given
+numerical expression, which follow. The expression can be preceded by the
+optional size operator to specify how large value the expression defines, and
+therefore how much bytes will be stored, if there is no size operator, the
+size of one byte is assumed. Then the "at" operator and the numerical
+expression defining the valid address in current addressing code space, at
+which the given value have to be stored should follow. This is a directive for
+advanced appliances and should be used carefully.
+  Both "load" and "store" directives are limited to operate on places in
+current addressing space. The "$$" symbol is always equal to the base address
+of current addressing space, and the "$" symbol is the address of current
+position in that addressing space, therefore these two values define limits
+of the area, where "load" and "store" can operate.
   "virtual" defines virtual data at specified address. This data won't be
 included in the output file, but labels defined there can be used in other
 parts of source. This directive can be followed by "at" operator and the
 numerical expression specifying the address for virtual data, otherwise is
 uses current address, the same as "virtual at $". Instructions defining data
-are expected in next lines, ended with "end virtual" directive. This directive
-can be used to create union of some variables, for example:
+are expected in next lines, ended with "end virtual" directive. The block of
+virtual instructions itself is an independent addressing space, after it's
+ended, the context of previous addressing space is restored.
+  The "virtual" directive can be used to create union of some variables, for
+example:
 
     GDTR dp ?
     virtual at GDTR
@@ -2200,11 +2349,10 @@ register, for example:
 With such definition instruction "mov ax,[LDT_limit]" will be assembled
 to "mov ax,[bx]".
   Declaring defined data values or instructions inside the virtual block would
-also be useful, because the "load" directive (already described in section
-1.2.3) can be used to load the values from the virtually generated code into
-a constants. This directive should be used after the code it loads but before
-the virtual block ends, because it can only load the values from the same code
-space. For example:
+also be useful, because the "load" directive can be used to load the values
+from the virtually generated code into a constants. This directive should be
+used after the code it loads but before the virtual block ends, because it can
+only load the values from the same addressing space. For example:
 
     virtual at 0
         xor eax,eax
@@ -2224,6 +2372,16 @@ For example this code:
 
 loads the single byte from offset 10h in file "a.txt" into the "char"
 constant.
+  Any of the "section" directives described in 2.4 also begins a new
+addressing space.
+
+
+2.2.4  Other directives
+
+"align" directive aligns code or data to the specified boundary. It should
+be followed by a numerical expression specyfing the number of bytes, to the
+multiply of which the current address has to be aligned. The boundary value
+has to be the power of two.
   "display" directive displays the message at the assembly time. It should
 be followed by the quoted strings or byte values, separated with commas. It
 can be used to display values of some constants, for example:
@@ -2247,16 +2405,11 @@ can be used to display values of some constants, for example:
     display 'Current offset is 0x',d1,d2,d3,d4,13,10
 
 Instructions before the "display" directive calculate four digits of 16-bit
-value and convert them into characters for displaying.
-  The "store" directive can modify the already generated code by replacing
-some of the previously generated data with the value defined by given
-numerical expression, which follow. The expression can be preceded by the
-optional size operator to specify how large value the expression defines, and
-therefore how much bytes will be stored, if there is no size operator, the
-size of one byte is assumed. Then the "at" operator and the numerical
-expression defining the valid address in currectly generated code space, at
-which the given value have to be stored should follow. This is a directive for
-advanced appliances and should be used carefully.
+value and convert them into characters for displaying. Note that this won't
+work if the adresses in current addressing space are relocatable (as it might
+happen with PE or object output formats), since only absolute values can be
+used this way. The absolute value may be obtained by calculating the relative
+address, like "$-$$" or "rva $" in case of PE format.
 
 
 2.3  Preprocessor directives
@@ -2615,9 +2768,10 @@ created code will display that string followed by the carriage return and
 line feed.
   It is also possible to put a declaration of macroinstruction inside another
 macroinstruction, so one macro can define another, but there is a problem
-with such definitions caused by the fact, that "}" character cannot occur inside
-the macroinstruction, as it always means the end of definition. But it's easy
-to overcome this problem with use of the "fix" directive. Here is an example:
+with such definitions caused by the fact, that "}" character cannot occur
+inside the macroinstruction, as it always means the end of definition. But it's
+easy to overcome this problem with use of the "fix" directive. Here is an
+example:
 
     macro ext instr
      {
@@ -2650,11 +2804,11 @@ order of definitions is crucial here.
 are needed inside some macro embedded this way, they also have to be replaced
 with some symbols defined later as a high priority constants with the values
 being the intended directives. And when the "#" operator is needed in the
-embedded macro, the help comes from the fact that any sequence of "#" characters
-inside the macroinstruction is reduced to chain shorter by one character, and
-only if it was the single "#" character, the concatenation is performed. So
-to put the concatenation operator inside the embedded macro it is enough to
-write "##" there.
+embedded macro, the help comes from the fact that any sequence of "#"
+characters inside the macroinstruction is reduced to chain shorter by one
+character, and only if it was the single "#" character, the concatenation is
+performed. So to put the concatenation operator inside the embedded macro it is
+enough to write "##" there.
   The above techniques can be even applied to create the new ways of defining
 macroinstructions. For example:
 
@@ -2733,11 +2887,8 @@ output format. This directive should be put at the beginning of the source.
 Default output format is a flat binary file, it can also be selected by using
 "format binary" directive.
   "use16" and "use32" directives force the assembler to generate 16-bit or
-32-bit code, omitting the default setting for selected output format.
-  "org" directive sets address at which the following code is expected to
-appear in memory. It should be followed by numerical expression specifying
-the address. You can also use this directive in the "$=" form followed by
-numerical expression.
+32-bit code, omitting the default setting for selected output format. "use64"
+enables generating the code for the long mode of x86-64 processors.
   Below are described different output formats with the directives specific to
 these formats.
 
@@ -2856,20 +3007,24 @@ available as public. Some examples of public symbols declarations:
 2.4.4  Executable and Linkable Format
 
 To select ELF output format, use "format ELF" directive. The default code
-setting for this format is 32-bit.
+setting for this format is 32-bit. To create ELF file for the x86-64
+architecture, use "format ELF64" directive, in such case the long mode code is
+generated by default.
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then can follow one or both of the
 "executable" and "writeable" flags, optionally also "align" operator followed
 by the number specifying the alignment of section (it has to be the power of
-two), if no alignment is specified, the default value 4 is used.
+two), if no alignment is specified, the default value is used, which is 4 or 8,
+depending on which format variant has been chosen.
   "extrn" and "public" directives have the same meaning and syntax as when the
 COFF output format is selected (described in previous section).
-  To create executable file, use "format ELF executable" directive. It allows
-to use "entry" directive followed by the value to set as entry point of
-program. On the other hand it makes "extrn" and "public" directives
-unavailable. "section" directive in this case can be followed only by one or
-more section flags and its origin is aligned to page (4096 bytes). Available
-flags for section are: "readable", "writeable" and "executable".
+  To create executable file, follow the format choice directive with the
+"executable" keyword. It allows to use "entry" directive followed by the value
+to set as entry point of program. On the other hand it makes "extrn" and
+"public" directives unavailable. "section" directive in this case can be
+followed only by one or more section flags and its origin is aligned to page
+(4096 bytes). Available flags for section are: "readable", "writeable" and
+"executable".
 
 
 EOF

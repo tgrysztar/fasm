@@ -103,7 +103,7 @@ include '..\preproce.inc'
 include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
-include '..\x86.inc'
+include '..\x86_64.inc'
 
 _copyright db 'Copyright (c) 1999-2005, Tomasz Grysztar',0Dh,0Ah,24h
 

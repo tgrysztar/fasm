@@ -100,7 +100,7 @@ include '..\preproce.inc'
 include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
-include '..\x86.inc'
+include '..\x86_64.inc'
 
 section readable writeable
 

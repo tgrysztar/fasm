@@ -5,13 +5,10 @@
 
 assembler:
 	mov	ecx,[memory_end]
-	mov	edi,ecx
-	sub	ecx,[labels_list]
-	imul	ecx,3
-	sub	edi,ecx
+	mov	edi,[labels_list]
+	sub	ecx,edi
 	cmp	edi,[code_start]
 	jbe	out_of_memory
-	mov	[labels_list],edi
 	shr	ecx,2
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -43,7 +40,7 @@ assembler:
 	mov	[undefined_data_end],eax
 	mov	[next_pass_needed],al
 	mov	[output_format],al
-	mov	[reloc_labels],al
+	mov	[labels_type],al
 	mov	[virtual_data],al
 	mov	[code_type],16
       pass_loop:
@@ -177,11 +174,7 @@ assemble_line:
 	xor	edx,edx
 	sub	eax,dword [org_origin]
 	sbb	edx,dword [org_origin+4]
-	xor	ch,ch
-	cmp	[reloc_labels],0
-	je	make_label
-	mov	ch,2
-      make_label:
+	mov	ch,[labels_type]
 	cmp	[virtual_data],0
 	jne	make_virtual_label
 	or	byte [ebx+9],1
@@ -249,8 +242,6 @@ assemble_line:
       define_constant:
 	lods	dword [esi]
 	inc	esi
-	or	eax,eax
-	jz	org_directive
 	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
@@ -274,8 +265,6 @@ assemble_line:
 	mov	ch,bl
 	pop	ebx
 	pop	dword [ebx+8]
-	or	ebx,ebx
-	jz	set_org
 	cmp	ebx,0Fh
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
@@ -345,6 +334,8 @@ assemble_line:
 	mov	[operand_size],0
 	mov	[size_override],0
 	mov	[operand_prefix],0
+	mov	[rex_prefix],0
+	mov	[immediate_size],0
 	movzx	ebx,word [esi]
 	mov	al,[esi+2]
 	add	ebx,assembler
@@ -449,18 +440,12 @@ org_directive:
 	jne	invalid_argument
 	cmp	byte [esi],'.'
 	je	invalid_value
-	call	get_dword_value
-      set_org:
-	mov	[reloc_labels],0
-	mov	dl,[value_type]
-	or	dl,dl
-	jz	org_ok
-	cmp	dl,2
-	jne	invalid_use_of_symbol
-	mov	[reloc_labels],1
-      org_ok:
+	call	get_qword_value
+	mov	cl,[value_type]
+	test	cl,1
+	jnz	invalid_use_of_symbol
+	mov	[labels_type],cl
 	mov	ecx,edi
-	xor	edx,edx
 	sub	ecx,eax
 	sbb	edx,0
 	mov	dword [org_origin],ecx
@@ -507,13 +492,9 @@ label_directive:
 	mov	ebp,[org_registers]
 	cmp	byte [esi],80h
 	je	get_free_label_value
-	xor	ch,ch
-	cmp	[reloc_labels],0
-	je	make_adjustable_label
-	mov	ch,2
+	mov	ch,[labels_type]
 	push	[org_symbol]
 	pop	[symbol_identifier]
-      make_adjustable_label:
 	cmp	[virtual_data],0
 	jne	make_free_label
 	or	byte [ebx+9],1
@@ -842,17 +823,15 @@ virtual_directive:
 	jmp	set_virtual
       virtual_at_current:
 	dec	esi
+	mov	al,[labels_type]
+	mov	[value_type],al
+	mov	ebp,[org_symbol]
 	mov	eax,edi
 	xor	edx,edx
 	sub	eax,dword [org_origin]
 	sbb	edx,dword [org_origin+4]
 	xor	bx,bx
 	xor	cx,cx
-	mov	[value_type],0
-	cmp	[reloc_labels],0
-	je	set_virtual
-	mov	[value_type],2
-	mov	ebp,[org_symbol]
       set_virtual:
 	push	[org_registers]
 	mov	byte [org_registers],bh
@@ -875,7 +854,7 @@ virtual_directive:
 	mov	[ebx+18h],eax
 	mov	al,[virtual_data]
 	mov	[ebx+2],al
-	mov	al,[reloc_labels]
+	mov	al,[labels_type]
 	mov	[ebx+3],al
 	mov	eax,edi
 	xchg	eax,[org_start]
@@ -886,12 +865,10 @@ virtual_directive:
 	mov	eax,[current_line]
 	mov	[ebx+4],eax
 	or	[virtual_data],-1
-	mov	[reloc_labels],0
-	cmp	[value_type],0
-	je	instruction_assembled
-	cmp	[value_type],2
-	jne	invalid_use_of_symbol
-	or	[reloc_labels],-1
+	mov	al,[value_type]
+	test	al,1
+	jnz	invalid_use_of_symbol
+	mov	[labels_type],al
 	jmp	instruction_assembled
       allocate_structure_data:
 	mov	ebx,[structures_buffer]
@@ -931,7 +908,7 @@ virtual_directive:
 	mov	al,[ebx+2]
 	mov	[virtual_data],al
 	mov	al,[ebx+3]
-	mov	[reloc_labels],al
+	mov	[labels_type],al
 	mov	eax,[ebx+10h]
 	mov	dword [org_origin],eax
 	mov	eax,[ebx+14h]
@@ -1424,7 +1401,7 @@ data_qwords:
 data_twords:
 	lods	byte [esi]
 	cmp	al,'('
-	je	get_tbyte
+	je	get_tword
 	cmp	al,'?'
 	jne	invalid_argument
 	mov	eax,edi
@@ -1435,13 +1412,13 @@ data_twords:
 	mov	word [edi],0
 	scas	word [edi]
 	call	undefined_data
-	jmp	tbyte_ok
-      get_tbyte:
-	lods	byte [esi]
-	cmp	al,'.'
-	jne	invalid_value
+	jmp	tword_ok
+      get_tword:
+	cmp	byte [esi],'.'
+	jne	complex_tword
+	inc	esi
 	cmp	word [esi+8],8000h
-	je	fp_zero_tbyte
+	je	fp_zero_tword
 	mov	eax,[esi]
 	stos	dword [edi]
 	mov	eax,[esi+4]
@@ -1455,8 +1432,8 @@ data_twords:
 	or	ax,bx
 	stos	word [edi]
 	add	esi,13
-	jmp	tbyte_ok
-      fp_zero_tbyte:
+	jmp	tword_ok
+      fp_zero_tword:
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
@@ -1464,7 +1441,29 @@ data_twords:
 	shl	ax,15
 	stos	word [edi]
 	add	esi,13
-      tbyte_ok:
+	jmp	tword_ok
+      complex_tword:
+	call	get_word_value
+	push	eax
+	inc	esi
+	lods	byte [esi]
+	cmp	al,'('
+	jne	invalid_operand
+	mov	al,[value_type]
+	push	eax
+	cmp	byte [esi],'.'
+	je	invalid_value
+	call	get_qword_value
+	call	mark_relocation
+	stos	dword [edi]
+	mov	eax,edx
+	stos	dword [edi]
+	pop	eax
+	mov	[value_type],al
+	pop	eax
+	call	mark_relocation
+	stos	word [edi]
+      tword_ok:
 	cmp	edi,[display_buffer]
 	ja	out_of_memory
 	lods	byte [esi]
@@ -1796,7 +1795,7 @@ align_directive:
 	sub	ecx,dword [org_origin]
 	cmp	[org_registers],0
 	jne	section_not_aligned_enough
-	cmp	[reloc_labels],0
+	cmp	[labels_type],0
 	je	make_alignment
 	cmp	[output_format],3
 	je	pe_alignment
