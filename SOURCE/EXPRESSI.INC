@@ -977,10 +977,10 @@ calculate_expression:
 	mov	al,[ebx+10]
 	or	al,al
 	jz	calculation_loop
-	cmp	[forced_size],2
+	cmp	[size_override],-1
 	je	calculation_loop
-	cmp	[forced_size],1
-	jne	check_size
+	cmp	[size_override],0
+	je	check_size
 	cmp	[operand_size],0
 	jne	calculation_loop
 	mov	[operand_size],al
@@ -1737,7 +1737,7 @@ calculate_expression:
 
 get_byte_value:
 	mov	[value_size],1
-	mov	[forced_size],2
+	mov	[size_override],-1
 	call	calculate_expression
 	mov	eax,[edi+16]
 	mov	[symbol_identifier],eax
@@ -1775,7 +1775,7 @@ get_byte_value:
 	ret
 get_word_value:
 	mov	[value_size],2
-	mov	[forced_size],2
+	mov	[size_override],-1
 	call	calculate_expression
 	mov	eax,[edi+16]
 	mov	[symbol_identifier],eax
@@ -1808,7 +1808,7 @@ get_word_value:
 	ret
 get_dword_value:
 	mov	[value_size],4
-	mov	[forced_size],2
+	mov	[size_override],-1
 	call	calculate_expression
 	mov	eax,[edi+16]
 	mov	[symbol_identifier],eax
@@ -1829,7 +1829,7 @@ get_dword_value:
 	ret
 get_pword_value:
 	mov	[value_size],6
-	mov	[forced_size],2
+	mov	[size_override],-1
 	call	calculate_expression
 	mov	eax,[edi+16]
 	mov	[symbol_identifier],eax
@@ -1837,6 +1837,7 @@ get_pword_value:
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
+      check_pword_value:
 	mov	eax,[edi]
 	mov	edx,[edi+4]
 	cmp	edx,10000h
@@ -1846,7 +1847,7 @@ get_pword_value:
 	ret
 get_qword_value:
 	mov	[value_size],8
-	mov	[forced_size],2
+	mov	[size_override],-1
 	call	calculate_expression
 	mov	eax,[edi+16]
 	mov	[symbol_identifier],eax
@@ -1854,12 +1855,12 @@ get_qword_value:
 	jne	invalid_value
 	mov	al,[edi+12]
 	mov	[value_type],al
+      check_qword_value:
 	mov	eax,[edi]
 	mov	edx,[edi+4]
 	ret
 get_value:
 	mov	[operand_size],0
-	mov	[forced_size],0
 	lods	byte [esi]
 	call	get_size_operator
 	cmp	al,'('
@@ -1924,7 +1925,7 @@ get_address_value:
 	xor	cl,cl
 	mov	ch,[address_size]
 	cmp	word [edi+8],0
-	je	check_dword_value
+	je	check_immediate_address
 	mov	al,[edi+8]
 	mov	dl,[edi+10]
 	call	get_address_register
@@ -1942,10 +1943,32 @@ get_address_value:
 	jne	invalid_address
       check_address_registers:
 	or	al,ah
-	cmp	al,2
-	je	address_16bit
 	cmp	al,4
-	jne	invalid_address
+	je	sib_allowed
+	cmp	al,8
+	je	sib_allowed
+	or	cl,cl
+	jz	check_word_value
+	cmp	cl,1
+	je	check_word_value
+	jmp	invalid_address
+      get_address_register:
+	or	al,al
+	jz	address_register_ok
+	cmp	dl,1
+	jne	scaled_register
+	or	bh,bh
+	jnz	scaled_register
+	mov	bh,al
+      address_register_ok:
+	ret
+      scaled_register:
+	or	bl,bl
+	jnz	invalid_address
+	mov	bl,al
+	mov	cl,dl
+	jmp	address_register_ok
+      sib_allowed:
 	or	bh,bh
 	jnz	check_index_scale
 	cmp	cl,2
@@ -1973,32 +1996,15 @@ get_address_value:
 	dec	cl
       address_registers_ok:
 	jmp	check_dword_value
-      address_16bit:
-	or	cl,cl
-	jz	check_word_value
-	cmp	cl,1
-	je	check_word_value
-	jmp	invalid_address
-      get_address_register:
-	or	al,al
-	jz	address_register_ok
-	cmp	dl,1
-	jne	scaled_register
-	or	bh,bh
-	jnz	scaled_register
-	mov	bh,al
-      address_register_ok:
-	ret
-      scaled_register:
-	or	bl,bl
-	jnz	invalid_address
-	mov	bl,al
-	mov	cl,dl
-	jmp	address_register_ok
+      check_immediate_address:
+	cmp	[code_type],64
+	jne	check_dword_value
+	jmp	check_qword_value
 get_relative_offset:
 	mov	[value_size],4
-	mov	[forced_size],2
+	mov	[size_override],-1
 	call	calculate_expression
+      calculate_relative_offset:
 	push	esi
 	add	edi,14h
 	mov	esi,[display_buffer]

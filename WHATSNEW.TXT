@@ -1,6 +1,12 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.58
+[12-02-2005]
+------------
+[+] more strict checking of operands for few instructions
+[+] documentation updates
+
 version 1.57
 [19-01-2005]
 ------------

@@ -1054,8 +1054,12 @@ purge_macro:
 	jnz	extra_characters_on_line
 	jmp	line_preprocessed
 use_macro:
-	push	[macro_constants] [macro_block] [macro_block_line] [macro_block_line_number]
-	push	[counter] [counter_limit]
+	push	[macro_constants]
+	push	[macro_block]
+	push	[macro_block_line]
+	push	[macro_block_line_number]
+	push	[counter]
+	push	[counter_limit]
 	push	dword [macro_status]
 	or	[macro_status],10h
 	or	byte [ebx+1],2
@@ -1501,8 +1505,12 @@ use_macro:
 	and	al,0F0h
 	and	[macro_status],0Fh
 	or	[macro_status],al
-	pop	[counter_limit] [counter]
-	pop	[macro_block_line_number] [macro_block_line] [macro_block] [macro_constants]
+	pop	[counter_limit]
+	pop	[counter]
+	pop	[macro_block_line_number]
+	pop	[macro_block_line]
+	pop	[macro_block]
+	pop	[macro_constants]
 	jmp	line_preprocessed
 
 include_file:

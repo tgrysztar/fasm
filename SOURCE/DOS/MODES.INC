@@ -108,7 +108,7 @@ switch_real32:
 	jmp	modes:pm32_end
     pm32_end:
 	mov	eax,cr3
-	mov	ss,eax
+	mov	ss,ax
 	lidt	[cs:real32_IDTR]
 	pop	word gs
 	pop	word fs

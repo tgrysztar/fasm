@@ -1,12 +1,12 @@
 
-			   Üßßß
-			 ÜÜÛÜÜ ÜÜÜÜ    ÜÜÜÜÜ ÜÜÜ ÜÜ
-			   Û	   Û  Û      Û	Û  Û
-			   Û  ÜßßßßÛ   ßßßßÜ Û	Û  Û
-			   Û  ßÜÜÜÜÛÜ ÜÜÜÜÜß Û	Û  Û
+                           Üßßß
+                         ÜÜÛÜÜ ÜÜÜÜ    ÜÜÜÜÜ ÜÜÜ ÜÜ
+                           Û       Û  Û      Û  Û  Û
+                           Û  ÜßßßßÛ   ßßßßÜ Û  Û  Û
+                           Û  ßÜÜÜÜÛÜ ÜÜÜÜÜß Û  Û  Û
 
-			      flat assembler 1.57
-			      Programmer's Manual
+                              flat assembler 1.58
+                              Programmer's Manual
 
 
 Table of contents
@@ -14,58 +14,58 @@ Table of contents
 
 Chapter 1  Introduction
 
-	1.1  Compiler overview
-	1.1.1  System requirements
-	1.1.2  Executing compiler from command line
-	1.1.3  Compiler messages
-	1.1.4  Output formats
+        1.1  Compiler overview
+        1.1.1  System requirements
+        1.1.2  Executing compiler from command line
+        1.1.3  Compiler messages
+        1.1.4  Output formats
 
-	1.2  Assembly syntax
-	1.2.1  Instruction syntax
-	1.2.2  Data definitions
-	1.2.3  Constants and labels
-	1.2.4  Numerical expressions
-	1.2.5  Jumps and calls
-	1.2.6  Size settings
+        1.2  Assembly syntax
+        1.2.1  Instruction syntax
+        1.2.2  Data definitions
+        1.2.3  Constants and labels
+        1.2.4  Numerical expressions
+        1.2.5  Jumps and calls
+        1.2.6  Size settings
 
 Chapter 2  Instruction set
 
-	2.1  Intel Architecture instructions
-	2.1.1  Data movement instructions
-	2.1.2  Type conversion instructions
-	2.1.3  Binary arithmetic instructions
-	2.1.4  Decimal arithmetic instructions
-	2.1.5  Logical instructions
-	2.1.6  Control transfer instructions
-	2.1.7  I/O instructions
-	2.1.8  Strings operations
-	2.1.9  Flag control instructions
-	2.1.10	Conditional operations
-	2.1.11	Miscellaneous instructions
-	2.1.12	System instructions
-	2.1.13	FPU instructions
-	2.1.14	MMX instructions
-	2.1.15	SSE instructions
-	2.1.16	SSE2 instructions
-	2.1.17	Prescott new instructions
-	2.1.18	AMD 3DNow! instructions
+        2.1  The x86 architecture instructions
+        2.1.1  Data movement instructions
+        2.1.2  Type conversion instructions
+        2.1.3  Binary arithmetic instructions
+        2.1.4  Decimal arithmetic instructions
+        2.1.5  Logical instructions
+        2.1.6  Control transfer instructions
+        2.1.7  I/O instructions
+        2.1.8  Strings operations
+        2.1.9  Flag control instructions
+        2.1.10  Conditional operations
+        2.1.11  Miscellaneous instructions
+        2.1.12  System instructions
+        2.1.13  FPU instructions
+        2.1.14  MMX instructions
+        2.1.15  SSE instructions
+        2.1.16  SSE2 instructions
+        2.1.17  SSE3 instructions
+        2.1.18  AMD 3DNow! instructions
 
-	2.2  Control directives
-	2.2.1  Repeating blocks of instructions
-	2.2.2  Conditional assembly
-	2.2.3  Other directives
+        2.2  Control directives
+        2.2.1  Repeating blocks of instructions
+        2.2.2  Conditional assembly
+        2.2.3  Other directives
 
-	2.3  Preprocessor directives
-	2.3.1  Including source files
-	2.3.2  Symbolic constants
-	2.3.3  Macroinstructions
-	2.3.4  Structures
+        2.3  Preprocessor directives
+        2.3.1  Including source files
+        2.3.2  Symbolic constants
+        2.3.3  Macroinstructions
+        2.3.4  Structures
 
-	2.4  Formatter directives
-	2.4.1  MZ executable
-	2.4.2  Portable Executable
-	2.4.3  Common Object File Format
-	2.4.4  Executable and Linkable Format
+        2.4  Formatter directives
+        2.4.1  MZ executable
+        2.4.2  Portable Executable
+        2.4.3  Common Object File Format
+        2.4.4  Executable and Linkable Format
 
 
 Chapter 1  Introduction
@@ -78,7 +78,7 @@ you should read at least this chapter before using this compiler.
 
 1.1  Compiler overview
 
-Flat assembler is a fast assembly language compiler for the Intel Architecture
+Flat assembler is a fast assembly language compiler for the x86 architecture
 processors, which does multiple passes to optimize the size of generated
 machine code. It is self-compilable and versions for different operating
 systems are provided. All the versions are designed to be used from the system
@@ -87,8 +87,8 @@ command line and they should not differ in behavior.
 
 1.1.1  System requirements
 
-All versions require the Intel Architecture 32-bit processor (at least 80386),
-although they can produce programs for Intel Architecture 16-bit processors,
+All versions require the x86 architecture 32-bit processor (at least 80386),
+although they can produce programs for the x86 architecture 16-bit processors,
 too. DOS version requires an OS compatible with MS DOS 2.0, Windows version
 requires a Win32 console compatible with 3.1 version.
 
@@ -131,23 +131,23 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler	version 1.57
+flat assembler  version 1.58
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler	version 1.57
+flat assembler  version 1.58
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler	version 1.57
+flat assembler  version 1.58
 example.asm [3]:
-	mob	ax,1
+        mob     ax,1
 error: illegal instruction.
 
 It means that in the third line of the "example.asm" file compiler has
@@ -155,11 +155,11 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler	version 1.57
+flat assembler  version 1.58
 example.asm [6]:
-	stoschar 7
+        stoschar 7
 example.asm [3] stoschar [1]:
-	mob	al,char
+        mob     al,char
 error: illegal instruction.
 
 It means that the macroinstruction in the sixth line of the "example.asm" file
@@ -232,21 +232,21 @@ brackets or after the "ptr" operator).
 
    Table 1.2  Registers
   ÚÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-  ³ Type    ³ Bits ³						    ³
+  ³ Type    ³ Bits ³                                                ³
   ÆÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
-  ³	    ³ 8    ³ al    cl	 dl    bl    ah    ch	 dh    bh   ³
-  ³ General ³ 16   ³ ax    cx	 dx    bx    sp    bp	 si    di   ³
-  ³	    ³ 32   ³ eax   ecx	 edx   ebx   esp   ebp	 esi   edi  ³
+  ³         ³ 8    ³ al    cl    dl    bl    ah    ch    dh    bh   ³
+  ³ General ³ 16   ³ ax    cx    dx    bx    sp    bp    si    di   ³
+  ³         ³ 32   ³ eax   ecx   edx   ebx   esp   ebp   esi   edi  ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ Segment ³ 16   ³ es    cs	 ss    ds    fs    gs		    ³
+  ³ Segment ³ 16   ³ es    cs    ss    ds    fs    gs               ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ Control ³ 32   ³ cr0	 cr2   cr3   cr4		    ³
+  ³ Control ³ 32   ³ cr0         cr2   cr3   cr4                    ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ Debug   ³ 32   ³ dr0   dr1	 dr2   dr3		 dr6   dr7  ³
+  ³ Debug   ³ 32   ³ dr0   dr1   dr2   dr3               dr6   dr7  ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ FPU     ³ 80   ³ st0   st1	 st2   st3   st4   st5	 st6   st7  ³
+  ³ FPU     ³ 80   ³ st0   st1   st2   st3   st4   st5   st6   st7  ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ MMX     ³ 64   ³ mm0   mm1	 mm2   mm3   mm4   mm5	 mm6   mm7  ³
+  ³ MMX     ³ 64   ³ mm0   mm1   mm2   mm3   mm4   mm5   mm6   mm7  ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
   ³ SSE     ³ 128  ³ xmm0  xmm1  xmm2  xmm3  xmm4  xmm5  xmm6  xmm7 ³
   ÀÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
@@ -289,20 +289,20 @@ considered unknown.
   ³ Size    ³ Define ³ Reserve ³
   ³ (bytes) ³ data   ³ data    ³
   ÆÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍµ
-  ³ 1	    ³ db     ³ rb      ³
-  ³	    ³ file   ³	       ³
+  ³ 1       ³ db     ³ rb      ³
+  ³         ³ file   ³         ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄ´
-  ³ 2	    ³ dw     ³ rw      ³
-  ³	    ³ du     ³	       ³
+  ³ 2       ³ dw     ³ rw      ³
+  ³         ³ du     ³         ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄ´
-  ³ 4	    ³ dd     ³ rd      ³
+  ³ 4       ³ dd     ³ rd      ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄ´
-  ³ 6	    ³ dp     ³ rp      ³
-  ³	    ³ df     ³ rf      ³
+  ³ 6       ³ dp     ³ rp      ³
+  ³         ³ df     ³ rf      ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄ´
-  ³ 8	    ³ dq     ³ rq      ³
+  ³ 8       ³ dq     ³ rq      ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄ´
-  ³ 10	    ³ dt     ³ rt      ³
+  ³ 10      ³ dt     ³ rt      ³
   ÀÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÙ
 
 
@@ -393,7 +393,7 @@ expression, will be converted into number - the first character will become
 the least significant byte of number.
   The numerical expression used as an address value can also contain any of
 general registers used for addressing, they can be added and multiplied by
-appropriate values, as it is allowed for Intel Architecture instructions.
+appropriate values, as it is allowed for the x86 architecture instructions.
   There are also some special symbols that can be used inside the numerical
 expression. First is "$", which is always equal to the value of current
 offset. Second is "%", which is the number of current repeat in parts of code
@@ -410,19 +410,19 @@ while simple "1" defines an integer value.
   ÚÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
   ³ Priority ³ Operators    ³
   ÆÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
-  ³ 0	     ³ +  -	    ³
+  ³ 0        ³ +  -         ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 1	     ³ *  /	    ³
+  ³ 1        ³ *  /         ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 2	     ³ mod	    ³
+  ³ 2        ³ mod          ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 3	     ³ and  or	xor ³
+  ³ 3        ³ and  or  xor ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 4	     ³ shl  shr     ³
+  ³ 4        ³ shl  shr     ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 5	     ³ not	    ³
+  ³ 5        ³ not          ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 6	     ³ rva	    ³
+  ³ 6        ³ rva          ³
   ÀÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
 
@@ -449,12 +449,14 @@ variant and terminate with an error when it's impossible (for example
 When instruction uses some memory addressing, by default the shorter 8-bit
 form is generated if only address value fits in range, but it can be
 overridden using the "word" or "dword" operator before the address inside the
-square brackets (or after the "ptr" operator).
+square brackets (or after the "ptr" operator). Such size operator placement
+can also be used to force address size other than default for the given mode.
   Instructions "adc", "add", "and", "cmp", "or", "sbb", "sub" and "xor" with
 first operand being 16-bit or 32-bit are by default generated in shortened
 8-bit form when the second operand is immediate value fitting in the range
 for signed 8-bit values. It also can be overridden by putting the "word" or
-"dword" operator before the immediate value.
+"dword" operator before the immediate value. The similar rules applies to the
+"imul" instruction with the last operand being immediate value.
   Immediate value as an operand for "push" instruction without a size operator
 is by default treated as a word value if assembler is in 16-bit mode and as a
 double word value if assembler is in 32-bit mode, shorter 8-bit form of this
@@ -473,7 +475,7 @@ labels were already discussed in 1.2.3, all other directives will be described
 later in this chapter.
 
 
-2.1  Intel Architecture instructions
+2.1  The x86 architecture instructions
 
 In this section you can find both the information about the syntax and
 purpose the assembly language instructions. If you need more technical
@@ -504,14 +506,14 @@ can be assembled only if the size of source operand and size of destination
 operand are the same. Below are the examples for each of the allowed
 combinations:
 
-    mov bx,ax	    ; general register to general register
+    mov bx,ax       ; general register to general register
     mov [char],al   ; general register to memory
     mov bl,[char]   ; memory to general register
-    mov dl,32	    ; immediate value to general register
+    mov dl,32       ; immediate value to general register
     mov [char],32   ; immediate value to memory
-    mov ax,ds	    ; segment register to general register
+    mov ax,ds       ; segment register to general register
     mov [bx],ds     ; segment register to memory
-    mov ds,ax	    ; general register to segment register
+    mov ds,ax       ; general register to segment register
     mov ds,[bx]     ; memory to segment register
     mov eax,cr0     ; control register to general register
     mov cr3,ebx     ; general register to control register
@@ -521,7 +523,7 @@ two word operands or two double word operands. Order of operands is not
 important. The operands may be two general registers, or general register
 with memory. For example:
 
-    xchg ax,bx	    ; swap two general registers
+    xchg ax,bx      ; swap two general registers
     xchg al,[char]  ; swap register with memory
 
   "push" decrements the stack frame pointer (ESP register), then transfers
@@ -535,10 +537,10 @@ respectively. If more operands follow in the same line (separated only with
 spaces, not commas), compiler will assemble chain of the "push" instructions
 with these operands. The examples are with single operands:
 
-    push ax	    ; store general register
-    push es	    ; store segment register
-    pushw [bx]	    ; store memory
-    push 1000h	    ; store immediate value
+    push ax         ; store general register
+    push es         ; store segment register
+    pushw [bx]      ; store memory
+    push 1000h      ; store immediate value
 
   "pusha" saves the contents of the eight general register on the stack.
 This instruction has no operands. There are two version of this instruction,
@@ -557,9 +559,9 @@ word or double word size respectively. If more operands separated with spaces
 follow in the same line, compiler will assemble chain of the "pop"
 instructions with these operands.
 
-    pop bx	    ; restore general register
-    pop ds	    ; restore segment register
-    popw [si]	    ; restore memory
+    pop bx          ; restore general register
+    pop ds          ; restore segment register
+    popw [si]       ; restore memory
 
   "popa" restores the registers saved on the stack by "pusha" instruction,
 except for the saved value of SP (or ESP), which is ignored. This instruction
@@ -585,10 +587,10 @@ using the sign extension. "movzx" does the same, but it uses the zero
 extension. The source operand can be general register or memory, while the
 destination operand must be a general register. For example:
 
-    movsx ax,al 	; byte register to word register
-    movsx edx,dl	; byte register to double word register
-    movsx eax,ax	; word register to double word register
-    movsx ax,byte [bx]	; byte memory to word register
+    movsx ax,al         ; byte register to word register
+    movsx edx,dl        ; byte register to double word register
+    movsx eax,ax        ; word register to double word register
+    movsx ax,byte [bx]  ; byte memory to word register
     movsx edx,byte [bx] ; byte memory to double word register
     movsx eax,word [bx] ; word memory to double word register
 
@@ -601,10 +603,10 @@ be bytes, words or double words. The destination operand can be general
 register or memory, the source operand can be general register or immediate
 value, it can also be memory if the destination operand is register.
 
-    add ax,bx	    ; add register to register
+    add ax,bx       ; add register to register
     add ax,[si]     ; add memory to register
     add [di],al     ; add register to memory
-    add al,48	    ; add immediate value to register
+    add al,48       ; add immediate value to register
     add [char],48   ; add immediate value to memory
 
   "adc" sums the operands, adds one if CF is set, and replaces the destination
@@ -615,7 +617,7 @@ add numbers longer than 32 bits.
 general register or memory, and the size of the operand can be byte, word or
 double word.
 
-    inc ax	    ; increment register by one
+    inc ax          ; increment register by one
     inc byte [bx]   ; increment memory by one
 
   "sub" subtracts the source operand from the destination operand and replaces
@@ -659,24 +661,22 @@ three variations. First has one operand and behaves in the same way as the
 is multiplied by the source operand and the result replaces the destination
 operand. Destination operand must be a general register, it can be word or
 double word, source operand can be general register, memory or immediate
-value. The immediate value can be a byte, in this case processor automatically
-does the sign extension to it before performing the multiplication. Third form
-has three operands, the destination operand must be a general register, word
-or double word in size, source operand can be general register or memory, and
-third operand must be an immediate value. The source operand is multiplied by
-the immediate value and the result is stored in the destination register.
-All the three forms calculate the product to twice the size of operands and
-set CF and OF when the upper half of the result is nonzero, but second and
-third form truncate the product to the size of operands. So second and third
-forms can be also used for unsigned operands because, whether the operands
-are signed or unsigned, the lower half of the product is the same.
-Below are the examples for all three forms:
+value. Third form has three operands, the destination operand must be a
+general register, word or double word in size, source operand can be general
+register or memory, and third operand must be an immediate value. The source
+operand is multiplied by the immediate value and the result is stored in the
+destination register. All the three forms calculate the product to twice the
+size of operands and set CF and OF when the upper half of the result is
+nonzero, but second and third form truncate the product to the size of
+operands. So second and third forms can be also used for unsigned operands
+because, whether the operands are signed or unsigned, the lower half of the
+product is the same. Below are the examples for all three forms:
 
-    imul bl	    ; accumulator by register
+    imul bl         ; accumulator by register
     imul word [si]  ; accumulator by memory
-    imul bx,cx	    ; register by register
+    imul bx,cx      ; register by register
     imul bx,[si]    ; register by memory
-    imul bx,10	    ; register by immediate value
+    imul bx,10      ; register by immediate value
     imul ax,bx,10   ; register by immediate value to register
     imul ax,[si],10 ; memory by immediate value to register
 
@@ -757,9 +757,9 @@ bit to CF. "bt" instruction does nothing more, "bts" sets the selected bit to
 1, "btr" resets the selected bit to 0, "btc" changes the bit to its
 complement. The first operand can be word or double word.
 
-    bt	ax,15	     ; test bit in register
+    bt  ax,15        ; test bit in register
     bts word [bx],15 ; test and set bit in memory
-    btr ax,cx	     ; test and reset bit in register
+    btr ax,cx        ; test and reset bit in register
     btc word [bx],cx ; test and complement bit in memory
 
   "bsf" and "bsr" instructions scan a word or double word for first set bit
@@ -772,7 +772,7 @@ low order to high order (starting from bit index zero). "bsr" scans from high
 order to low order (starting from bit index 15 of a word or index 31 of a
 double word).
 
-    bsf ax,bx	     ; scan register forward
+    bsf ax,bx        ; scan register forward
     bsr ax,[si]      ; scan memory reverse
 
   "shl" shifts the destination operand left by the number of bits specified
@@ -782,9 +782,9 @@ or the CL register. The processor shifts zeros in from the right (low order)
 side of the operand as bits exit from the left side. The last bit that exited
 is stored in CF. "sal" is a synonym for "shl".
 
-    shl al,1	     ; shift register left by one bit
+    shl al,1         ; shift register left by one bit
     shl byte [bx],1  ; shift memory left by one bit
-    shl ax,cl	     ; shift register left by count from cl
+    shl ax,cl        ; shift register left by count from cl
     shl word [bx],cl ; shift memory left by count from cl
 
   "shr" and "sar" shift the destination operand right by the number of bits
@@ -831,7 +831,7 @@ the same as for the "and" instruction.
 bits 16 through 23. This instruction is provided for converting little-endian
 values to big-endian format and vice versa.
 
-    bswap edx	     ; swap bytes in register
+    bswap edx        ; swap bytes in register
 
 
 2.1.6  Control transfer instructions
@@ -852,9 +852,9 @@ is the offset within segment. An indirect "jmp" instruction obtains the
 destination address indirectly through a register or a pointer variable, the
 operand should be general register or memory. See also 1.2.5 for more details.
 
-    jmp 100h	     ; direct near jump
+    jmp 100h         ; direct near jump
     jmp 0FFFFh:0     ; direct far jump
-    jmp ax	     ; indirect near jump
+    jmp ax           ; indirect near jump
     jmp pword [ebx]  ; indirect far jump
 
   "call" transfers control to the procedure, saving on the stack the address
@@ -891,53 +891,53 @@ address.
 
    Table 2.1  Conditions
   ÚÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-  ³ Mnemonic ³ Condition tested      ³ Description	      ³
+  ³ Mnemonic ³ Condition tested      ³ Description            ³
   ÆÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
-  ³ o	     ³ OF = 1		     ³ overflow 	      ³
+  ³ o        ³ OF = 1                ³ overflow               ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ no	     ³ OF = 0		     ³ not overflow	      ³
+  ³ no       ³ OF = 0                ³ not overflow           ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ c	     ³			     ³ carry		      ³
-  ³ b	     ³ CF = 1		     ³ below		      ³
-  ³ nae      ³			     ³ not above nor equal    ³
+  ³ c        ³                       ³ carry                  ³
+  ³ b        ³ CF = 1                ³ below                  ³
+  ³ nae      ³                       ³ not above nor equal    ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ nc	     ³			     ³ not carry	      ³
-  ³ ae	     ³ CF = 0		     ³ above or equal	      ³
-  ³ nb	     ³			     ³ not below	      ³
+  ³ nc       ³                       ³ not carry              ³
+  ³ ae       ³ CF = 0                ³ above or equal         ³
+  ³ nb       ³                       ³ not below              ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ e	     ³ ZF = 1		     ³ equal		      ³
-  ³ z	     ³			     ³ zero		      ³
+  ³ e        ³ ZF = 1                ³ equal                  ³
+  ³ z        ³                       ³ zero                   ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ ne	     ³ ZF = 0		     ³ not equal	      ³
-  ³ nz	     ³			     ³ not zero 	      ³
+  ³ ne       ³ ZF = 0                ³ not equal              ³
+  ³ nz       ³                       ³ not zero               ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ be	     ³ CF or ZF = 1	     ³ below or equal	      ³
-  ³ na	     ³			     ³ not above	      ³
+  ³ be       ³ CF or ZF = 1          ³ below or equal         ³
+  ³ na       ³                       ³ not above              ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ a	     ³ CF or ZF = 0	     ³ above		      ³
-  ³ nbe      ³			     ³ not below nor equal    ³
+  ³ a        ³ CF or ZF = 0          ³ above                  ³
+  ³ nbe      ³                       ³ not below nor equal    ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ s	     ³ SF = 1		     ³ sign		      ³
+  ³ s        ³ SF = 1                ³ sign                   ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ ns	     ³ SF = 0		     ³ not sign 	      ³
+  ³ ns       ³ SF = 0                ³ not sign               ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ p	     ³ PF = 1		     ³ parity		      ³
-  ³ pe	     ³			     ³ parity even	      ³
+  ³ p        ³ PF = 1                ³ parity                 ³
+  ³ pe       ³                       ³ parity even            ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ np	     ³ PF = 0		     ³ not parity	      ³
-  ³ po	     ³			     ³ parity odd	      ³
+  ³ np       ³ PF = 0                ³ not parity             ³
+  ³ po       ³                       ³ parity odd             ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ l	     ³ SF xor OF = 1	     ³ less		      ³
-  ³ nge      ³			     ³ not greater nor equal  ³
+  ³ l        ³ SF xor OF = 1         ³ less                   ³
+  ³ nge      ³                       ³ not greater nor equal  ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ ge	     ³ SF xor OF = 0	     ³ greater or equal       ³
-  ³ nl	     ³			     ³ not less 	      ³
+  ³ ge       ³ SF xor OF = 0         ³ greater or equal       ³
+  ³ nl       ³                       ³ not less               ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ le	     ³ (SF xor OF) or ZF = 1 ³ less or equal	      ³
-  ³ ng	     ³			     ³ not greater	      ³
+  ³ le       ³ (SF xor OF) or ZF = 1 ³ less or equal          ³
+  ³ ng       ³                       ³ not greater            ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ g	     ³ (SF xor OF) or ZF = 0 ³ greater		      ³
-  ³ nle      ³			     ³ not less nor equal     ³
+  ³ g        ³ (SF xor OF) or ZF = 0 ³ greater                ³
+  ³ nle      ³                       ³ not less nor equal     ³
   ÀÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
   The "loop" instructions are conditional jumps that use a value placed in
@@ -986,8 +986,8 @@ value coded in instruction, or indirectly via the DX register. The destination
 operand should be AL, AX, or EAX register. The source operand should be an
 immediate value in range from 0 to 255, or DX register.
 
-    in al,20h	     ; input byte from port 20h
-    in ax,dx	     ; input word from port addressed by dx
+    in al,20h        ; input byte from port 20h
+    in ax,dx         ; input word from port addressed by dx
 
   "out" transfers a byte, word, or double word to an output port from AL, AX,
 or EAX. The program can specify the number of the port using the same methods
@@ -995,8 +995,8 @@ as the "in" instruction. The destination operand should be an immediate value
 in range from 0 to 255, or DX register. The source operand should be AL, AX,
 or EAX register.
 
-    out 20h,ax	     ; output word to port 20h
-    out dx,al	     ; output byte to port addressed by dx
+    out 20h,ax       ; output word to port 20h
+    out dx,al        ; output byte to port addressed by dx
 
 
 2.1.8  Strings operations
@@ -1026,7 +1026,7 @@ prefix.
 
     movs byte [di],[si]        ; transfer byte
     movs word [es:di],[ss:si]  ; transfer word
-    movsd		       ; transfer double word
+    movsd                      ; transfer double word
 
   "cmps" subtracts the destination string element from the source string
 element and updates the flags AF, SF, PF, CF and OF, but it does not change
@@ -1036,7 +1036,7 @@ source string element addressed by SI or ESI with any segment prefix, the
 second operand should be the destination string element addressed by DI or
 EDI.
 
-    cmpsb		       ; compare bytes
+    cmpsb                      ; compare bytes
     cmps word [ds:si],[es:di]  ; compare words
     cmps dword [fs:esi],[edi]  ; compare double words
 
@@ -1045,8 +1045,8 @@ EDI.
 PF, CF and OF. If the values are equal, ZF is set, otherwise it is cleared.
 The operand should be the destination string element addressed by DI or EDI.
 
-    scas byte [es:di]	       ; scan byte
-    scasw		       ; scan word
+    scas byte [es:di]          ; scan byte
+    scasw                      ; scan word
     scas dword [es:edi]        ; scan double word
 
   "stos" places the value of AL, AX, or EAX into the destination string
@@ -1055,25 +1055,25 @@ element. Rules for the operand are the same as for the "scas" instruction.
 should be the source string element addressed by SI or ESI with any segment
 prefix.
 
-    lods byte [ds:si]	       ; load byte
-    lods word [cs:si]	       ; load word
-    lodsd		       ; load double word
+    lods byte [ds:si]          ; load byte
+    lods word [cs:si]          ; load word
+    lodsd                      ; load double word
 
   "ins" transfers a byte, word, or double word from an input port addressed
 by DX register to the destination string element. The destination operand
 should be memory addressed by DI or EDI, the source operand should be the DX
 register.
 
-    insb		       ; input byte
+    insb                       ; input byte
     ins word [es:di],dx        ; input word
-    ins dword [edi],dx	       ; input double word
+    ins dword [edi],dx         ; input double word
 
   "outs" transfers the source string element to an output port addressed by
 DX register. The destination operand should be the DX register and the source
 operand should be memory addressed by SI or ESI with any segment prefix.
 
-    outs dx,byte [si]	       ; output byte
-    outsw		       ; output word
+    outs dx,byte [si]          ; output byte
+    outsw                      ; output word
     outs dx,dword [gs:esi]     ; output double word
 
   The repeat prefixes "rep", "repe"/"repz", and "repne"/"repnz" specify
@@ -1090,8 +1090,8 @@ instruction depends on the zero flag (ZF) also, "repe" and "repz" terminate
 the execution when the ZF is zero, "repne" and "repnz" terminate the execution
 when the ZF is set.
 
-    rep  movsd	     ; transfer multiple double words
-    repe cmpsb	     ; compare bytes until not equal
+    rep  movsd       ; transfer multiple double words
+    repe cmpsb       ; compare bytes until not equal
 
 
 2.1.9  Flag control instructions
@@ -1118,14 +1118,14 @@ the current code setting. "popfw" variant forces restoring from the word
 and "popfd" forces restoring from the double word.
 
 
-2.1.10	Conditional operations
+2.1.10  Conditional operations
 
   The instructions obtained by attaching the condition mnemonic (see table
 2.1) to the "set" mnemonic set a byte to one if the condition is true and set
 the byte to zero otherwise. The operand should be an 8-bit be general register
 or the byte in memory.
 
-    setne al	     ; set al if zero flag cleared
+    setne al         ; set al if zero flag cleared
     seto byte [bx]   ; set byte if overflow
 
   "salc" instruction sets the all bits of AL register when the carry flag is
@@ -1157,7 +1157,7 @@ operand should be a quad word in memory.
     cmpxchg8b [bx]   ; compare and exchange 8 bytes
 
 
-2.1.11	Miscellaneous instructions
+2.1.11  Miscellaneous instructions
 
 "nop" instruction occupies one byte but affects nothing but the instruction
 pointer. This instruction has no operands and doesn't perform any operation.
@@ -1218,15 +1218,15 @@ the stack before adjusting the stack pointer.
     enter 2048,0     ; enter and allocate 2048 bytes on stack
 
 
-2.1.12	System instructions
+2.1.12  System instructions
 
 "lmsw" loads the operand into the machine status word (bits 0 through 15 of
 CR0 register), while "smsw" stores the machine status word into the
 destination operand. The operand can be a 16-bit or 32-bit general register
 or the word in memory.
 
-    lmsw ax	     ; load machine status from register
-    smsw [bx]	     ; store machine status to memory
+    lmsw ax          ; load machine status from register
+    smsw [bx]        ; store machine status to memory
 
   "lgdt" and "lidt" instructions load the values in operand into the global
 descriptor table register or the interrupt descriptor table register
@@ -1234,22 +1234,21 @@ respectively. "sgdt" and "sidt" store the contents of the global descriptor
 table register or the interrupt descriptor table register in the destination
 operand. The operand should be a 6 bytes in memory.
 
-    lgdt [ebx]	     ; load global descriptor table
+    lgdt [ebx]       ; load global descriptor table
 
   "lldt" loads the operand into the segment selector field of the local
 descriptor table register and "sldt" stores the segment selector from the
 local descriptor table register in the operand. "ltr" loads the operand into
 the segment selector field of the task register and "str" stores the segment
 selector from the task register in the operand. Rules for operand are the same
-as for the "lmsw" instruction.
+as for the "lmsw" and "smsw" instructions.
   "lar" loads the access rights from the segment descriptor specified by
 the selector in source operand into the destination operand and sets the ZF
-flag. The operands can be both words or double words. The source operand may
-be a general register or memory. The destination operand should be a general
-register.
+flag. The destination operand can be a 16-bit or 32-bit general register.
+The source operand should be a 16-bit general register or memory.
 
     lar ax,[bx]      ; load access rights into word
-    lar eax,edx      ; load access rights into double word
+    lar eax,dx       ; load access rights into double word
 
   "lsl" loads the segment limit from the segment descriptor specified by the
 selector in source operand into the destination operand and sets the ZF flag.
@@ -1269,7 +1268,7 @@ operand. Otherwise, the ZF flag is cleared and no change is made to the
 destination operand. The destination operand can be a word general register
 or memory, the source operand must be a general register.
 
-    arpl bx,ax	     ; adjust RPL of selector in register
+    arpl bx,ax       ; adjust RPL of selector in register
     arpl [bx],ax     ; adjust RPL of selector in memory
 
   "clts" clears the TS (task switched) flag in the CR0 register. This
@@ -1315,7 +1314,7 @@ executes a fast return to level 3 user code. The addresses used by these
 instructions are stored in MSRs. These instructions have no operands.
 
 
-2.1.13	FPU instructions
+2.1.13  FPU instructions
 
 The FPU (Floating-Point Unit) instructions operate on the floating-point
 values in three formats: single precision (32-bit), double precision (64-bit)
@@ -1331,7 +1330,7 @@ register) and is automatically converted into the double extended precision
 format.
 
     fld dword [bx]   ; load single prevision value from memory
-    fld st2	     ; push value of st2 onto register stack
+    fld st2          ; push value of st2 onto register stack
 
   "fld1", "fldz", "fldl2t", "fldl2e", "fldpi", "fldlg2" and "fldln2" load the
 commonly used contants onto the FPU register stack. The loaded constants are
@@ -1349,7 +1348,7 @@ performs the same operation as "fst" and then pops the register stack,
 getting rid of ST0. "fstp" accepts the same operands as the "fst" instruction
 and can also store value in the 80-bit memory.
 
-    fst st3	     ; copy value of st0 into st3 register
+    fst st3          ; copy value of st0 into st3 register
     fstp tword [bx]  ; store value in memory and pop stack
 
   "fist" converts the value in ST0 to a signed integer and stores the result
@@ -1378,7 +1377,7 @@ destination location and then pops the register stack. The destination operand
 must be an FPU register and the source operand must be the ST0. When no
 operands are specified, ST1 is used as a destination operand.
 
-    faddp	     ; add st0 to st1 and pop the stack
+    faddp            ; add st0 to st1 and pop the stack
     faddp st2,st0    ; add st0 to st2 and pop the stack
 
 "fiadd" instruction converts an integer source operand into double extended
@@ -1432,8 +1431,8 @@ additionally pops the register stack after performing the comparision. The
 operand can be a single or double precision value in memory or the FPU
 register. When no operand is specified, ST1 is used as a source operand.
 
-    fcom	     ; compare st0 with st1
-    fcomp st2	     ; compare st0 with st2 and pop stack
+    fcom             ; compare st0 with st1
+    fcomp st2        ; compare st0 with st2 and pop stack
 
   "fcompp" compares the contents of ST0 and ST1, sets flags in the FPU status
 word according to the results and pops the register stack twice. This
@@ -1461,21 +1460,21 @@ FPU register, and one with two operands, in that case destination operand
 should be ST0 register and the second operand specifies the source FPU
 register.
 
-    fcomi st2	     ; compare st0 with st2 and set flags
+    fcomi st2        ; compare st0 with st2 and set flags
     fcmovb st0,st2   ; transfer st2 to st0 if below
 
    Table 2.2  FPU conditions
   ÚÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-  ³ Mnemonic ³ Condition tested ³ Description		 ³
+  ³ Mnemonic ³ Condition tested ³ Description            ³
   ÆÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
-  ³ b	     ³ CF = 1		³ below 		 ³
-  ³ e	     ³ ZF = 1		³ equal 		 ³
-  ³ be	     ³ CF or ZF = 1	³ below or equal	 ³
-  ³ u	     ³ PF = 1		³ unordered		 ³
-  ³ nb	     ³ CF = 0		³ not below		 ³
-  ³ ne	     ³ ZF = 0		³ not equal		 ³
-  ³ nbe      ³ CF and ZF = 0	³ not below nor equal	 ³
-  ³ nu	     ³ PF = 0		³ not unordered 	 ³
+  ³ b        ³ CF = 1           ³ below                  ³
+  ³ e        ³ ZF = 1           ³ equal                  ³
+  ³ be       ³ CF or ZF = 1     ³ below or equal         ³
+  ³ u        ³ PF = 1           ³ unordered              ³
+  ³ nb       ³ CF = 0           ³ not below              ³
+  ³ ne       ³ ZF = 0           ³ not equal              ³
+  ³ nbe      ³ CF and ZF = 0    ³ not below nor equal    ³
+  ³ nu       ³ PF = 0           ³ not unordered          ³
   ÀÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
   "ftst" compares the value in ST0 with 0.0 and sets the flags in the FPU
@@ -1516,7 +1515,7 @@ substracting one to the pointer of the top of stack. These instruction have no
 operands.
 
 
-2.1.14	MMX instructions
+2.1.14  MMX instructions
 
 The MMX instructions operate on the packed integer types and use the MMX
 registers, which are the low 64-bit parts of the 80-bit FPU registers. Because
@@ -1588,7 +1587,7 @@ value.
 used before using the FPU instructions if any MMX instructions were used.
 
 
-2.1.15	SSE instructions
+2.1.15  SSE instructions
 
 The SSE extension adds more MMX instructions and also introduces the
 operations on packed single precision floating point values. The 128-bit
@@ -1672,16 +1671,16 @@ mnemonic from table 2.3 to the "cmp" mnemonic and then attaching the "ps" or
 
    Table 2.3  SSE conditions
   ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
-  ³ Code ³ Mnemonic ³ Description	      ³
+  ³ Code ³ Mnemonic ³ Description             ³
   ÆÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
-  ³ 0	 ³ eq	    ³ equal		      ³
-  ³ 1	 ³ lt	    ³ less than 	      ³
-  ³ 2	 ³ le	    ³ less than or equal      ³
-  ³ 3	 ³ unord    ³ unordered 	      ³
-  ³ 4	 ³ neq	    ³ not equal 	      ³
-  ³ 5	 ³ nlt	    ³ not less than	      ³
-  ³ 6	 ³ nle	    ³ not less than nor equal ³
-  ³ 7	 ³ ord	    ³ ordered		      ³
+  ³ 0    ³ eq       ³ equal                   ³
+  ³ 1    ³ lt       ³ less than               ³
+  ³ 2    ³ le       ³ less than or equal      ³
+  ³ 3    ³ unord    ³ unordered               ³
+  ³ 4    ³ neq      ³ not equal               ³
+  ³ 5    ³ nlt      ³ not less than           ³
+  ³ 6    ³ nle      ³ not less than nor equal ³
+  ³ 7    ³ ord      ³ ordered                 ³
   ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
   "comiss" and "ucomiss" compare the single precision values and set the ZF,
@@ -1803,7 +1802,7 @@ instructions must be aligned on 16 byte boundary, it should declare operand
 of no specified size.
 
 
-2.1.16	SSE2 instructions
+2.1.16  SSE2 instructions
 
 The SSE2 extension introduces the operations on packed double precision
 floating point values, extends the syntax of MMX instructions, and adds also
@@ -1963,10 +1962,10 @@ combines the functions of "sfence" (described in previous section) and
 "lfence" instructions. These instructions have no operands.
 
 
-2.1.17	Prescott new instructions
+2.1.17  SSE3 instructions
 
-Prescott technology introduces some new instructions to improve the performance
-of SSE and SSE2 - it is also called the SSE3 extension.
+Prescott technology introduced some new instructions to improve the performance
+of SSE and SSE2 - this extension is called SSE3.
   "fisttp" behaves like the "fistp" instruction and accepts the same operands,
 the only difference is that it always used truncation, irrespective of the
 rounding mode.
@@ -2004,7 +2003,7 @@ instruction. It uses two operands with additional parameters, first being the
 EAX and second the ECX register.
 
 
-2.1.18	AMD 3DNow! instructions
+2.1.18  AMD 3DNow! instructions
 
 The 3DNow! extension adds a new MMX instructions to those described in 2.1.14,
 and introduces operation on the 64-bit packed floating point values, each
@@ -2084,8 +2083,8 @@ to repeat are expected in next lines, ended with the "end repeat" directive,
 for example:
 
     repeat 8
-	mov byte [bx],%
-	inc bx
+        mov byte [bx],%
+        inc bx
     end repeat
 
 The generated code will store byte values from one to eight in the memory
@@ -2144,8 +2143,8 @@ from the current position.
 defined somewhere in source:
 
     if count>0
-	mov cx,count
-	rep movsb
+        mov cx,count
+        rep movsb
     end if
 
 These two assembly instructions will be assembled only if the "count" constant
@@ -2154,14 +2153,14 @@ is greater than 0.
 "reg" has been defined:
 
     if reg in <cs,ds,es,fs,gs,ss>
-	mov dx,reg
-	add ax,dx
-	shl ax,1
+        mov dx,reg
+        add ax,dx
+        shl ax,1
     else if reg eq ax
-	shl ax,2
+        shl ax,2
     else
-	add ax,reg
-	shl ax,1
+        add ax,reg
+        shl ax,1
     end if
 
 The first block of instructions will be assembled only if the value of
@@ -2180,13 +2179,13 @@ included in the output file, but labels defined there can be used in other
 parts of source. This directive can be followed by "at" operator and the
 numerical expression specifying the address for virtual data, otherwise is
 uses current address, the same as "virtual at $". Instructions defining data
-are expected in next lines, ended with "end virtual" directive.
-  This directive can be used to create union of some variables, for example:
+are expected in next lines, ended with "end virtual" directive. This directive
+can be used to create union of some variables, for example:
 
     GDTR dp ?
     virtual at GDTR
-	GDT_limit dw ?
-	GDT_address dd ?
+        GDT_limit dw ?
+        GDT_address dd ?
     end virtual
 
 It defines two labels for parts of the 48-bit variable at "GDTR" address.
@@ -2194,26 +2193,37 @@ It defines two labels for parts of the 48-bit variable at "GDTR" address.
 register, for example:
 
     virtual at bx
-	LDT_limit dw ?
-	LDT_address dd ?
+        LDT_limit dw ?
+        LDT_address dd ?
     end virtual
 
 With such definition instruction "mov ax,[LDT_limit]" will be assembled
 to "mov ax,[bx]".
   Declaring defined data values or instructions inside the virtual block would
-also be useful, because the "load" directive can be used to load the values
-from the virtually generated code into a constants. This directive should be
-used after the code it loads but before the virtual block ends, because it
-can only load the values from the same code space. For example:
+also be useful, because the "load" directive (already described in section
+1.2.3) can be used to load the values from the virtually generated code into
+a constants. This directive should be used after the code it loads but before
+the virtual block ends, because it can only load the values from the same code
+space. For example:
 
     virtual at 0
-	xor eax,eax
-	and edx,eax
-	load zeroq dword from 0
+        xor eax,eax
+        and edx,eax
+        load zeroq dword from 0
     end virtual
 
 The above piece of code will define the "zeroq" constant containing four bytes
 of the machine code of the instructions defined inside the virtual block.
+This method can be also used to load some binary value from external file.
+For example this code:
+
+    virtual at 0
+        file 'a.txt':10h,1
+        load char from 0
+    end virtual
+
+loads the single byte from offset 10h in file "a.txt" into the "char"
+constant.
   "display" directive displays the message at the assembly time. It should
 be followed by the quoted strings or byte values, separated with commas. It
 can be used to display values of some constants, for example:
@@ -2223,16 +2233,16 @@ can be used to display values of some constants, for example:
     d3 = '0'+ $ shr 4 and 0Fh
     d4 = '0'+ $ and 0Fh
     if d1>'9'
-	d1 = d1 + 'A'-'9'-1
+        d1 = d1 + 'A'-'9'-1
     end if
     if d2>'9'
-	d2 = d2 + 'A'-'9'-1
+        d2 = d2 + 'A'-'9'-1
     end if
     if d3>'9'
-	d3 = d3 + 'A'-'9'-1
+        d3 = d3 + 'A'-'9'-1
     end if
     if d4>'9'
-	d4 = d4 + 'A'-'9'-1
+        d4 = d4 + 'A'-'9'-1
     end if
     display 'Current offset is 0x',d1,d2,d3,d4,13,10
 
@@ -2269,8 +2279,11 @@ to the line containing the "include" directive. There are no limits to the
 number of included files as long as they fit in memory.
   The quoted path can contain environment variables enclosed within "%"
 characters, they will be replaced with their values inside the path, both the
-"\" and "/" characters are allowed as a path separators. It concerns also
-paths given with the "file" and "load" directives.
+"\" and "/" characters are allowed as a path separators. If no absolute path
+is given, the file is first searched for in the directory containing file
+which included it and when it's not found there, in the directory containing
+the main source file (the one specified in command line). These rules concern
+also paths given with the "file" directive.
 
 
 2.3.2  Symbolic constants
@@ -2364,8 +2377,8 @@ For example:
 
     macro stos0
      {
-	xor al,al
-	stosb
+        xor al,al
+        stosb
      }
 
 The macroinstruction "stos0" will be replaced with these two assembly
@@ -2391,10 +2404,10 @@ redefinition of macroinstructions can be done in that way, for example:
     macro mov op1,op2
      {
       if op1 in <ds,es,fs,gs,ss> & op2 in <cs,ds,es,fs,gs,ss>
-	push  op2
-	pop   op1
+        push  op2
+        pop   op1
       else
-	mov   op1,op2
+        mov   op1,op2
       end if
      }
 
@@ -2407,10 +2420,10 @@ macroinstruction of that name, which will use the previous macroinstruction:
     macro mov op1,op2,op3
      {
       if op3 eq
-	mov   op1,op2
+        mov   op1,op2
       else
-	mov   op1,op2
-	mov   op2,op3
+        mov   op1,op2
+        mov   op2,op3
       end if
      }
 
@@ -2443,8 +2456,8 @@ argument name in square brackets:
 
     macro stoschar [char]
      {
-	mov al,char
-	stosb
+        mov al,char
+        stosb
      }
 
 This macroinstruction accepts unlimited number of arguments, and each one
@@ -2467,12 +2480,12 @@ For example:
 
     macro movstr
      {
-	local move
+        local move
       move:
-	lodsb
-	stosb
-	test al,al
-	jnz move
+        lodsb
+        stosb
+        test al,al
+        jnz move
      }
 
 Each time this macroinstruction is used, "move" will become other unique name
@@ -2497,12 +2510,12 @@ addresses to strings followed by these strings:
     macro strtbl name,[string]
      {
       common
-	label name dword
+        label name dword
       forward
-	local label
-	dd label
+        local label
+        dd label
       forward
-	label db string,0
+        label db string,0
      }
 
 First argument given to this macroinstruction will become the label for table
@@ -2550,8 +2563,8 @@ according to the "cond" argument:
 
     macro jif op1,cond,op2,label
      {
-	cmp op1,op2
-	j#cond label
+        cmp op1,op2
+        j#cond label
      }
 
 For example "jif ax,ae,10h,exit" will be assembled as "cmp ax,10h" and
@@ -2567,10 +2580,10 @@ those two features:
 
     macro label name
      {
-	label name
-	if ~ used name
-	  display `name # " is defined but not used.",13,10
-	end if
+        label name
+        if ~ used name
+          display `name # " is defined but not used.",13,10
+        end if
      }
 
 When label defined with such macro is not used in the source, macro will warn
@@ -2583,16 +2596,16 @@ quoted string from an other argument:
     macro message arg
      {
       if arg eqtype ""
-	local str
-	jmp   @f
-	str   db arg,0Dh,0Ah,24h
-	@@:
-	mov   dx,str
+        local str
+        jmp   @f
+        str   db arg,0Dh,0Ah,24h
+        @@:
+        mov   dx,str
       else
-	mov   dx,arg
+        mov   dx,arg
       end if
-	mov   ah,9
-	int   21h
+        mov   ah,9
+        int   21h
      }
 
 The above macro is designed for displaying messages in DOS programs. When the
@@ -2610,12 +2623,12 @@ to overcome this problem with use of the "fix" directive. Here is an example:
      {
       macro instr op1,op2,op3
        _%
-	if op3 eq
-	  instr op1,op2
-	else
-	  instr op1,op2
-	  instr op2,op3
-	end if
+        if op3 eq
+          instr op1,op2
+        else
+          instr op1,op2
+          instr op2,op3
+        end if
        %_
      }
 
@@ -2656,8 +2669,8 @@ macroinstructions. For example:
 defines an alternative syntax for defining macroinstructions, which looks like:
 
     MACRO stoschar char
-	mov al,char
-	stosb
+        mov al,char
+        stosb
     ENDM
 
 Note that symbol that has such customized definition must be defined with "fix"
@@ -2686,8 +2699,8 @@ concerning standard macroinstructions apply to structure macroinstructions.
 
     struc point x,y
      {
-	.x dw x
-	.y dw y
+        .x dw x
+        .y dw y
      }
 
 For example "my point 7,11" will define structure labeled "my", consisting of
@@ -2699,9 +2712,9 @@ macroinstruction:
     struc db [data]
      {
       common
-	label .data byte
-	db data
-	.size = $-.data
+        label .data byte
+        db data
+        .size = $-.data
      }
 
 With such definition for example "msg db 'Hello!',13,10" will define also
@@ -2764,18 +2777,31 @@ expression specifying the base of PE image and then optionally "on" operator
 followed by the quoted string containing file name selects custom MZ stub for
 PE program (when specified file is not a MZ executable, it is treated as a
 flat binary executable file and converted into MZ format). The default code
-setting for this format is 32-bit.
+setting for this format is 32-bit. The example of fully featured PE format
+declaration:
+
+    format PE GUI 4.0 DLL at 7000000h on 'stub.exe'
+
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then one or more section flags can
 follow. Available flags are: "code", "data", "readable", "writeable",
-"executable", "shareable", "discardable", "notpageable". Among with flags also
-one of the special PE data identifiers can be specified to mark the whole
-section as a special data, possible identifiers are "export", "import",
-"resource" and "fixups". If the section is marked to contain fixups, they are
-generated automatically and no more data needs to be defined in this section.
-Also resource data can be generated automatically from the resource file, it
-can be achieved by writing the "from" operator and quoted file name after the
-"resource"  identifier. The origin of section is aligned to page (4096 bytes).
+"executable", "shareable", "discardable", "notpageable". The origin of section
+is aligned to page (4096 bytes). Example declaration of PE section:
+
+    section '.text' code readable executable
+
+Among with flags also one of the special PE data identifiers can be specified
+to mark the whole section as a special data, possible identifiers are
+"export", "import", "resource" and "fixups". If the section is marked to
+contain fixups, they are generated automatically and no more data needs to be
+defined in this section. Also resource data can be generated automatically
+from the resource file, it can be achieved by writing the "from" operator and
+quoted file name after the "resource"  identifier. Below are the examples of
+sections containing some special PE data:
+
+    section '.reloc' data discardable fixups
+    section '.rsrc' data readable resource from 'my.res'
+
   "entry" directive sets the entry point for Portable Executable, the value of
 entry point should follow.
   "stack" directive sets up the size of stack for Portable Executable, value
@@ -2814,11 +2840,18 @@ can be specified by providing the "align" operator followed by alignment value
 name of symbol and optionally the size operator specifying the size of data
 labeled by this symbol. The name of symbol can be also preceded by quoted
 string containing name of the external symbol and the "as" operator.
+Some example declarations of external symbols:
+
+    extrn exit
+    extrn '__imp__MessageBoxA@16' as MessageBox:dword
+
   "public" directive declares the existing symbol as public, it should be
 followed by the name of symbol, optionally it can be followed by the "as"
 operator and the quoted string containing name under which symbol should be
-available as public.
+available as public. Some examples of public symbols declarations:
 
+    public main
+    public start as '_start'
 
 2.4.4  Executable and Linkable Format
 

@@ -63,6 +63,9 @@ invalid_address_size:
 address_sizes_do_not_agree:
 	call	assembler_error
 	dm	"address sizes do not agree"
+prefix_conflict:
+	call	assembler_error
+	dm	"prefix conflict"
 relative_jump_out_of_range:
 	call	assembler_error
 	dm	"relative jump out of range"
@@ -110,7 +113,7 @@ extra_characters_on_line:
 	dm	"extra characters on line"
 section_not_aligned_enough:
 	call	assembler_error
-	dm	"section is not aligned enough for this operation"
+	dm	"section is not aligned enough"
 setting_already_specified:
 	call	assembler_error
 	dm	"setting already specified"

@@ -70,6 +70,7 @@ fp_value rd 8
 adjustment dq ?
 symbol_identifier dd ?
 address_symbol dd ?
+address_high dd ?
 format_flags dd ?
 symbols_stream dd ?
 number_of_relocations dd ?
@@ -95,7 +96,7 @@ virtual_data db ?
 fp_sign db ?
 fp_format db ?
 value_size db ?
-forced_size db ?
+size_override db ?
 value_undefined db ?
 value_type db ?
 address_size db ?
@@ -109,7 +110,6 @@ mmx_size db ?
 imm_sized db ?
 jump_type db ?
 operand_prefix db ?
-nextbyte db ?
 
 characters rb 100h
 converted rb 100h

@@ -343,7 +343,7 @@ assemble_line:
 	jmp	continue_line
       assemble_instruction:
 	mov	[operand_size],0
-	mov	[forced_size],0
+	mov	[size_override],0
 	mov	[operand_prefix],0
 	movzx	ebx,word [esi]
 	mov	al,[esi+2]
@@ -794,7 +794,8 @@ times_directive:
 	jne	times_argument_ok
 	inc	esi
       times_argument_ok:
-	push	[counter] [counter_limit]
+	push	[counter]
+	push	[counter_limit]
 	mov	[counter_limit],eax
 	mov	[counter],1
       times_loop:
@@ -810,7 +811,8 @@ times_directive:
       times_done:
 	mov	[times_working],0
 	pop	eax
-	pop	[counter_limit] [counter]
+	pop	[counter_limit]
+	pop	[counter]
 	jmp	instruction_assembled
       negative_times:
 	cmp	[error_line],0

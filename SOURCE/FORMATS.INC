@@ -1506,16 +1506,13 @@ make_pe_resource:
 	jmp	check_next_resource_name
       skip_resource_name:
 	cmp	word [esi],0FFFFh
-	jne	skip_aligned_string
+	jne	skip_unicode_string
 	add	esi,4
 	ret
-      skip_aligned_string:
-	add	esi,4
-	cmp	word [esi-4],0
-	je	resource_name_end
+      skip_unicode_string:
+	add	esi,2
 	cmp	word [esi-2],0
-	jne	skip_aligned_string
-      resource_name_end:
+	jne	skip_unicode_string
 	ret
       check_this_resource_name:
 	or	edx,edx
@@ -1651,8 +1648,14 @@ make_pe_resource:
 	cmp	[esi+8],ebp
 	jne	check_next_language_id
 	add	esi,20
+	mov	eax,esi
 	call	skip_resource_name
 	call	skip_resource_name
+	neg	eax
+	add	eax,esi
+	and	eax,11b
+	add	esi,eax
+      get_language_id:
 	movzx	eax,word [esi+6]
 	cmp	eax,ebx
 	jle	check_next_language_id

@@ -346,9 +346,7 @@ parse_line:
 	jmp	parse_label_operator
       ptr_argument:
 	call	parse_address
-	mov	al,']'
-	stos	byte [edi]
-	jmp	argument_parsed
+	jmp	address_parsed
       check_argument:
 	push	esi ecx
 	sub	esi,2
@@ -428,6 +426,8 @@ parse_line:
 	lods	byte [esi]
 	cmp	al,']'
 	jne	invalid_address
+      address_parsed:
+	mov	al,']'
 	stos	byte [edi]
 	jmp	argument_parsed
       parse_address:
