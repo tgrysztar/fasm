@@ -5,8 +5,6 @@
 
 	format	PE console
 
-	macro	align value { rb (value-1) - (RVA $ + value-1) mod value }
-
 start:
 
 	mov	esi,_logo
@@ -154,6 +152,7 @@ label_hash dd ?
 org_origin dd ?
 org_registers dd ?
 org_start dd ?
+org_symbol dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
@@ -174,12 +173,13 @@ number_of_relocations dd ?
 number_of_sections dd ?
 stub_size dd ?
 stub_file dd ?
-sections_data dd ?
 current_section dd ?
 machine dw ?
 subsystem dw ?
 subsystem_version dd ?
 image_base dd ?
+resource_data dd ?
+resource_size dd ?
 
 macro_status db ?
 parenthesis_stack db ?

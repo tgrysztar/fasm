@@ -399,6 +399,7 @@ get_fp_value:
 	movzx	ecx,al
 	cmp	cl,1
 	jbe	not_fp_value
+	lea	edx,[esi+1]
 	xor	ah,ah
       check_fp_value:
 	lods	byte [esi]
@@ -429,6 +430,8 @@ get_fp_value:
 	stc
 	ret
       fp_character_exp:
+	cmp	esi,edx
+	je	not_fp_value
 	cmp	ah,1
 	ja	not_fp_value
 	or	ah,2
@@ -913,14 +916,11 @@ calculate_expression:
 	mov	[edi+12],al
 	mov	[edi+20],eax
 	lods	dword [esi]
-	or	eax,eax
-	jz	current_offset_label
-	cmp	eax,1
-	je	counter_label
+	cmp	eax,0Fh
+	jb	predefined_label
+	je	reserved_word_used_as_symbol
 	cmp	eax,-1
 	je	invalid_expression
-	cmp	eax,0Fh
-	je	reserved_word_used_as_symbol
 	mov	ebx,eax
 	mov	ax,[current_pass]
 	mov	[ebx+18],ax
@@ -965,7 +965,7 @@ calculate_expression:
 	cmp	[reloc_labels],0
 	je	get_current_offset
 	mov	byte [edi+12],2
-	mov	eax,[current_section]
+	mov	eax,[org_symbol]
 	mov	[edi+16],eax
       get_current_offset:
 	mov	eax,[current_offset]
@@ -980,11 +980,22 @@ calculate_expression:
 	jmp	calculation_loop
       counter_label:
 	mov	eax,[counter]
+      make_dword_label_value:
 	stos	dword [edi]
 	xor	eax,eax
 	stos	dword [edi]
 	add	edi,0Ch
 	jmp	calculation_loop
+      timestamp_label:
+	call	make_timestamp
+	jmp	make_dword_label_value
+      predefined_label:
+	or	eax,eax
+	jz	current_offset_label
+	cmp	eax,1
+	je	counter_label
+	cmp	eax,2
+	je	timestamp_label
       label_undefined:
 	cmp	[current_pass],0
 	je	force_second_pass
@@ -1082,7 +1093,9 @@ calculate_expression:
 	mov	ecx,[edi+16]
 	cmp	ecx,[ebx+16]
 	je	sub_values
-	cmp	ecx,[current_section]
+	cmp	ecx,[org_symbol]
+	jne	invalid_sub
+	cmp	byte [ebx+12],2
 	jne	invalid_sub
 	mov	ah,3
       sub_values:
@@ -1842,6 +1855,8 @@ get_address_value:
 	mov	eax,[edi+16]
 	mov	[address_symbol],eax
 	mov	al,[edi+12]
+	cmp	al,3
+	je	invalid_use_of_symbol
 	mov	[value_type],al
 	cmp	al,1
 	je	invalid_use_of_symbol
@@ -2295,9 +2310,15 @@ get_logical_value:
 	test	byte [eax+8],1
 	jz	symbol_undefined
 	mov	cx,[current_pass]
-	cmp	cx,[eax+16]
-	je	check_expression
+	sub	cx,[eax+16]
+	jz	  check_expression
+	cmp	cx,1
+	ja	symbol_undefined
+	or	byte [eax+8],40h+80h
+	jmp	check_expression
       symbol_undefined:
+	or	byte [eax+8],40h
+	and	byte [eax+8],not 80h
 	xor	bl,bl
 	jmp	check_expression
       expression_checked:

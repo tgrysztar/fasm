@@ -561,6 +561,8 @@ process_concatenations:
       before_concatenations:
 	mov	edi,esi
 	lods	byte [esi]
+	cmp	al,'`'
+	je	symbol_conversion
 	cmp	al,'#'
 	je	concatenation
 	cmp	al,1Ah
@@ -590,6 +592,42 @@ process_concatenations:
 	lods	dword [esi]
 	add	esi,eax
 	jmp	before_concatenations
+      symbol_conversion:
+	cmp	byte [esi],1Ah
+	jne	unexpected_characters
+	lea	eax,[edi+3]
+	sub	eax,esi
+	ja	shift_line_data
+	mov	al,22h
+	mov	dl,al
+	stos	byte [edi]
+	lods	word [esi]
+	movzx	eax,ah
+	mov	ecx,eax
+	mov	ebx,edi
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	cmp	edi,esi
+	je	before_concatenations
+	jmp	after_concatenation
+      shift_line_data:
+	lea	edx,[esi+2]
+	lea	esi,[ebp-1]
+	add	ebp,eax
+	lea	edi,[ebp-1]
+	lea	ecx,[esi+1]
+	sub	ecx,edx
+	std
+	rep	movs byte [edi],[esi]
+	cld
+	movzx	eax,byte [edx-1]
+	sub	edi,3
+	mov	dl,22h
+	mov	[edi-1],dl
+	mov	ebx,edi
+	mov	[edi],eax
+	lea	esi,[edi+4+eax]
+	jmp	before_concatenations
       concatenation:
 	cmp	dl,1Ah
 	je	symbol_concatenation
@@ -611,7 +649,19 @@ process_concatenations:
 	jmp	after_concatenation
       string_concatenation:
 	cmp	byte [esi],22h
+	je	do_string_concatenation
+	cmp	byte [esi],'`'
 	jne	no_concatenation
+	inc	esi
+	cmp	byte [esi],1Ah
+	jne	unexpected_characters
+	inc	esi
+	lods	byte [esi]
+	movzx	ecx,al
+	add	[ebx],ecx
+	rep	movs byte [edi],[esi]
+	jmp	after_concatenation
+      do_string_concatenation:
 	inc	esi
 	lods	dword [esi]
 	mov	ecx,eax
@@ -619,6 +669,8 @@ process_concatenations:
 	rep	movs byte [edi],[esi]
       after_concatenation:
 	lods	byte [esi]
+	cmp	al,'`'
+	je	symbol_conversion
 	cmp	al,'#'
 	je	concatenation
 	stos	byte [edi]
@@ -928,7 +980,7 @@ use_macro:
 	jne	enclosed_argument
 	inc	ecx
 	jmp	enclosed_argument
-     enclosed_symbol:
+      enclosed_symbol:
 	movzx	eax,byte [esi]
 	inc	esi
 	add	esi,eax
@@ -1386,8 +1438,8 @@ increase_counter:
 	clc
 	ret
 
-symbol_characters db 26
- db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#'
+symbol_characters db 27
+ db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#`'
 
 preprocessor_directives:
  db 7,'include'

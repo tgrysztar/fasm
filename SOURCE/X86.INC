@@ -6898,6 +6898,8 @@ instructions_5:
  dw sse_sd_instruction-assembler
  db 'addss',58h
  dw sse_ss_instruction-assembler
+ db 'align',0
+ dw align_directive-assembler
  db 'andpd',54h
  dw sse_pd_instruction-assembler
  db 'andps',54h

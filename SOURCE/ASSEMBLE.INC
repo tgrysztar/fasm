@@ -32,6 +32,7 @@ assembler:
 	mov	[org_origin],edi
 	mov	[org_start],edi
 	mov	[org_registers],eax
+	mov	[org_symbol],eax
 	mov	[error_line],eax
 	mov	[counter],eax
 	mov	[format_flags],eax
@@ -49,17 +50,6 @@ assembler:
 	cmp	eax,[additional_memory_end]
 	jne	unexpected_end_of_file
 	call	close_pass
-	cmp	[next_pass_needed],0
-	je	check_pass
-      next_pass:
-	inc	[current_pass]
-	cmp	[current_pass],0
-	je	code_cannot_be_generated
-	jmp	assembler_loop
-      pass_error:
-	mov	[current_line],eax
-	jmp	near [error]
-      check_pass:
 	mov	eax,[labels_list]
       check_symbols:
 	cmp	eax,[memory_end]
@@ -78,22 +68,41 @@ assembler:
 	or	[next_pass_needed],-1
       symbol_defined_ok:
 	test	byte [eax+8],10h
-	jz	check_next_symbol
+	jz	use_prediction_ok
 	mov	cx,[current_pass]
 	and	byte [eax+8],not 10h
 	test	byte [eax+8],20h
-	jnz	check_used_prediction
+	jnz	check_use_prediction
 	cmp	cx,[eax+18]
-	jne	check_next_symbol
+	jne	use_prediction_ok
 	test	byte [eax+8],8
+	jz	use_prediction_ok
+	jmp	use_misprediction
+      check_use_prediction:
+	test	byte [eax+8],8
+	jz	use_misprediction
+	cmp	cx,[eax+18]
+	je	use_prediction_ok
+      use_misprediction:
+	or	[next_pass_needed],-1
+      use_prediction_ok:
+	test	byte [eax+8],40h
 	jz	check_next_symbol
-	jmp	not_as_predicted
-      check_used_prediction:
-	test	byte [eax+8],8
-	jz	not_as_predicted
-	cmp	cx,[eax+18]
+	mov	cx,[current_pass]
+	and	byte [eax+8],not 40h
+	test	byte [eax+8],80h
+	jnz	check_define_prediction
+	cmp	cx,[eax+16]
+	jne	check_next_symbol
+	test	byte [eax+8],1
+	jz	check_next_symbol
+	jmp	define_misprediction
+      check_define_prediction:
+	test	byte [eax+8],1
+	jz	define_misprediction
+	cmp	cx,[eax+16]
 	je	check_next_symbol
-      not_as_predicted:
+      define_misprediction:
 	or	[next_pass_needed],-1
       check_next_symbol:
 	add	eax,24
@@ -103,7 +112,14 @@ assembler:
 	jne	next_pass
 	mov	eax,[error_line]
 	or	eax,eax
-	jnz	pass_error
+	jz	assemble_ok
+	mov	[current_line],eax
+	jmp	near [error]
+      next_pass:
+	inc	[current_pass]
+	cmp	[current_pass],0
+	je	code_cannot_be_generated
+	jmp	assembler_loop
       assemble_ok:
 	ret
 
@@ -178,7 +194,7 @@ assemble_line:
 	or	ah,al
 	or	ch,ch
 	jz	label_symbol_ok
-	mov	edx,[current_section]
+	mov	edx,[org_symbol]
 	cmp	edx,[ebx+20]
 	mov	[ebx+20],edx
 	setne	al
@@ -240,6 +256,8 @@ assemble_line:
 	je	reserved_word_used_as_symbol
 	xor	cl,cl
 	mov	ch,[value_type]
+	cmp	ch,3
+	je	invalid_use_of_symbol
       make_constant:
 	cmp	eax,[ebx]
 	mov	[ebx],eax
@@ -412,26 +430,15 @@ org_directive:
 	jz	org_ok
 	cmp	dl,2
 	jne	invalid_use_of_symbol
-	or	[reloc_labels],-1
-	cmp	[next_pass_needed],0
-	jne	org_ok
-	cmp	[output_format],4
-	jne	org_ok
-	dec	[reloc_labels]
-	mov	edx,[symbol_identifier]
-	cmp	edx,[current_section]
-	jne	org_ok
-	mov	ecx,edi
-	sub	ecx,[edx+8]
-	cmp	eax,ecx
-	jne	org_ok
-	inc	[reloc_labels]
+	mov	[reloc_labels],1
       org_ok:
 	mov	ecx,edi
 	sub	ecx,eax
 	mov	[org_origin],ecx
 	mov	[org_registers],0
 	mov	[org_start],edi
+	mov	eax,[symbol_identifier]
+	mov	[org_symbol],eax
 	jmp	instruction_assembled
 label_directive:
 	lods	byte [esi]
@@ -483,16 +490,17 @@ label_directive:
 	pop	dword [ebx+8]
 	cdq
 	mov	ch,[value_type]
+	or	ch,ch
 	jz	make_free_label
-	cmp	ch,1
-	je	invalid_use_of_symbol
+	cmp	ch,2
+	jne	invalid_use_of_symbol
 	jmp	make_free_label
       define_free_label:
 	xor	ch,ch
 	cmp	[reloc_labels],0
 	je	make_free_label
 	mov	ch,2
-	push	[current_section]
+	push	[org_symbol]
 	pop	[symbol_identifier]
       make_free_label:
 	cmp	eax,[ebx]
@@ -752,6 +760,7 @@ virtual_directive:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_address_value
+	mov	ebp,[symbol_identifier]
 	xor	ch,ch
 	or	bh,bh
 	jz	set_virtual
@@ -767,6 +776,7 @@ virtual_directive:
 	cmp	[reloc_labels],0
 	je	set_virtual
 	mov	[value_type],2
+	mov	ebp,[org_symbol]
       set_virtual:
 	mov	edx,[org_registers]
 	mov	byte [org_registers],bh
@@ -787,18 +797,20 @@ virtual_directive:
 	mov	eax,edi
 	xchg	eax,[org_start]
 	mov	[ebx+0Ch],eax
-	mov	[ebx+10h],edi
+	xchg	ebp,[org_symbol]
+	mov	[ebx+10h],ebp
+	mov	[ebx+14h],edi
 	or	[virtual_data],-1
 	mov	[reloc_labels],0
-	cmp	[value_type],1
-	je	invalid_use_of_symbol
+	cmp	[value_type],0
+	je	instruction_assembled
 	cmp	[value_type],2
-	jne	instruction_assembled
+	jne	invalid_use_of_symbol
 	or	[reloc_labels],-1
 	jmp	instruction_assembled
       allocate_structure_data:
 	mov	ebx,[structures_buffer]
-	sub	ebx,14h
+	sub	ebx,18h
 	cmp	ebx,[free_additional_memory]
 	jb	out_of_memory
 	mov	[structures_buffer],ebx
@@ -823,7 +835,7 @@ virtual_directive:
 	cmp	word [ebx],repeat_directive-assembler
 	je	no_such_structure
       repeat_structure_ok:
-	add	ebx,14h
+	add	ebx,18h
 	jmp	scan_structures
       no_such_structure:
 	stc
@@ -841,13 +853,15 @@ virtual_directive:
 	mov	[org_registers],eax
 	mov	eax,[ebx+0Ch]
 	mov	[org_start],eax
-	mov	edi,[ebx+10h]
+	mov	eax,[ebx+10h]
+	mov	[org_symbol],eax
+	mov	edi,[ebx+14h]
       remove_structure_data:
 	push	esi edi
 	mov	esi,[structures_buffer]
 	mov	ecx,ebx
 	sub	ecx,esi
-	lea	edi,[esi+14h]
+	lea	edi,[esi+18h]
 	mov	[structures_buffer],edi
 	shr	ecx,2
 	rep	movs dword [edi],[esi]
@@ -1635,4 +1649,67 @@ reserve_twords:
 	cmp	[next_pass_needed],0
 	je	zero_words
 	lea	edi,[edi+ecx*2]
+	jmp	reserved_data
+align_directive:
+	lods	byte [esi]
+	cmp	al,'('
+	jne	invalid_argument
+	cmp	byte [esi],'.'
+	je	invalid_value
+	call	get_dword_value
+	cmp	[value_type],0
+	jne	invalid_use_of_symbol
+	mov	edx,eax
+	dec	edx
+	test	eax,edx
+	jnz	invalid_value
+	or	eax,eax
+	jz	invalid_value
+	cmp	eax,1
+	je	instruction_assembled
+	mov	ecx,edi
+	sub	ecx,[org_origin]
+	cmp	[org_registers],0
+	jne	section_not_aligned_enough
+	cmp	[reloc_labels],0
+	je	make_alignment
+	cmp	[output_format],3
+	je	pe_alignment
+	mov	ebx,[org_symbol]
+	cmp	byte [ebx],0
+	jne	section_not_aligned_enough
+	cmp	eax,[ebx+10h]
+	jbe	make_alignment
+	jmp	section_not_aligned_enough
+      pe_alignment:
+	cmp	eax,1000h
+	ja	section_not_aligned_enough
+      make_alignment:
+	dec	eax
+	and	ecx,eax
+	jz	instruction_assembled
+	neg	ecx
+	add	ecx,eax
+	inc	ecx
+	mov	edx,ecx
+	add	edx,edi
+	jc	out_of_memory
+	cmp	edx,[display_buffer]
+	ja	out_of_memory
+	push	edi
+	cmp	[next_pass_needed],0
+	je	nops
+	add	edi,ecx
+	jmp	reserved_data
+      nops:
+	mov	eax,90909090h
+	shr	ecx,1
+	jnc	nops_stosb_ok
+	stos	byte [edi]
+      nops_stosb_ok:
+	shr	ecx,1
+	jnc	nops_stosw_ok
+	stos	word [edi]
+      nops_stosw_ok:
+	rep	stos dword [edi]
 	jmp	reserved_data

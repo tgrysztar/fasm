@@ -1,6 +1,17 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.50
+[08-12-2003]
+------------
+[+] added alignment features
+[+] added resource linking to PE formatter
+[+] added ` operator
+[+] added %t symbol
+[-] behaviour of "defined" operator changed a bit
+[-] several formatter revisions
+[-] some other fixes
+
 version 1.49
 [16-09-2003]
 ------------

@@ -214,6 +214,8 @@ parse_line:
 	je	unallowed_character
 	cmp	al,'#'
 	je	unallowed_character
+	cmp	al,'`'
+	je	unallowed_character
 	dec	esi
 	cmp	al,1Ah
 	jne	expression_argument
@@ -798,13 +800,13 @@ get_label_id:
 	mov	[anonymous_forward],0
 	jmp	anonymous_ok
       standard_label:
+	cmp	byte [esi],'%'
+	je	get_predefined_id
 	cmp	ecx,1
 	jne	find_label
 	lods	byte [esi]
 	cmp	al,'$'
 	je	get_current_offset_id
-	cmp	al,'%'
-	je	get_counter_id
 	dec	esi
 	jmp	find_label
       get_current_offset_id:
@@ -813,6 +815,21 @@ get_label_id:
       get_counter_id:
 	mov	eax,1
 	ret
+      get_timestamp_id:
+	mov	eax,2
+	ret
+      get_predefined_id:
+	cmp	ecx,2
+	ja	find_label
+	inc	esi
+	cmp	cl,1
+	je	get_counter_id
+	lods	byte [esi]
+	mov	ebx,characters
+	xlat	[ebx]
+	cmp	al,'t'
+	je	get_timestamp_id
+	sub	esi,2
       find_label:
 	xor	ebx,ebx
 	xor	ebp,ebp

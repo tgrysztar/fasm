@@ -3,116 +3,114 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-        format  ELF executable
-        entry   start
-
-        macro   align value { rb (value-1) - ($ + value-1) mod value }
+	format	ELF executable
+	entry	start
 
 start:
 
-        mov     esi,_logo
-        call    display_string
+	mov	esi,_logo
+	call	display_string
 
-        pop     eax
-        cmp     eax,3
-        jne     information
-        pop     eax
-        pop     [input_file]
-        pop     [output_file]
-        pop     eax
-        pop     [environment]
+	pop	eax
+	cmp	eax,3
+	jne	information
+	pop	eax
+	pop	[input_file]
+	pop	[output_file]
+	pop	eax
+	pop	[environment]
 
-        call    init_memory
+	call	init_memory
 
-        mov     edi,characters
-        mov     ecx,100h
-        xor     al,al
+	mov	edi,characters
+	mov	ecx,100h
+	xor	al,al
       make_characters_table:
-        stosb
-        inc     al
-        loop    make_characters_table
-        mov     esi,characters+'a'
-        mov     edi,characters+'A'
-        mov     ecx,26
-        rep     movsb
-        mov     edi,characters
-        mov     esi,symbol_characters+1
-        movzx   ecx,byte [esi-1]
-        xor     eax,eax
+	stosb
+	inc	al
+	loop	make_characters_table
+	mov	esi,characters+'a'
+	mov	edi,characters+'A'
+	mov	ecx,26
+	rep	movsb
+	mov	edi,characters
+	mov	esi,symbol_characters+1
+	movzx	ecx,byte [esi-1]
+	xor	eax,eax
       convert_table:
-        lodsb
-        mov     byte [edi+eax],0
-        loop    convert_table
-        mov     [display_buffer],0
+	lodsb
+	mov	byte [edi+eax],0
+	loop	convert_table
+	mov	[display_buffer],0
 
-        mov     eax,78
-        mov     ebx,buffer
-        xor     ecx,ecx
-        int     0x80
-        mov     eax,dword [buffer]
-        mov     ecx,1000
-        mul     ecx
-        mov     ebx,eax
-        mov     eax,dword [buffer+4]
-        div     ecx
-        add     eax,ebx
-        mov     [start_time],eax
+	mov	eax,78
+	mov	ebx,buffer
+	xor	ecx,ecx
+	int	0x80
+	mov	eax,dword [buffer]
+	mov	ecx,1000
+	mul	ecx
+	mov	ebx,eax
+	mov	eax,dword [buffer+4]
+	div	ecx
+	add	eax,ebx
+	mov	[start_time],eax
 
-        call    preprocessor
-        call    parser
-        call    assembler
-        call    formatter
+	call	preprocessor
+	call	parser
+	call	assembler
+	call	formatter
 
-        call    display_user_messages
-        movzx   eax,[current_pass]
-        inc     eax
-        call    display_number
-        mov     esi,_passes_suffix
-        call    display_string
-        mov     eax,78
-        mov     ebx,buffer
-        xor     ecx,ecx
-        int     0x80
-        mov     eax,dword [buffer]
-        mov     ecx,1000
-        mul     ecx
-        mov     ebx,eax
-        mov     eax,dword [buffer+4]
-        div     ecx
-        add     eax,ebx
-        sub     eax,[start_time]
-        jnc     time_ok
-        add     eax,3600000
+	call	display_user_messages
+	movzx	eax,[current_pass]
+	inc	eax
+	call	display_number
+	mov	esi,_passes_suffix
+	call	display_string
+	mov	eax,78
+	mov	ebx,buffer
+	xor	ecx,ecx
+	int	0x80
+	mov	eax,dword [buffer]
+	mov	ecx,1000
+	mul	ecx
+	mov	ebx,eax
+	mov	eax,dword [buffer+4]
+	div	ecx
+	add	eax,ebx
+	sub	eax,[start_time]
+	jnc	time_ok
+	add	eax,3600000
       time_ok:
-        xor     edx,edx
-        mov     ebx,100
-        div     ebx
-        or      eax,eax
-        jz      display_bytes_count
-        xor     edx,edx
-        mov     ebx,10
-        div     ebx
-        push    edx
-        call    display_number
-        mov     dl,'.'
-        call    display_character
-        pop     eax
-        call    display_number
-        mov     esi,_seconds_suffix
-        call    display_string
+	xor	edx,edx
+	mov	ebx,100
+	div	ebx
+	or	eax,eax
+	jz	display_bytes_count
+	xor	edx,edx
+	mov	ebx,10
+	div	ebx
+	push	edx
+	call	display_number
+	mov	dl,'.'
+	call	display_character
+	pop	eax
+	call	display_number
+	mov	esi,_seconds_suffix
+	call	display_string
       display_bytes_count:
-        mov     eax,[written_size]
-        call    display_number
-        mov     esi,_bytes_suffix
-        call    display_string
-        xor     al,al
-        jmp     exit_program
+	mov	eax,[written_size]
+	call	display_number
+	mov	esi,_bytes_suffix
+	call	display_string
+	xor	al,al
+	jmp	exit_program
 
 information:
-        mov     esi,_usage
-        call    display_string
-        mov     al,1
-        jmp     exit_program
+	mov	esi,_usage
+	call	display_string
+	mov	al,1
+	jmp	exit_program
 
 include 'system.inc'
 
@@ -172,6 +170,7 @@ label_hash dd ?
 org_origin dd ?
 org_registers dd ?
 org_start dd ?
+org_symbol dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
@@ -197,6 +196,8 @@ machine dw ?
 subsystem dw ?
 subsystem_version dd ?
 image_base dd ?
+resource_data dd ?
+resource_size dd ?
 
 macro_status db ?
 parenthesis_stack db ?

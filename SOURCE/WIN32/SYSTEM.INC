@@ -3,39 +3,43 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-CREATE_NEW	       =   1
-CREATE_ALWAYS	       =   2
-OPEN_EXISTING	       =   3
-OPEN_ALWAYS	       =   4
-TRUNCATE_EXISTING      =   5
+CREATE_NEW	       = 1
+CREATE_ALWAYS	       = 2
+OPEN_EXISTING	       = 3
+OPEN_ALWAYS	       = 4
+TRUNCATE_EXISTING      = 5
 
-GENERIC_READ	       =   80000000h
-GENERIC_WRITE	       =   40000000h
+FILE_SHARE_READ        = 1
+FILE_SHARE_WRITE       = 2
+FILE_SHARE_DELETE      = 4
 
-STD_INPUT_HANDLE       =   0FFFFFFF6h
-STD_OUTPUT_HANDLE      =   0FFFFFFF5h
-STD_ERROR_HANDLE       =   0FFFFFFF4h
+GENERIC_READ	       = 80000000h
+GENERIC_WRITE	       = 40000000h
 
-MEM_COMMIT	       =   1000h
-MEM_RESERVE	       =   2000h
-MEM_DECOMMIT	       =   4000h
-MEM_RELEASE	       =   8000h
-MEM_FREE	       =   10000h
-MEM_PRIVATE	       =   20000h
-MEM_MAPPED	       =   40000h
-MEM_RESET	       =   80000h
-MEM_TOP_DOWN	       =   100000h
+STD_INPUT_HANDLE       = 0FFFFFFF6h
+STD_OUTPUT_HANDLE      = 0FFFFFFF5h
+STD_ERROR_HANDLE       = 0FFFFFFF4h
 
-PAGE_NOACCESS	       =   1
-PAGE_READONLY	       =   2
-PAGE_READWRITE	       =   4
-PAGE_WRITECOPY	       =   8
-PAGE_EXECUTE	       =   10h
-PAGE_EXECUTE_READ      =   20h
-PAGE_EXECUTE_READWRITE =   40h
-PAGE_EXECUTE_WRITECOPY =   80h
-PAGE_GUARD	       =   100h
-PAGE_NOCACHE	       =   200h
+MEM_COMMIT	       = 1000h
+MEM_RESERVE	       = 2000h
+MEM_DECOMMIT	       = 4000h
+MEM_RELEASE	       = 8000h
+MEM_FREE	       = 10000h
+MEM_PRIVATE	       = 20000h
+MEM_MAPPED	       = 40000h
+MEM_RESET	       = 80000h
+MEM_TOP_DOWN	       = 100000h
+
+PAGE_NOACCESS	       = 1
+PAGE_READONLY	       = 2
+PAGE_READWRITE	       = 4
+PAGE_WRITECOPY	       = 8
+PAGE_EXECUTE	       = 10h
+PAGE_EXECUTE_READ      = 20h
+PAGE_EXECUTE_READWRITE = 40h
+PAGE_EXECUTE_WRITECOPY = 80h
+PAGE_GUARD	       = 100h
+PAGE_NOCACHE	       = 200h
 
 init_memory:
 	push	buffer
@@ -153,7 +157,7 @@ open:
 	push	0
 	push	OPEN_EXISTING
 	push	0
-	push	0
+	push	FILE_SHARE_READ
 	push	GENERIC_READ
 	push	buffer
 	call	[CreateFile]
@@ -209,7 +213,7 @@ create:
 	push	0
 	push	CREATE_ALWAYS
 	push	0
-	push	0
+	push	FILE_SHARE_READ
 	push	GENERIC_WRITE
 	push	buffer
 	call	[CreateFile]

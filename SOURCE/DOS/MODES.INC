@@ -200,11 +200,11 @@ dpmi:
         mov     ah,48h
         int     21h
         jc      not_enough_memory
-        mov     ds,[psp_segment]
+        mov     ds,[environment_segment]
         mov     es,ax
         mov     ax,1
         call    far [cs:mode_switch]    ; switch to protected mode
-        jc      error
+        jc      no_dpmi
         mov     cx,1
         xor     ax,ax
         int     31h                     ; allocate descriptor for code
@@ -243,9 +243,11 @@ dpmi:
         int     31h
         mov     bx,di
         int     31h
-        mov     es,di
-        mov     [es:psp_segment],ds
+        mov     ax,ds
         mov     ds,di
+        mov     [psp_segment],es
+        mov     [environment_segment],ax
+        mov     es,di
         mov     [mode],dpmi
         pop     ebx
         movzx   ebx,bx

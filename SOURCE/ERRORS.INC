@@ -27,6 +27,9 @@ file_not_found:
 error_reading_file:
 	call	assembler_error
 	dm	"error reading file"
+invalid_file_format:
+	call	assembler_error
+	dm	"invalid file format"
 invalid_macro_arguments:
 	call	assembler_error
 	dm	"invalid macro arguments"
@@ -105,3 +108,6 @@ missing_end_quote:
 extra_characters_on_line:
 	call	assembler_error
 	dm	"extra characters on line"
+section_not_aligned_enough:
+	call	assembler_error
+	dm	"section is not aligned enough for this operation"

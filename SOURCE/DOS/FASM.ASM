@@ -3,11 +3,9 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-	format	 MZ
-	heap	 0
-	entry	 main:start
-
-	macro	 align value { rb (value-1) - ($ + value-1) mod value }
+	format	MZ
+	heap	0
+	entry	main:start
 
 include 'modes.inc'
 
@@ -16,9 +14,11 @@ segment main use16
 start:
 
 	mov	ax,ds
+	mov	dx,[2Ch]
 	push	cs cs
 	pop	ds es
 	mov	[psp_segment],ax
+	mov	[environment_segment],dx
 
 	mov	dx,_logo
 	mov	ah,9
@@ -187,6 +187,7 @@ label_hash dd ?
 org_origin dd ?
 org_registers dd ?
 org_start dd ?
+org_symbol dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
@@ -212,6 +213,8 @@ machine dw ?
 subsystem dw ?
 subsystem_version dd ?
 image_base dd ?
+resource_data dd ?
+resource_size dd ?
 
 macro_status db ?
 parenthesis_stack db ?
