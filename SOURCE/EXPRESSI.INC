@@ -782,6 +782,7 @@ get_fp_value:
 
 calculate_expression:
 	mov	[current_offset],edi
+	mov	[value_undefined],0
       calculation_loop:
 	lods	byte [esi]
 	or	al,al
@@ -848,6 +849,12 @@ calculate_expression:
 	jmp	invalid_expression
       expression_calculated:
 	sub	edi,14h
+	cmp	[value_undefined],0
+	je	expression_value_ok
+	xor	eax,eax
+	mov	[edi],eax
+	mov	[edi+4],eax
+      expression_value_ok:
 	mov	eax,[edi+16]
 	mov	[symbol_identifier],eax
 	ret
@@ -988,6 +995,7 @@ calculate_expression:
 	jne	invalid_value
 	or	[next_pass_needed],-1
 	mov	byte [edi+12],0
+	or	[value_undefined],-1
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
@@ -2189,9 +2197,10 @@ get_logical_value:
 	cmp	ah,2
 	jne	invalid_expression
 	lods	dword [esi]
-	cmp	eax,10h
-	jb	return_true
 	inc	esi
+	cmp	eax,0Fh
+	je	reserved_word_used_as_symbol
+	jb	return_true
 	test	byte [eax+8],1
 	jnz	symbol_defined
 	cmp	[current_pass],0

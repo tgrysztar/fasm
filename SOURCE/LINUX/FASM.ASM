@@ -221,6 +221,7 @@ fp_sign db ?
 fp_format db ?
 value_size db ?
 forced_size db ?
+value_undefined db ?
 value_type db ?
 address_size db ?
 compare_type db ?

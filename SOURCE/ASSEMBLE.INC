@@ -646,8 +646,9 @@ times_directive:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-	or	eax,eax
-	jz	zero_times
+	cmp	eax,0
+	je	zero_times
+	jl	negative_times
 	cmp	byte [esi],':'
 	jne	times_argument_ok
 	inc	esi
@@ -670,6 +671,12 @@ times_directive:
 	pop	eax
 	pop	[counter_limit] [counter]
 	jmp	instruction_assembled
+      negative_times:
+	cmp	[error_line],0
+	jne	zero_times
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_value
       zero_times:
 	call	skip_line
 	jmp	instruction_assembled
@@ -796,8 +803,9 @@ repeat_directive:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-	or	eax,eax
-	jz	zero_repeat
+	cmp	eax,0
+	je	zero_repeat
+	jl	negative_repeat
 	call	allocate_structure_data
 	mov	word [ebx],repeat_directive-assembler
 	xchg	eax,[counter_limit]
@@ -824,6 +832,12 @@ repeat_directive:
       continue_repeating:
 	mov	esi,[ebx+0Ch]
 	jmp	instruction_assembled
+      negative_repeat:
+	cmp	[error_line],0
+	jne	zero_repeat
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_value
       zero_repeat:
 	mov	al,[esi]
 	or	al,al
@@ -1115,7 +1129,7 @@ data_dwords:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_word_value
-	mov	dx,ax
+	push	eax
 	inc	esi
 	lods	byte [esi]
 	cmp	al,'('
@@ -1129,7 +1143,7 @@ data_dwords:
 	stos	word [edi]
 	pop	eax
 	mov	[value_type],al
-	mov	ax,dx
+	pop	eax
 	call	mark_relocation
 	stos	word [edi]
       dword_ok:
@@ -1172,7 +1186,7 @@ data_pwords:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_word_value
-	mov	dx,ax
+	push	eax
 	inc	esi
 	lods	byte [esi]
 	cmp	al,'('
@@ -1186,7 +1200,7 @@ data_pwords:
 	stos	dword [edi]
 	pop	eax
 	mov	[value_type],al
-	mov	ax,dx
+	pop	eax
 	call	mark_relocation
 	stos	word [edi]
       pword_ok:

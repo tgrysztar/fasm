@@ -1,6 +1,12 @@
 
 Visit http://fasm.sourceforge.net for more information
 
+version 1.42
+[05-12-2002]
+------------
+[+] improved optimization algorithms
+[-] more small fixes
+
 version 1.41
 [14-11-2002]
 ------------
@@ -9,6 +15,7 @@ version 1.41
 [+] added missing syntax options for some FPU and MMX instructions
 [+] added defined and used operators
 [-] parser algorithms corrected
+[-] minor bugs fixed
 
 version 1.40
 [28-08-2002]

@@ -4148,7 +4148,10 @@ basic_fpu_instruction:
 	je	basic_fpu_single_streg
 	or	al,al
 	jz	basic_fpu_st0
+	test	ah,110b
+	jz	basic_fpu_streg_st0
 	xor	ah,1
+      basic_fpu_streg_st0:
 	shl	ah,3
 	or	al,ah
 	mov	[postbyte_register],al
@@ -5610,23 +5613,18 @@ fxsave_instruction:
 	call	get_size_operator
 	cmp	al,'['
 	jne	invalid_operand
-	cmp	ah,0
-	je	fxsave_size_ok
+	call	get_address
+	mov	ah,[operand_size]
+	or	ah,ah
+	jz	fxsave_size_ok
 	mov	al,[postbyte_register]
 	cmp	al,10b
 	jb	invalid_operand_size
 	cmp	al,11b
-	jbe	ldmxcsr_size_check
-	cmp	al,111b
-	jne	invalid_operand_size
-	cmp	ah,1
-	je	fxsave_size_ok
-	jmp	invalid_operand_size
-      ldmxcsr_size_check:
+	ja	invalid_operand_size
 	cmp	ah,4
 	jne	invalid_operand_size
       fxsave_size_ok:
-	call	get_address
 	call	store_instruction
 	jmp	instruction_assembled
 prefetch_instruction:
@@ -7164,7 +7162,7 @@ instructions_6:
  db 'fprem1',110101b
  dw simple_fpu_instruction-assembler
  db 'frstor',4
- dw fsave_instruction-assembler
+ dw fnsave_instruction-assembler
  db 'fscale',111101b
  dw simple_fpu_instruction-assembler
  db 'fstenv',6

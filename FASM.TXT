@@ -5,7 +5,7 @@
 			   €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €	€  €
 			   €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €	€  €
 
-			      flat assembler 1.41
+			      flat assembler 1.42
 			      Programmer's Manual
 
 
@@ -118,21 +118,21 @@ compilation summary. It includes the information of how many passes was done,
 how much time it took, and how many bytes were written into destination file.
 Here is an example of the compilation summary:
 
-flat assembler	version 1.41
+flat assembler	version 1.42
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, program will display an error
 message. For example, when compiler can't find the input file, it will display
 the following message:
 
-flat assembler	version 1.41
+flat assembler	version 1.42
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler	version 1.41
+flat assembler	version 1.42
 example.asm [3]:
 	mob	ax,1
 error: illegal instruction.
@@ -142,7 +142,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also number of erroneous line inside the
 macroinstruction is gived:
 
-flat assembler	version 1.41
+flat assembler	version 1.42
 example.asm [6] stoschar [2]:
 	stoschar 7
 error: illegal instruction.
@@ -1473,7 +1473,7 @@ proceeding, "fnstenv" does not. "fldenv" loads the complete operating
 environment from memory into the FPU. "fsave" and "fnsave" store the current
 FPU state (operating environment and register stack) at the specified
 destination in memory and reinitializes the FPU. "fsave" check for pending
-unmasked FPU exceptions before proceeding, verb"fnsave" does not. "frstor"
+unmasked FPU exceptions before proceeding, "fnsave" does not. "frstor"
 loads the FPU state from the specified memory location. All these instructions
 need an operand being a memory location.
   "finit" and "fninit" set the FPU operating environment into its default
