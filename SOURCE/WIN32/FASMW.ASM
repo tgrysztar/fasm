@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.09
+; flat assembler  version 1.10
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 ;
@@ -181,8 +181,8 @@ include '..\tables.inc'
 
 _copyright db 'Copyright (c) 1999-2000, Tomasz Grysztar',0
 
-_logo db 'flat assembler  version 1.09',0Dh,0Ah,0
-_usage db 'usage: fasm source output',0Dh,0Ah,0
+_logo db 'flat assembler  version 1.10',0Dh,0Ah,0
+_usage db 'usage: fasmw source output',0Dh,0Ah,0
 
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0

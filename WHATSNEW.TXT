@@ -2,6 +2,13 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.10
+[22-03-2001]
+------------
+[+] SIMD instructions support
+[+] added some missed FPU instructions
+[-] fixed labels redefinition bug
+
 version 1.09
 [04-01-2001]
 ------------
