@@ -510,6 +510,8 @@ assembler_error:
 	int	21h
 	jmp	exit_program
 
+times 12 nop
+
 character db ?,0
 bytes_count dd ?
 

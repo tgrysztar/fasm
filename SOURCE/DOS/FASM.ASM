@@ -243,9 +243,9 @@ mmx_size db ?
 mmx_prefix db ?
 nextbyte db ?
 
-params rb 100h
 characters rb 100h
 converted rb 100h
+params rb 100h
 buffer rb 4000h
 
 rb 400h

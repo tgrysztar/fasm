@@ -138,16 +138,16 @@ get_number:
 	cmp	al,9
 	ja	invalid_number
       number_begin:
-	mov	eax,esi
+	mov	ebx,esi
 	add	esi,ecx
 	push	esi
 	sub	esi,2
 	mov	dword [edi],0
 	mov	dword [edi+4],0
 	inc	esi
-	cmp	byte [eax],'$'
+	cmp	byte [ebx],'$'
 	je	pascal_hex_number
-	cmp	word [eax],'0x'
+	cmp	word [ebx],'0x'
 	je	get_hex_number
 	dec	esi
 	mov	al,[esi+1]
@@ -168,7 +168,7 @@ get_number:
 	cmp	al,'O'
 	je	get_oct_number
 	inc	esi
-	cmp	byte [eax],'0'
+	cmp	byte [ebx],'0'
 	je	get_oct_number
       get_dec_number:
 	mov	ebx,esi
@@ -441,6 +441,8 @@ get_fp_value:
 	je	fp_dot
 	cmp	al,'E'
 	je	fp_exponent
+	cmp	al,'e'
+	je	fp_exponent
 	sub	al,30h
 	mov	edi,fp_value+16
 	xor	edx,edx
@@ -472,6 +474,8 @@ get_fp_value:
       fp_after_dot:
 	lods	byte [esi]
 	cmp	al,'E'
+	je	fp_exponent
+	cmp	al,'e'
 	je	fp_exponent
 	inc	[fp_format]
 	cmp	[fp_format],80h
@@ -512,8 +516,8 @@ get_fp_value:
 	je	fp_exponent_sign
 	cmp	byte [esi],'-'
 	jne	fp_done
-      fp_exponent_sign:
 	not	ebp
+      fp_exponent_sign:
 	add	esi,2
 	lods	byte [esi]
 	movzx	ecx,al
@@ -2067,4 +2071,3 @@ get_logical_value:
 	pop	bx
 	xor	al,bl
 	ret
-
