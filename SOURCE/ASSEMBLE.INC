@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.07
+; flat assembler  version 1.08
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -1672,10 +1672,8 @@ mov_instruction:
 	jnz	mov_mem_address32_al
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	edx,8000h
+	cmp	edx,10000h
 	jb	mov_mem_address16_al
-	cmp	edx,-8000h
-	jae	mov_mem_address16_al
       mov_mem_address32_al:
 	call	address_32bit_prefix
 	call	store_segment_prefix
@@ -1692,10 +1690,8 @@ mov_instruction:
 	stos	byte [edi]
 	mov	eax,edx
 	stos	word [edi]
-	cmp	edx,8000h
+	cmp	edx,10000h
 	jge	value_out_of_range
-	cmp	edx,-8000h
-	jl	value_out_of_range
 	jmp	instruction_assembled
       mov_mem_reg_16bit:
 	call	operand_16bit_prefix
@@ -1713,10 +1709,8 @@ mov_instruction:
 	jnz	mov_mem_address32_ax
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	edx,8000h
+	cmp	edx,10000h
 	jb	mov_mem_address16_ax
-	cmp	edx,-8000h
-	jae	mov_mem_address16_ax
       mov_mem_address32_ax:
 	call	address_32bit_prefix
 	call	store_segment_prefix
@@ -1916,10 +1910,8 @@ mov_instruction:
 	jnz	mov_al_mem_address32
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	edx,8000h
+	cmp	edx,10000h
 	jb	mov_al_mem_address16
-	cmp	edx,-8000h
-	jae	mov_al_mem_address16
       mov_al_mem_address32:
 	call	address_32bit_prefix
 	call	store_segment_prefix
@@ -1946,10 +1938,8 @@ mov_instruction:
 	jnz	mov_ax_mem_address32
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	edx,8000h
+	cmp	edx,10000h
 	jb	mov_ax_mem_address16
-	cmp	edx,-8000h
-	jae	mov_ax_mem_address16
       mov_ax_mem_address32:
 	call	address_32bit_prefix
 	call	store_segment_prefix
@@ -2807,6 +2797,8 @@ arpl_instruction:
 	mov	[base_code],al
 	call	get_operand_size
 	lods	byte [esi]
+	cmp	al,10h
+	je	arpl_reg
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address
@@ -2823,6 +2815,29 @@ arpl_instruction:
 	jne	invalid_operand_size
 	mov	[base_code],63h
 	call	store_instruction
+	jmp	instruction_assembled
+      arpl_reg:
+	lods	byte [esi]
+	call	convert_register
+	cmp	[operand_size],2
+	jne	invalid_operand_size
+	mov	dl,al
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_register
+	cmp	[operand_size],2
+	jne	invalid_operand_size
+	mov	ah,al
+	shl	ah,3
+	or	ah,dl
+	or	ah,11000000b
+	mov	al,63h
+	stos	word [edi]
 	jmp	instruction_assembled
 bound_instruction:
 	call	get_operand_size

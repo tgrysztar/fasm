@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.07
+; flat assembler  version 1.08
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -899,7 +899,7 @@ create_pe_stub:
 	int	21h
 	mov	ax,4C01h
 	int	21h
-    pe_message db 'This program cannot be run in DOS mode.',0Dh,0Ah,24h
+    pe_message db 'this program cannot be run in DOS mode.',0Dh,0Ah,24h
 	rq	1
     pe_stub_end:
 	use32

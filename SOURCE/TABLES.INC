@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.07
+; flat assembler  version 1.08
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -310,6 +310,7 @@ symbols:
  db 6,'export',1Ah,0
  db 3,'far',12h,2
  db 2,'fs',10h,65h
+ db 5,'fword',11h,6
  db 2,'gs',10h,66h
  db 4,'i386',1Bh,43h
  db 4,'i486',1Bh,44h
@@ -742,6 +743,8 @@ instructions_4:
  dw ret_instruction_32bit-assembler,0C2h
  db 'retf'
  dw ret_instruction-assembler,0CAh
+ db 'retn'
+ dw ret_instruction-assembler,0C2h
  db 'retw'
  dw ret_instruction_16bit-assembler,0C2h
  db 'sahf'

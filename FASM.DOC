@@ -1,17 +1,17 @@
 
-			  ‹‹‹
-			€ﬂﬂﬂ ﬂ€
-		       €€
-		       €€
-		     ‹ €€‹‹  ‹ﬂﬂﬂ€‹    ‹ﬂﬂﬂﬂ‹ﬁﬂ‹ﬁﬂﬂ‹ﬂ€›
-		       €€	   €› ﬁ€    ﬂ  ﬁ€  €  ›
-		       €€    ‹ﬂﬂﬂﬂﬂ€€  ﬂﬂﬂ€‹‹  ﬁ€  €  ›
-		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
-		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
+                          ‹‹‹
+                        €ﬂﬂﬂ ﬂ€
+                       €€
+                       €€
+                     ‹ €€‹‹  ‹ﬂﬂﬂ€‹    ‹ﬂﬂﬂﬂ‹ﬁﬂ‹ﬁﬂﬂ‹ﬂ€›
+                       €€          €› ﬁ€    ﬂ  ﬁ€  €  ›
+                       €€    ‹ﬂﬂﬂﬂﬂ€€  ﬂﬂﬂ€‹‹  ﬁ€  €  ›
+                       €€   €      €€ ‹     ﬁ€ ﬁ€  €  ›
+                     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ   ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.07
+                        flat assembler  version 1.08
 
-	 Copyright (c) 1999-2000, Tomasz Grysztar. All rights reserved.
+         Copyright (c) 1999-2000, Tomasz Grysztar. All rights reserved.
 
 
 Table of Contents
@@ -26,20 +26,20 @@ Table of Contents
 
  2  Using flat assembler
     2.1  Assembler syntax
-	 2.1.1	Instruction syntax
-		2.1.1.1  Data access
-		2.1.1.2  Jumps and calls
-		2.1.1.3  Labels and constants
-		2.1.1.4  Addresses
-		2.1.1.5  Special cases
-	 2.1.2	Number syntax
-	 2.1.3	Logical expressions syntax
-	 2.1.4	Defining constants
-	 2.1.5	Defining data
+         2.1.1  Instruction syntax
+                2.1.1.1  Data access
+                2.1.1.2  Jumps and calls
+                2.1.1.3  Labels and constants
+                2.1.1.4  Addresses
+                2.1.1.5  Special cases
+         2.1.2  Number syntax
+         2.1.3  Logical expressions syntax
+         2.1.4  Defining constants
+         2.1.5  Defining data
     2.2  Directives
-	 2.2.1	Preprocessor directives
-	 2.2.2	Code and format settings
-	 2.2.3	Other directives
+         2.2.1  Preprocessor directives
+         2.2.2  Code and format settings
+         2.2.3  Other directives
 
 ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
 
@@ -117,40 +117,40 @@ beginning at the address of 'myvar'!
 
     Unconditional:
 
-	jmp  alpha		      ; simple jump
-	jmp  near byte beta	      ; short jump
-	jmp  near dword beta	      ; force dword size
-	jmp  10h:50h		      ; far jump
-	jmp  10h:dword 50000h	      ; 32-bit far jump
-	call far pword [1000h]	      ; 32-bit far call
-	call far dword [delta]	      ; 16-bit far call
-	call near dword [delta]       ; 32-bit near call
+        jmp  alpha                    ; simple jump
+        jmp  near byte beta           ; short jump
+        jmp  near dword beta          ; force dword size
+        jmp  10h:50h                  ; far jump
+        jmp  10h:dword 50000h         ; 32-bit far jump
+        call far pword [1000h]        ; 32-bit far call
+        call far dword [delta]        ; 16-bit far call
+        call near dword [delta]       ; 32-bit near call
 
     Conditional:
 
-	je   alpha		      ; will be optimized
-	jge  byte alpha 	      ; force byte (error if out of range)
-	jb   dword alpha	      ; force dword (no optimization)
+        je   alpha                    ; will be optimized
+        jge  byte alpha               ; force byte (error if out of range)
+        jb   dword alpha              ; force dword (no optimization)
 
 2.1.1.3  Labels and constants
 
     Examples of defining labels:
 
-	alpha:			      ; simple label
-	     label     beta	      ; as above
-	     label     gamma byte     ; low byte of delta dword
-	delta	       dd 0	      ; data label
-	epsilon = alpha + 1	      ; constant definition
+        alpha:                        ; simple label
+             label     beta           ; as above
+             label     gamma byte     ; low byte of delta dword
+        delta          dd 0           ; data label
+        epsilon = alpha + 1           ; constant definition
 
     Local labels:
 
-	sigma:
-	.alpha: 		      ; local label (1)
-	     jmp  .alpha	      ; jump to (1)
-	omega:
-	.alpha: 		      ; local label (2)
-	     jmp  .alpha	      ; jump to (2)
-	     jmp  sigma.alpha	      ; jump to (1)
+        sigma:
+        .alpha:                       ; local label (1)
+             jmp  .alpha              ; jump to (1)
+        omega:
+        .alpha:                       ; local label (2)
+             jmp  .alpha              ; jump to (2)
+             jmp  sigma.alpha         ; jump to (1)
 
 2.1.1.4  Addresses
 
@@ -204,59 +204,59 @@ where it's used.
     Data can be defined in two ways; if the data is to be initialised
 to a specific value, the forms are:
 
-	gdtr	  db	16,0,0,0,0,0,0	      ; sequence of bytes
-	attrib	  db	0x1E		      ; single byte (hexadecimal)
-	command:  times 127 db 0	      ; byte string
-	str001	  db	'test.bin',0	      ; character string
-	argv:	  times 10 dd 0 	      ; ten 32-bit double words
-	picture   file	'star.gif'	      ; whole file contents
+        gdtr      db    16,0,0,0,0,0,0        ; sequence of bytes
+        attrib    db    0x1E                  ; single byte (hexadecimal)
+        command:  times 127 db 0              ; byte string
+        str001    db    'test.bin',0          ; character string
+        argv:     times 10 dd 0               ; ten 32-bit double words
+        picture   file  'star.gif'            ; whole file contents
 
     Other forms available are:
 
-	dw   ; 16-bit word
-	dp   ; 48-bit pointer
-	dq   ; 64-bit quad word
-	dt   ; 80-bit floating point
-	du   ; 16-bit word strings
+        dw   ; 16-bit word
+        dp   ; 48-bit pointer
+        dq   ; 64-bit quad word
+        dt   ; 80-bit floating point
+        du   ; 16-bit word strings
 
     If it is only desired to reserve space for data, the forms are:
 
-	_proname  rd   1		      ; reserve one dword
-	_inch	  rb   1		      ; reserve one byte
-	newstack  rd   255		      ; reserve 255 dwords
+        _proname  rd   1                      ; reserve one dword
+        _inch     rb   1                      ; reserve one byte
+        newstack  rd   255                    ; reserve 255 dwords
 
     Other forms available are:
 
-	rw   ; 16-bit word
-	rp   ; 48-bit pointer
-	rq   ; 64-bit quad word
-	rt   ; 80-bit floating point
+        rw   ; 16-bit word
+        rp   ; 48-bit pointer
+        rq   ; 64-bit quad word
+        rt   ; 80-bit floating point
 
     Note that if the 'times' directive is to be used to define multiple data
 items, any label used must end with a colon. The other way is to use 'label'
 directive before data definition, for example:
 
-	label argv dword
-	times 10 dd 0
+        label argv dword
+        times 10 dd 0
 
     To create union of some variables, you can use label directive with
 'at <address>' phrase, or virtual directive, for example:
 
-	GDT_limit dw 15
-	GDT_address dd ?
+        GDT_limit dw 15
+        GDT_address dd ?
 
-	; now define virtual variable for lgdt and sgdt instructions
+        ; now define virtual variable for lgdt and sgdt instructions
 
-	label GDTR pword at GDT_limit
+        label GDTR pword at GDT_limit
 
-	; and now the other method
+        ; and now the other method
 
-	LDTR dp ?
+        LDTR dp ?
 
-	virtual at LDTR
-	  LDT_limit dw ?
-	  LDT_address dd ?
-	end virtual
+        virtual at LDTR
+          LDT_limit dw ?
+          LDT_address dd ?
+        end virtual
 
 2.2  Directives
 
@@ -265,118 +265,118 @@ directive before data definition, for example:
 include - includes source file in source code before assembly
 
 macro - defines macroinstructions, arguments are macro name and names
-	of macro arguments separated with commas, then '{' (start of macro)
-	character, macro instructions, and '}' (end of macro) character.
-	Here's an example of macroinstruction for data alignment:
+        of macro arguments separated with commas, then '{' (start of macro)
+        character, macro instructions, and '}' (end of macro) character.
+        Here's an example of macroinstruction for data alignment:
 
-	macro align value { rb (value-1) - ($ + value-1) mod value }
+        macro align value { rb (value-1) - ($ + value-1) mod value }
 
-	Macroinstructions may have empty arguments; to check if argument
-	is empty use something like 'if <argument> equ <>'.
-	If a macro is defined that uses an instruction with the same name
-	inside the macro definition, the previous meaning of this name is
-	used; useful redefinition of macros can be done in that way, for
-	example:
+        Macroinstructions may have empty arguments; to check if argument
+        is empty use something like 'if <argument> equ <>'.
+        If a macro is defined that uses an instruction with the same name
+        inside the macro definition, the previous meaning of this name is
+        used; useful redefinition of macros can be done in that way, for
+        example:
 
-	macro mov arg1,arg2
-	 {
-	  if arg1 in <ds,es,fs,gs,ss> & arg2 in <cs,ds,es,fs,gs,ss>
-	     push  arg2
-	     pop   arg1
-	  else
-	     mov   arg1,arg2  ; here original mov instruction will be used
-	  end if
-	 }
-	macro mov arg1,arg2,arg3
-	 {
-	  if <arg3> equ <>
-	     mov   arg1,arg2  ; here previous macro will be used
-	  else
-	     mov   arg1,arg2
-	     mov   arg2,arg3
-	  end if
-	 }
-	mov   ax,bx	      ; just 'mov ax,bx'
-	mov   ds,es	      ; 'push es' and 'pop ds'
-	mov   es,ds,dx	      ; 'push ds', 'pop es' and 'mov ds,dx'
+        macro mov arg1,arg2
+         {
+          if arg1 in <ds,es,fs,gs,ss> & arg2 in <cs,ds,es,fs,gs,ss>
+             push  arg2
+             pop   arg1
+          else
+             mov   arg1,arg2  ; here original mov instruction will be used
+          end if
+         }
+        macro mov arg1,arg2,arg3
+         {
+          if <arg3> equ <>
+             mov   arg1,arg2  ; here previous macro will be used
+          else
+             mov   arg1,arg2
+             mov   arg2,arg3
+          end if
+         }
+        mov   ax,bx           ; just 'mov ax,bx'
+        mov   ds,es           ; 'push es' and 'pop ds'
+        mov   es,ds,dx        ; 'push ds', 'pop es' and 'mov ds,dx'
 
-	But note that using these macros in big programs will dramatically
-	slow down assembly (up to 4 times!) and increase memory requirements.
+        But note that using these macros in big programs will dramatically
+        slow down assembly (up to 4 times!) and increase memory requirements.
 
-	If you type arguments in brackets, macroinstruction will allow
-	multiple groups of arguments, and will repeat all instructions for
-	each arguments group separately. For example:
+        If you type arguments in brackets, macroinstruction will allow
+        multiple groups of arguments, and will repeat all instructions for
+        each arguments group separately. For example:
 
-	macro stoschar [char]
-	 {
-	     mov   al,char
-	     stosb
-	 }
+        macro stoschar [char]
+         {
+             mov   al,char
+             stosb
+         }
 
-	stoschar 1,2,3,4      ; store four bytes at es:di
+        stoschar 1,2,3,4      ; store four bytes at es:di
 
-	Also macroinstruction may be divided into parts, each beginning
-	with '{', and ending with '}' character. Each macroinstruction part
-	will be processed for all groups of arguments before processing next
-	part. Local symbol defined in one of parts will be available in all
-	next parts, when processing the same group of arguments.
-	For example, to create table of addresses to strings, and then
-	strings data, use this macro:
+        Also macroinstruction may be divided into parts, each beginning
+        with '{', and ending with '}' character. Each macroinstruction part
+        will be processed for all groups of arguments before processing next
+        part. Local symbol defined in one of parts will be available in all
+        next parts, when processing the same group of arguments.
+        For example, to create table of addresses to strings, and then
+        strings data, use this macro:
 
-	macro strtbl [string]
-	 { local label
-	   dd label }
-	 { label db string,0 }
+        macro strtbl [string]
+         { local label
+           dd label }
+         { label db string,0 }
 
 struc - this is the variant of macro directive used to create data
-	structures. When struc macro is used in program, it must be preceded
-	by a label. Preprocessor will insert this label at  the beginning of
-	every symbol starting with a single dot. For example:
+        structures. When struc macro is used in program, it must be preceded
+        by a label. Preprocessor will insert this label at  the beginning of
+        every symbol starting with a single dot. For example:
 
-	struc pixel x,y,color
-	 {
-	  .x dw x
-	  .y dw y
-	  .color db color
-	 }
+        struc pixel x,y,color
+         {
+          .x dw x
+          .y dw y
+          .color db color
+         }
 
-	mypix pixel 10,10,4
+        mypix pixel 10,10,4
 
-	; so we have defined mypix.x, mypix.y and mypix.color variables
+        ; so we have defined mypix.x, mypix.y and mypix.color variables
 
-	virtual at 0
-	  pixel pixel ?,?,?
-	end virtual
+        virtual at 0
+          pixel pixel ?,?,?
+        end virtual
 
-	; and now also pixel.x, pixel.y, pixel.color offsets
+        ; and now also pixel.x, pixel.y, pixel.color offsets
 
-	To handle cases, when one or more of macro params are empty (for
-	example just: 'mypix pixel'), you can write something like
-	'.x dw x+0', or use 'if <x> equ <>'.
+        To handle cases, when one or more of macro params are empty (for
+        example just: 'mypix pixel'), you can write something like
+        '.x dw x+0', or use 'if <x> equ <>'.
 
 local - used inside macro definitions, defines local symbols, which
-	will have unique names in every macro call; arguments are local
-	symbol names, separated with commas.
+        will have unique names in every macro call; arguments are local
+        symbol names, separated with commas.
 
 purge - argument is one or more macro names, separated with commas; this
-	directive will remove last definition of specified macro; for example
-	when you've redefined some macro, you can get previous definition
-	back using purge (it's different than TASM in this respect; there
-	purge eliminates all macros of that name). If the macro has not been
-	defined, you won't get any error (exactly like in TASM).
-	When you need do totally undefine some non-preprocessor symbol
-	(defined with equ, or labels), use this clever macro:
+        directive will remove last definition of specified macro; for example
+        when you've redefined some macro, you can get previous definition
+        back using purge (it's different than TASM in this respect; there
+        purge eliminates all macros of that name). If the macro has not been
+        defined, you won't get any error (exactly like in TASM).
+        When you need do totally undefine some non-preprocessor symbol
+        (defined with equ, or labels), use this clever macro:
 
-	macro undefine symbol
-	 {
-	  local undefined
-	  symbol equ undefined
-	 }
+        macro undefine symbol
+         {
+          local undefined
+          symbol equ undefined
+         }
 
-	For example after 'undefine add', you can't use 'add' instruction,
-	but definition and usage of 'add' label is possible. Also, if you
-	use '_add equ add', and then 'undefine add', you can define 'add'
-	label and have access to 'add' instruction using '_add' symbol.
+        For example after 'undefine add', you can't use 'add' instruction,
+        but definition and usage of 'add' label is possible. Also, if you
+        use '_add equ add', and then 'undefine add', you can define 'add'
+        label and have access to 'add' instruction using '_add' symbol.
 
 equ - defines symbolic constant.
 
@@ -390,35 +390,35 @@ org - argument must be an address value; set from what address this
       code will start in memory.
 
 format - set output file format, can be set binary, MZ or PE; binary
-	 is the default format, MZ is an EXE file format, PE is a portable
-	 executable file format.  When specified format is PE, more format
-	 settings can follow; use 'console', 'GUI' or 'native' words to set
-	 target subsystem type (subsytem version can follow); 'i386',
-	 'i486' or 'i586' to specify target machine type; 'DLL' to create
-	 dynamic link library.
+         is the default format, MZ is an EXE file format, PE is a portable
+         executable file format.  When specified format is PE, more format
+         settings can follow; use 'console', 'GUI' or 'native' words to set
+         target subsystem type (subsytem version can follow); 'i386',
+         'i486' or 'i586' to specify target machine type; 'DLL' to create
+         dynamic link library.
 
 label - define label, needed argument is a name of label, optional
-	arguments are size of label and 'at <address>' phrase.
+        arguments are size of label and 'at <address>' phrase.
 
 segment - define segment at current position (only in MZ format),
-	  code will be aligned to paragraph.  In segment definition, after
-	  segment name, 'use16' or 'use32' is allowed.
+          code will be aligned to paragraph.  In segment definition, after
+          segment name, 'use16' or 'use32' is allowed.
 
 section - define section at current position (only in PE format), code will
-	  be aligned to page (4096 bytes). First argument is a string
-	  containing section name, optional next arguments are section type
-	  (code, data, udata, import, export, resource), and section
-	  attributes (readable, writeable, executable, shareable,
-	  discardable).
+          be aligned to page (4096 bytes). First argument is a string
+          containing section name, optional next arguments are section type
+          (code, data, udata, import, export, resource), and section
+          attributes (readable, writeable, executable, shareable,
+          discardable).
 
 entry - define program entry point (only in MZ and PE formats). In MZ format
-	argument must be a segment:offset address (like in far jump).
+        argument must be a segment:offset address (like in far jump).
 
 stack - define program stack size (only in MZ and PE formats), when no stack
-	is defined, default size of 1000h bytes is used.  In MZ format the
-	stack location can be defined in segment:offset form.  In PE format
-	second argument is allowed to define stack commit (first argument
-	defines stack reserve).
+        is defined, default size of 1000h bytes is used.  In MZ format the
+        stack location can be defined in segment:offset form.  In PE format
+        second argument is allowed to define stack commit (first argument
+        defines stack reserve).
 
 heap - define 'heap' size in paragraphs (only in MZ and PE formats).  In MZ
        format argument is a 16-bit value, defining maximum size of additional
@@ -431,23 +431,23 @@ heap - define 'heap' size in paragraphs (only in MZ and PE formats).  In MZ
 2.2.3  Other directives
 
 times - repeat instruction n times; arguments are number of repeats and
-	instruction to repeat (optionally character ':' can be used to
-	separate number and instructions), also % value (current repeat
-	number) can be used in instruction, so 'times 5 db %' will create
-	01,02,03,04,05 bytes; recurrency is also allowed, so
-	'times 3 times % db %' will create 01,01,02,01,02,03 bytes.
+        instruction to repeat (optionally character ':' can be used to
+        separate number and instructions), also % value (current repeat
+        number) can be used in instruction, so 'times 5 db %' will create
+        01,02,03,04,05 bytes; recurrency is also allowed, so
+        'times 3 times % db %' will create 01,01,02,01,02,03 bytes.
 
 repeat - larger version of times directive, repeat has one argument -
-	 number of repeats, instructions to repeat are expected in next
-	 lines, ended with 'end repeat' directive.
+         number of repeats, instructions to repeat are expected in next
+         lines, ended with 'end repeat' directive.
 
 virtual - creates virtual code or data at specified address; this data
-	  won't be included in output file, but labels defined there can
-	  be useful in other parts of program; argument to virtual is
-	  'at <address>' phrase, virtual instructions are expected in
-	  next lines, ended with 'end virtual' directive. If directive
-	  has no arguments, directive uses current address, same as
-	  'virtual at $'.
+          won't be included in output file, but labels defined there can
+          be useful in other parts of program; argument to virtual is
+          'at <address>' phrase, virtual instructions are expected in
+          next lines, ended with 'end virtual' directive. If directive
+          has no arguments, directive uses current address, same as
+          'virtual at $'.
 
 if - used to assemble some part of codes, when specified conditions are
      met; argument is a logical expression, in next lines instructions to

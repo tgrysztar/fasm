@@ -2,6 +2,12 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.08
+[13-11-2000]
+------------
+[+] added missed retn instruction
+[-] fixed some bugs with mov and arpl instructions
+
 version 1.07
 [07-10-2000]
 ------------
