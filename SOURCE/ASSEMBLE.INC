@@ -5616,6 +5616,7 @@ basic_fpu_instruction:
 	je	basic_fpu_single_streg
 	or	al,al
 	jz	basic_fpu_st0
+	xor	ah,1
 	shl	ah,3
 	or	al,ah
 	mov	[postbyte_register],al

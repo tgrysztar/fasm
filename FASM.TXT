@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.31
+			flat assembler	version 1.32
 
 	 Copyright (c) 1999-2002, Tomasz Grysztar. All rights reserved.
 
@@ -536,3 +536,4 @@ Thanks to:
 		    be started
 
     and all others who helped me (there were many of them)!
+

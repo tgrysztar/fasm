@@ -38,7 +38,9 @@ PAGE_GUARD	       =   100h
 PAGE_NOCACHE	       =   200h
 
 init_memory:
-	mov	eax,1000000h
+	push	buffer
+	call	[GlobalMemoryStatus]
+	mov	eax,dword [buffer+8]
     allocate_memory:
 	mov	edx,eax
 	shr	edx,3
@@ -318,3 +320,5 @@ line_number_start db ' [',0
 line_data_start db ':',0Dh,0Ah,0
 
 macro dm string { db string,0 }
+
+

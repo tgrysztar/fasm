@@ -2,12 +2,20 @@
 Questions or comments please send to fasm@metro-nt.pl
 Visit http://fasm.metro-nt.pl for more examples and tools
 
+version 1.32
+[06-03-2002]
+------------
+[+] changed memory management for Win32
+[+] mandelbrot example added
+[-] fixed scientific notation support for case insensitive version
+
 version 1.31
-[03-02-2002]
+[04-02-2002]
 ------------
 [+] updated includes in Win32 examples
 [+] expression parser slightly improved
 [-] fixed bugs with bound and bswap instructions
+[-] fixed fsub and fdiv bugs
 
 version 1.30
 [18-01-2002]
@@ -142,3 +150,4 @@ version 1.00
 [19-06-2000]
 ------------
 [+] first serious release
+

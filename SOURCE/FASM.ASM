@@ -282,6 +282,7 @@ section '.idata' import data readable writeable
     GetStdHandle dd rva _GetStdHandle
     VirtualAlloc dd rva _VirtualAlloc
     GetTickCount dd rva _GetTickCount
+    GlobalMemoryStatus dd rva _GlobalMemoryStatus
     dd 0
 
   kernel_name db 'KERNEL32.DLL',0
@@ -306,5 +307,8 @@ section '.idata' import data readable writeable
     db 'VirtualAlloc',0
   _GetTickCount dw 0
     db 'GetTickCount',0
+  _GlobalMemoryStatus dw 0
+    db 'GlobalMemoryStatus',0
 
 section '.reloc' fixups data readable discardable
+

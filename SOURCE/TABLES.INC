@@ -953,7 +953,7 @@ instructions_5:
  dw fcomi_instruction-assembler
  db 'fcomp',3
  dw basic_fpu_instruction-assembler
- db 'fdivp',6
+ db 'fdivp',7
  dw faddp_instruction-assembler
  db 'fdivr',7
  dw basic_fpu_instruction-assembler
@@ -991,7 +991,7 @@ instructions_5:
  dw fldcw_instruction-assembler
  db 'fstsw',0
  dw fstsw_instruction-assembler
- db 'fsubp',4
+ db 'fsubp',5
  dw faddp_instruction-assembler
  db 'fsubr',5
  dw basic_fpu_instruction-assembler
@@ -1251,7 +1251,7 @@ instructions_6:
  dw fcomip_instruction-assembler
  db 'fcompp',0
  dw fcompp_instruction-assembler
- db 'fdivrp',7
+ db 'fdivrp',6
  dw faddp_instruction-assembler
  db 'ficomp',3
  dw fi_instruction-assembler
@@ -1287,7 +1287,7 @@ instructions_6:
  dw simple_fpu_instruction-assembler
  db 'fstenv',6
  dw fldenv_instruction-assembler
- db 'fsubrp',5
+ db 'fsubrp',4
  dw faddp_instruction-assembler
  db 'fucomi',0E8h
  dw fcomi_instruction-assembler

@@ -352,7 +352,11 @@ get_fp_value:
 	lods	byte [esi]
 	cmp	al,'.'
 	je	fp_character_dot
+	if	CASE_INSENSITIVE
+	cmp	al,'e'
+	else
 	cmp	al,'E'
+	end	if
 	je	fp_character_exp
 	cmp	al,'0'
 	jb	not_fp_value
@@ -2038,3 +2042,4 @@ get_logical_value:
 	pop	bx
 	xor	al,bl
 	ret
+
