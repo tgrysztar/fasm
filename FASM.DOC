@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.02
+			flat assembler	version 1.03
 
 	 Copyright (c) 1999-2000, Tomasz Grysztar. All rights reserved.
 
@@ -252,7 +252,7 @@ or use 'if <x> equ <>'.
 include - includes source file in source code before assembly
 
 macro - defines macroinstructions, arguments are macro name and names
-	of macro arguments separated with commas, then '{' (start of macro
+	of macro arguments separated with commas, then '{' (start of macro)
 	character, macro instructions, and '}' (end of macro) character.
 	Here's an example of macroinstruction for data alignment:
 

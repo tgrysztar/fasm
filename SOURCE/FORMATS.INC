@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.02
+; flat assembler  version 1.03
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -36,7 +36,15 @@ mark_mz_relocation:
 	je	out_of_memory
 	mov	eax,edi
 	sub	eax,[code_start]
-	mov	[ebx],eax
+	mov	[ebx],ax
+	shr	eax,16
+	shl	ax,12
+	mov	[ebx+2],ax
+	cmp	word [ebx],FFFFh
+	jne	mz_relocation_ok
+	inc	word [ebx+2]
+	sub	word [ebx],10h
+      mz_relocation_ok:
 	pop	edi ebx eax
 	ret
 

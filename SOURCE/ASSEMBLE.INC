@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.02
+; flat assembler  version 1.03
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -2522,11 +2522,11 @@ push_instruction:
 	jmp	push_done
       push_imm_optimized_16bit:
 	call	get_word_value
+	mov	dx,ax
 	cmp	[value_type],0
 	jne	push_imm_16bit_forced
 	cmp	ax,100h
 	jb	push_imm_8bit
-	mov	dx,ax
 	jmp	push_imm_16bit_forced
       push_imm_16bit:
 	call	get_word_value
@@ -4022,7 +4022,9 @@ imul_instruction:
 	je	imul_reg_reg_imm_32bit
 	jmp	invalid_operand_size
       imul_reg_reg_imm_8bit:
+	push	bx dx
 	call	get_byte_value
+	pop	dx bx
 	mov	byte [value],al
 	cmp	[operand_size],2
 	je	imul_reg_reg_16bit_imm_8bit
@@ -4054,7 +4056,9 @@ imul_instruction:
 	stos	byte [edi]
 	jmp	instruction_assembled
       imul_reg_reg_imm_16bit:
+	push	bx dx
 	call	get_word_value
+	pop	dx bx
 	mov	word [value],ax
 	call	operand_16bit_prefix
 	mov	al,69h
@@ -4069,7 +4073,9 @@ imul_instruction:
 	stos	word [edi]
 	jmp	instruction_assembled
       imul_reg_reg_imm_32bit:
+	push	bx dx
 	call	get_dword_value
+	pop	dx bx
 	mov	dword [value],eax
 	call	operand_32bit_prefix
 	mov	al,69h

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.02
+; flat assembler  version 1.03
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -888,6 +888,14 @@ calculate_expression:
 	ret
       div_64:
 	xor	bl,bl
+	cmp	dword [edi],0
+	jne	divider_ok
+	cmp	dword [edi+4],0
+	jne	divider_ok
+	cmp	[next_pass_needed],0
+	je	value_out_of_range
+	jmp	div_done
+      divider_ok:
 	test	dword [esi+4],1 shl 31
 	jz	div_first_sign_ok
 	not	dword [esi]

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.02
+; flat assembler  version 1.03
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -835,19 +835,8 @@ use_macro:
 	stos	byte [edi]
 	inc	dword [esp]
 	mov	[macro_directive_allowed],1
-	inc	byte [locals_counter+3]
-	cmp	byte [locals_counter+3],'9'
-	jbe	macro_process
-	mov	byte [locals_counter+3],'0'
-	inc	byte [locals_counter+2]
-	cmp	byte [locals_counter+2],'9'
-	jbe	macro_process
-	mov	byte [locals_counter+2],'0'
-	inc	byte [locals_counter+1]
-	cmp	byte [locals_counter+1],'9'
-	jbe	macro_process
-	mov	byte [locals_counter+1],'0'
-	inc	byte [locals_counter]
+	mov	ebx,locals_counter
+	call	increase_counter
       macro_process:
 	lods	byte [esi]
 	stos	byte [edi]
@@ -1065,6 +1054,22 @@ use_macro:
 	pop	ebp
 	pop	[current_line]
 	pop	esi ecx
+	ret
+      increase_counter:
+	inc	byte [ebx+3]
+	cmp	byte [ebx+3],'9'
+	jbe	counter_ok
+	mov	byte [ebx+3],'0'
+	inc	byte [ebx+2]
+	cmp	byte [ebx+2],'9'
+	jbe	counter_ok
+	mov	byte [ebx+2],'0'
+	inc	byte [ebx+1]
+	cmp	byte [ebx+1],'9'
+	jbe	counter_ok
+	mov	byte [ebx+1],'0'
+	inc	byte [ebx]
+      counter_ok:
 	ret
 
 file_number dw ?

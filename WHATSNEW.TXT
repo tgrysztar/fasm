@@ -1,4 +1,9 @@
 
+version 1.03
+------------
+[-] more bugs fixed
+[+] allowed empty labels to separate local symbols
+
 version 1.02
 ------------
 [-] minor bugs fixed

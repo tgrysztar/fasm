@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.02
+; flat assembler  version 1.03
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -560,8 +560,15 @@ parse_line:
 	lods	byte [esi]
 	or	al,al
 	jz	line_parsed
+	cmp	al,':'
+	je	empty_label
 	dec	esi
 	jmp	parse_arguments
+      empty_label:
+	mov	ebx,locals_counter
+	call	increase_counter
+	mov	[current_locals_prefix],ebx
+	jmp	instruction_start
       skip_line_data:
 	lods	byte [esi]
 	or	al,al
