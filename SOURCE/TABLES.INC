@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.08
+; flat assembler  version 1.09
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -991,6 +991,10 @@ instructions_5:
  dw ret_instruction_32bit-assembler,0CAh
  db 'retfw'
  dw ret_instruction_16bit-assembler,0CAh
+ db 'retnd'
+ dw ret_instruction_32bit-assembler,0C2h
+ db 'retnw'
+ dw ret_instruction_16bit-assembler,0C2h
  db 'scasb'
  dw simple_instruction-assembler,0AEh
  db 'scasd'

@@ -2,8 +2,15 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.09
+[04-01-2001]
+------------
+[-] really fixed macros redefinition
+[-] fixed some bugs with segment registers
+[-] changed optimization methods
+
 version 1.08
-[13-11-2000]
+[16-11-2000]
 ------------
 [+] added missed retn instruction
 [-] fixed some bugs with mov and arpl instructions

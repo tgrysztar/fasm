@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.08
+; flat assembler  version 1.09
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -1274,6 +1274,9 @@ basic_instruction:
 	lods	byte [esi]
 	cmp	al,','
 	jne	invalid_operand
+	cmp	byte [esi],11h
+	sete	al
+	mov	[imm_sized],al
 	call	get_operand_size
 	lods	byte [esi]
 	cmp	al,'('
@@ -1343,6 +1346,8 @@ basic_instruction:
 	pop	cx bx edx
 	cmp	[value_type],0
 	jne	.store
+	cmp	[imm_sized],0
+	jne	.store
 	cmp	word [value],80h
 	jb	basic_mem_simm_8bit
 	cmp	word [value],-80h
@@ -1370,6 +1375,8 @@ basic_instruction:
 	pop	cx bx edx
 	cmp	[value_type],0
 	jne	.store
+	cmp	[imm_sized],0
+	jne	.store
 	cmp	dword [value],80h
 	jb	basic_mem_simm_8bit
 	cmp	dword [value],-80h
@@ -1388,6 +1395,9 @@ basic_instruction:
 	lods	byte [esi]
 	cmp	al,','
 	jne	invalid_operand
+	cmp	byte [esi],11h
+	sete	al
+	mov	[imm_sized],al
 	call	get_operand_size
 	lods	byte [esi]
 	cmp	al,10h
@@ -1496,6 +1506,8 @@ basic_instruction:
 	or	ah,bl
 	cmp	[value_type],0
 	jne	.store
+	cmp	[imm_sized],0
+	jne	.store
 	cmp	dx,80h
 	jb	basic_reg_simm_8bit
 	cmp	dx,-80h
@@ -1533,6 +1545,8 @@ basic_instruction:
 	and	bl,111b
 	or	ah,bl
 	cmp	[value_type],0
+	jne	.store
+	cmp	[imm_sized],0
 	jne	.store
 	cmp	edx,80h
 	jb	basic_reg_simm_8bit
@@ -1740,9 +1754,16 @@ mov_instruction:
 	or	ah,ah
 	jz	mov_mem_sreg_size_ok
 	cmp	ah,2
-	jne	invalid_operand_size
-      mov_mem_sreg_size_ok:
+	je	mov_mem16_sreg
+	cmp	ah,4
+	je	mov_mem32_sreg
+	jmp	invalid_operand_size
+      mov_mem32_sreg:
+	call	operand_32bit_prefix
+	jmp	mov_mem_sreg_size_ok
+      mov_mem16_sreg:
 	call	operand_16bit_prefix
+      mov_mem_sreg_size_ok:
 	mov	[base_code],8Ch
 	call	store_instruction
 	jmp	instruction_assembled
@@ -1850,8 +1871,15 @@ mov_instruction:
 	shl	al,3
 	or	bl,al
 	or	bl,11000000b
+	cmp	[operand_size],4
+	je	mov_reg_sreg32
 	cmp	[operand_size],2
 	jne	invalid_operand_size
+	call	operand_16bit_prefix
+	jmp	mov_reg_sreg_store
+     mov_reg_sreg32:
+	call	operand_32bit_prefix
+     mov_reg_sreg_store:
 	mov	al,8Ch
 	stos	byte [edi]
 	mov	al,bl
@@ -1910,6 +1938,8 @@ mov_instruction:
 	jnz	mov_al_mem_address32
 	or	ch,ch
 	jnz	invalid_address_size
+	cmp	[code_type],32
+	je	mov_al_mem_address32
 	cmp	edx,10000h
 	jb	mov_al_mem_address16
       mov_al_mem_address32:
@@ -1938,6 +1968,8 @@ mov_instruction:
 	jnz	mov_ax_mem_address32
 	or	ch,ch
 	jnz	invalid_address_size
+	cmp	[code_type],32
+	je	mov_ax_mem_address32
 	cmp	edx,10000h
 	jb	mov_ax_mem_address16
       mov_ax_mem_address32:
@@ -2026,8 +2058,20 @@ mov_instruction:
 	mov	ah,[operand_size]
 	or	ah,ah
 	jz	mov_sreg_reg_size_ok
+	cmp	ah,4
+	je	mov_sreg_reg32
 	cmp	ah,2
-	jne	invalid_operand_size
+	je	mov_sreg_reg16
+	jmp	invalid_operand_size
+      mov_sreg_reg32:
+	mov	ah,al
+	call	operand_32bit_prefix
+	mov	al,ah
+	jmp	mov_sreg_reg_size_ok
+      mov_sreg_reg16:
+	mov	ah,al
+	call	operand_16bit_prefix
+	mov	al,ah
       mov_sreg_reg_size_ok:
 	mov	bl,11000000b
 	or	bl,al
@@ -2045,7 +2089,15 @@ mov_instruction:
 	or	al,al
 	jz	mov_sreg_mem_size_ok
 	cmp	al,2
-	jne	invalid_operand_size
+	je	mov_sreg_mem16
+	cmp	al,4
+	je	mov_sreg_mem32
+	jmp	invalid_operand_size
+      mov_sreg_mem32:
+	call	operand_32bit_prefix
+	jmp	mov_sreg_mem_size_ok
+      mov_sreg_mem16:
+	call	operand_16bit_prefix
       mov_sreg_mem_size_ok:
 	mov	[base_code],8Eh
 	call	store_instruction
@@ -2544,6 +2596,24 @@ push_instruction:
 	stos	byte [edi]
 	jmp	push_done
       push_sreg:
+	mov	bl,[operand_size]
+	cmp	bl,4
+	je	push_sreg32
+	cmp	bl,2
+	je	push_sreg16
+	or	bl,bl
+	jz	push_sreg_store
+	jmp	invalid_operand_size
+      push_sreg16:
+	mov	bl,al
+	call	operand_16bit_prefix
+	mov	al,bl
+	jmp	push_sreg_store
+      push_sreg32:
+	mov	bl,al
+	call	operand_32bit_prefix
+	mov	al,bl
+      push_sreg_store:
 	cmp	al,70h
 	jae	invalid_operand
 	sub	al,61h
@@ -2684,6 +2754,24 @@ pop_instruction:
 	stos	byte [edi]
 	jmp	pop_done
       pop_sreg:
+	mov	bl,[operand_size]
+	cmp	bl,4
+	je	pop_sreg32
+	cmp	bl,2
+	je	pop_sreg16
+	or	bl,bl
+	jz	pop_sreg_store
+	jmp	invalid_operand_size
+      pop_sreg16:
+	mov	bl,al
+	call	operand_16bit_prefix
+	mov	al,bl
+	jmp	pop_sreg_store
+      pop_sreg32:
+	mov	bl,al
+	call	operand_32bit_prefix
+	mov	al,bl
+      pop_sreg_store:
 	cmp	al,70h
 	jae	invalid_operand
 	sub	al,61h
@@ -5087,6 +5175,8 @@ movs_instruction:
 	je	simple_instruction_16bit
 	cmp	bl,4
 	je	simple_instruction_32bit
+	or	bl,bl
+	jz	operand_size_not_specified
 	jmp	invalid_operand_size
 lods_instruction:
 	call	get_operand_size
@@ -5217,6 +5307,8 @@ cmps_instruction:
 	je	simple_instruction_16bit
 	cmp	bl,4
 	je	simple_instruction_32bit
+	or	bl,bl
+	jz	operand_size_not_specified
 	jmp	invalid_operand_size
 xlat_instruction:
 	call	get_operand_size
@@ -6193,8 +6285,6 @@ store_instruction:
 	jnz	invalid_address_size
 	cmp	[code_type],16
 	je	addressing_16bit
-	cmp	edx,10000h
-	jb	address_immediate_16bit
       address_immediate_32bit:
 	call	address_32bit_prefix
 	call	store_instruction_code
@@ -6287,5 +6377,6 @@ extended_code db ?
 postbyte_register db ?
 segment_register db ?
 operand_size db ?
+imm_sized db ?
 jump_type db ?
 value dq ?

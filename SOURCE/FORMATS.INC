@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.08
+; flat assembler  version 1.09
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -436,6 +436,8 @@ format_pe:
 	ret
 section_directive:
 	cmp	[output_format],3
+	jne	unexpected_instruction
+	cmp	[virtual_mode],0
 	jne	unexpected_instruction
 	cmp	edi,[code_start]
 	jne	prepare_section

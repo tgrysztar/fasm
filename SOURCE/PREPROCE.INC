@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.08
+; flat assembler  version 1.09
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -375,6 +375,7 @@ define_macro:
 	mov	eax,[additional_memory_end]
 	cmp	eax,[names_list]
 	jne	illegal_instruction
+	mov	[macro_redefined],0
 	cmp	[macro_defined],0
 	je	create_macro
 	mov	edx,esi
@@ -413,7 +414,7 @@ define_macro:
 	jne	.skip_macro
 	mov	edx,esi
 	repe	cmps byte [esi],[edi]
-	je	redefine_macro
+	je	.redefine_macro
 	mov	esi,edx
 	mov	edi,ebx
 	jmp	.find_macro
@@ -426,21 +427,26 @@ define_macro:
 	jne	.skip_file
 	add	edi,5
 	jmp	.find_macro
-      redefine_macro:
-	mov	ebp,esi
-	xchg	ebp,[edi+1]
-	mov	esi,edx
-	mov	al,[ebx]
+      .redefine_macro:
+	cmp	[macro_redefined],0
+	jne	.exchange_macro
+	mov	[macro_redefined],esi
+      .exchange_macro:
+	xchg	esi,[edi+1]
+	sub	esi,ebp
+	mov	edx,esi
+	mov	ecx,edi
+	sub	ecx,ebp
+	dec	ecx
+	mov	al,[ecx]
 	shr	al,7
 	xchg	al,[macro_struc]
-	and	byte [ebx],7Fh
+	and	byte [ecx],7Fh
 	or	al,al
-	jz	add_macro
-	or	byte [ebx],80h
-	jmp	add_macro
+	jz	.skip_macro
+	or	byte [ecx],80h
+	jmp	.skip_macro
       create_macro:
-	xor	ebp,ebp
-      add_macro:
 	mov	[macro_defined],1
 	mov	edx,[additional_memory]
 	mov	ebx,edx
@@ -476,13 +482,12 @@ define_macro:
 	xor	al,al
 	stos	byte [edi]
 	mov	eax,esi
-	or	ebp,ebp
-	jz	store_macro_address
-	mov	eax,ebp
-      store_macro_address:
 	stos	dword [edi]
 	mov	edi,[current_line_end]
 	mov	[multi_macro_current],0
+	cmp	[macro_redefined],0
+	je	find_macro_argument
+	mov	esi,[macro_redefined]
       find_macro_argument:
 	call	skip_spaces
 	lods	byte [esi]
@@ -1295,6 +1300,7 @@ files_list dd ?
 names_list dd ?
 macro_defined db ?
 macro_directive_allowed db ?
+macro_redefined dd ?
 macro_instructions dd ?
 macro_struc db ?
 macro_struc_name dd ?
