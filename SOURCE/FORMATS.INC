@@ -101,6 +101,8 @@ segment_directive:
 	cmp	al,2
 	jne	invalid_argument
 	lods	dword [esi]
+	cmp	eax,10h
+	jb	invalid_use_of_symbol
 	inc	esi
 	mov	ebx,eax
 	mov	eax,edi
@@ -977,3 +979,4 @@ finish_pe:
 	sub	eax,[code_start]
 	mov	[code_size],eax
 	ret
+

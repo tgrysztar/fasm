@@ -131,10 +131,13 @@ get_number:
 	movzx	ecx,al
 	mov	[number_start],esi
 	mov	al,[esi]
+	cmp	al,'$'
+	je	number_begin
 	sub	al,30h
 	jb	invalid_number
 	cmp	al,9
 	ja	invalid_number
+      number_begin:
 	mov	eax,esi
 	add	esi,ecx
 	push	esi
@@ -142,49 +145,61 @@ get_number:
 	mov	dword [edi],0
 	mov	dword [edi+4],0
 	inc	esi
+	cmp	byte [eax],'$'
+	je	pascal_hex_number
 	cmp	word [eax],'0x'
 	je	get_hex_number
 	dec	esi
-	cmp	byte [esi+1],'h'
+	mov	al,[esi+1]
+	cmp	al,'h'
 	je	get_hex_number
-	cmp	byte [esi+1],'o'
-	je	get_oct_number
-	cmp	byte [esi+1],'b'
+	cmp	al,'b'
 	je	get_bin_number
-	cmp	byte [esi+1],'d'
+	cmp	al,'d'
 	je	get_dec_number
+	cmp	al,'o'
+	je	get_oct_number
+	cmp	al,'H'
+	je	get_hex_number
+	cmp	al,'B'
+	je	get_bin_number
+	cmp	al,'D'
+	je	get_dec_number
+	cmp	al,'O'
+	je	get_oct_number
 	inc	esi
 	cmp	byte [eax],'0'
 	je	get_oct_number
       get_dec_number:
-	xor	edx,edx
-	mov	ebx,1
+	mov	ebx,esi
+	mov	esi,[number_start]
       get_dec_digit:
-	cmp	esi,[number_start]
-	jb	number_ok
+	cmp	esi,ebx
+	ja	number_ok
+	mov	eax,10
+	mul	dword [edi]
+	mov	[edi],eax
+	mov	ecx,edx
+	mov	eax,10
+	mul	dword [edi+4]
+	or	edx,edx
+	jnz	dec_out_of_range
+	add	eax,ecx
+	jc	dec_out_of_range
+	mov	[edi+4],eax
 	movzx	eax,byte [esi]
 	sub	al,30h
 	jc	bad_number
 	cmp	al,9
 	ja	bad_number
-	mov	ecx,eax
-	jecxz	next_dec_digit
-      convert_dec_digit:
-	add	dword [edi],ebx
-	adc	dword [edi+4],edx
-	loop	convert_dec_digit
-      next_dec_digit:
-	dec	esi
-	mov	ecx,edx
-	mov	eax,10
-	mul	ebx
-	mov	ebx,eax
-	imul	ecx,10
-	jo	dec_out_of_range
-	add	edx,ecx
-	jnc	get_dec_digit
+	add	[edi],eax
+	adc	dword [edi+4],0
+	jc	dec_out_of_range
+	inc	esi
+	jmp	get_dec_digit
       dec_out_of_range:
-	or	ebp,1
+	or	ebp,-1
+	inc	esi
 	jmp	get_dec_digit
       bad_number:
 	pop	eax
@@ -222,8 +237,13 @@ get_number:
 	or	dword [edi+4],eax
 	jmp	get_bin_digit
       bin_out_of_range:
-	or	ebp,1
+	or	al,al
+	jz	get_bin_digit
+	or	ebp,-1
 	jmp	get_bin_digit
+      pascal_hex_number:
+	cmp	cl,1
+	je	bad_number
       get_hex_number:
 	xor	bl,bl
       get_hex_digit:
@@ -232,6 +252,8 @@ get_number:
 	movzx	eax,byte [esi]
 	cmp	al,'x'
 	je	hex_number_ok
+	cmp	al,'$'
+	je	pascal_hex_ok
 	sub	al,30h
 	jc	bad_number
 	cmp	al,9
@@ -261,7 +283,9 @@ get_number:
 	or	dword [edi+4],eax
 	jmp	get_hex_digit
       hex_out_of_range:
-	or	ebp,1
+	or	al,al
+	jz	get_hex_digit
+	or	ebp,-1
 	jmp	get_hex_digit
       get_oct_number:
 	xor	bl,bl
@@ -291,10 +315,13 @@ get_number:
 	or	dword [edi+4],eax
 	jmp	get_oct_digit
       oct_out_of_range:
-	or	ebp,1
+	or	al,al
+	jz	get_oct_digit
+	or	ebp,-1
 	jmp	get_oct_digit
       hex_number_ok:
 	dec	esi
+      pascal_hex_ok:
 	cmp	esi,[number_start]
 	jne	bad_number
       number_ok:
@@ -328,7 +355,7 @@ get_number:
 	or	dword [edi+4],eax
 	jmp	get_text_character
       text_out_of_range:
-	or	ebp,1
+	or	ebp,-1
 	jmp	get_text_character
 
 get_fp_value:
@@ -352,11 +379,9 @@ get_fp_value:
 	lods	byte [esi]
 	cmp	al,'.'
 	je	fp_character_dot
-	if	CASE_INSENSITIVE
-	cmp	al,'e'
-	else
 	cmp	al,'E'
-	end	if
+	je	fp_character_exp
+	cmp	al,'e'
 	je	fp_character_exp
 	cmp	al,'0'
 	jb	not_fp_value

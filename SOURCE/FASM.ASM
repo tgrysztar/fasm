@@ -33,12 +33,10 @@ start:
 	stosb
 	inc	al
 	loop	make_characters_table
-	if	CASE_INSENSITIVE
 	mov	esi,characters+'a'
 	mov	edi,characters+'A'
 	mov	ecx,26
 	rep	movsb
-	end	if
 	mov	edi,characters
 	mov	esi,symbol_characters+1
 	movzx	ecx,byte [esi-1]
@@ -262,6 +260,7 @@ nextbyte db ?
 
 params rb 100h
 characters rb 100h
+converted rb 100h
 buffer rb 100h
 
 stack 4000h
@@ -311,4 +310,5 @@ section '.idata' import data readable writeable
     db 'GlobalMemoryStatus',0
 
 section '.reloc' fixups data readable discardable
+
 

@@ -40,12 +40,10 @@ start:
 	stosb
 	inc	al
 	loop	make_characters_table
-	if	CASE_INSENSITIVE
 	mov	si,characters+'a'
 	mov	di,characters+'A'
 	mov	cx,26
 	rep	movsb
-	end	if
 	mov	di,characters
 	mov	si,symbol_characters+1
 	movzx	cx,byte [si-1]
@@ -64,18 +62,6 @@ start:
 	call	preprocessor
 	call	parser
 	call	assembler
-
-;	 mov	 [written_size],0	    ;
-;	 mov	 edx,[output_file]	    ;
-;	 call	 create 		    ;
-;	 jc	 write_failed		    ;
-;	 mov	 edx,[source_start]	    ;
-;	 mov	 ecx,[code_start]	    ;
-;	 sub	 ecx,edx		    ;
-;	 add	 [written_size],ecx	    ;
-;	 call	 write			    ;
-;	 jc	 write_failed		    ;
-;	 call	 close			    ;
 
 	movzx	eax,[current_pass]
 	inc	al
@@ -259,6 +245,7 @@ nextbyte db ?
 
 params rb 100h
 characters rb 100h
+converted rb 100h
 buffer rb 4000h
 
 rb 400h

@@ -121,6 +121,8 @@ assemble_line:
 	jmp	assemble_line
       define_label:
 	lods	dword [esi]
+	cmp	eax,10h
+	jb	invalid_use_of_symbol
 	mov	ebx,eax
 	lods	byte [esi]
 	mov	dl,al
@@ -178,6 +180,10 @@ assemble_line:
 	pop	bx
 	mov	ch,bl
 	pop	ebx
+	or	ebx,ebx
+	jz	set_org
+	cmp	ebx,10h
+	jb	invalid_use_of_symbol
       make_constant:
 	mov	cl,[current_pass]
 	test	byte [ebx+8],1
@@ -322,6 +328,7 @@ org_directive:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+      set_org:
 	mov	[reloc_labels],0
 	mov	dl,[value_type]
 	or	dl,dl
@@ -340,6 +347,8 @@ label_directive:
 	cmp	al,2
 	jne	invalid_argument
 	lods	dword [esi]
+	cmp	eax,10h
+	jb	invalid_use_of_symbol
 	inc	esi
 	mov	ebx,eax
 	xor	ch,ch
@@ -421,6 +430,8 @@ load_directive:
 	cmp	al,2
 	jne	invalid_argument
 	lods	dword [esi]
+	cmp	eax,10h
+	jb	invalid_use_of_symbol
 	inc	esi
 	push	eax
 	mov	al,1
@@ -7533,3 +7544,4 @@ store_instruction:
 	stos	byte [edi]
       instruction_prefix_ok:
 	ret
+

@@ -94,7 +94,7 @@ convert_line:
 	lods	byte [esi]
 	mov	ah,al
 	mov	ebx,characters
-	xlatb
+	xlat	byte [ebx]
 	or	al,al
 	jz	convert_separator
 	cmp	ah,27h
@@ -103,13 +103,14 @@ convert_line:
 	je	convert_string
 	mov	byte [edi],1Ah
 	scas	word [edi]
+	xchg	al,ah
 	stos	byte [edi]
 	mov	ebx,characters
 	xor	ecx,ecx
       convert_symbol:
 	lods	byte [esi]
-	xlatb
 	stos	byte [edi]
+	xlat	byte [ebx]
 	or	al,al
 	loopnzd convert_symbol
 	neg	ecx
@@ -298,10 +299,14 @@ preprocess_line:
 	mov	esi,[current_line]
 	add	esi,12
 	call	process_symbolic_constants
+	mov	esi,[current_line]
+	add	esi,12
+	call	process_concatenations
       line_preprocessed:
 	pop	esi ecx
 	pop	[struc_name]
 	ret
+
 get_macro:
 	mov	edx,esi
 	mov	ebp,edi
@@ -427,6 +432,81 @@ process_symbolic_constants:
 	stos	word [edi]
 	rep	movs byte [edi],[esi]
 	jmp	process_after_replaced
+process_concatenations:
+	xor	dl,dl
+      before_concatenations:
+	lods	byte [esi]
+	cmp	al,'#'
+	je	first_concatenation
+	cmp	al,1Ah
+	je	symbol_before_concatenations
+	xor	dl,dl
+	cmp	al,22h
+	je	string_before_concatenations
+	or	al,al
+	jnz	before_concatenations
+	mov	edi,esi
+	ret
+      symbol_before_concatenations:
+	or	dl,-1
+	mov	ebx,esi
+	lods	byte [esi]
+	movzx	ecx,al
+	add	esi,ecx
+	mov	edi,esi
+	jmp	before_concatenations
+      string_before_concatenations:
+	mov	ebx,esi
+	lods	dword [esi]
+	add	esi,eax
+	mov	edi,esi
+	jmp	before_concatenations
+      first_concatenation:
+	or	dl,dl
+	jz	before_concatenations
+	cmp	byte [esi],1Ah
+	jne	before_concatenations
+      do_concatenation:
+	inc	esi
+	lods	byte [esi]
+	movzx	ecx,al
+	add	[ebx],al
+	jc	name_too_long
+	rep	movs byte [edi],[esi]
+      after_concatenation:
+	lods	byte [esi]
+	cmp	al,'#'
+	je	concatenation
+	stos	byte [edi]
+	cmp	al,1Ah
+	je	symbol_after_concatenation
+	xor	dl,dl
+	cmp	al,22h
+	je	string_after_concatenation
+	or	al,al
+	jnz	after_concatenation
+	ret
+      symbol_after_concatenation:
+	or	dl,-1
+	mov	ebx,edi
+	lods	byte [esi]
+	stos	byte [edi]
+	movzx	ecx,al
+	rep	movs byte [edi],[esi]
+	jmp	after_concatenation
+      string_after_concatenation:
+	mov	ebx,edi
+	lods	dword [esi]
+	stos	dword [edi]
+	mov	ecx,eax
+	rep	movs byte [edi],[esi]
+	jmp	after_concatenation
+      concatenation:
+	or	dl,dl
+	jz	after_concatenation
+	cmp	byte [esi],1Ah
+	jne	after_concatenation
+	jmp	do_concatenation
 include_file:
 	lods	byte [esi]
 	cmp	al,22h

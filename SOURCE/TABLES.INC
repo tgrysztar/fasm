@@ -4,17 +4,19 @@
 ; All rights reserved.
 
 get_operator:
-	push	esi ebp
-	mov	ebp,1
 	cmp	byte [esi],1Ah
-	jne	operator_start
+	jne	simple_operator
+	mov	edx,esi
+	push	ebp
 	inc	esi
 	lods	byte [esi]
 	movzx	ebp,al
-      operator_start:
-	mov	edx,esi
+	push	edi
+	mov	ecx,ebp
+	call	lower_case
+	pop	edi
       check_operator:
-	mov	esi,edx
+	mov	esi,converted
 	movzx	ecx,byte [edi]
 	jecxz	no_operator
 	inc	edi
@@ -29,19 +31,41 @@ get_operator:
 	inc	edi
 	jmp	check_operator
       no_operator:
+	mov	esi,edx
+	pop	ebp
+      no_simple_operator:
 	xor	al,al
-	pop	ebp esi
 	ret
       operator_found:
-	pop	ebp eax
+	lea	esi,[edx+2+ebp]
+	pop	ebp
 	mov	al,[edi]
+	ret
+      simple_operator:
+	mov	al,[esi]
+      simple_check_operator:
+	cmp	byte [edi],1
+	jb	no_simple_operator
+	ja	simple_next_operator
+	cmp	al,[edi+1]
+	je	simple_operator_found
+      simple_next_operator:
+	movzx	ecx,byte [edi]
+	lea	edi,[edi+1+ecx+1]
+	jmp	simple_check_operator
+      simple_operator_found:
+	inc	esi
+	mov	al,[edi+2]
 	ret
 
 get_symbol:
 	mov	edx,esi
 	mov	ebp,ecx
+	push	edi
+	call	lower_case
+	pop	edi
       scan_symbols:
-	mov	esi,edx
+	mov	esi,converted
 	movzx	eax,byte [edi]
 	or	al,al
 	jz	no_symbol
@@ -68,6 +92,7 @@ get_symbol:
 	stc
 	ret
       symbol_ok:
+	lea	esi,[edx+ebp]
 	mov	ax,[ebx]
 	clc
 	ret
@@ -75,6 +100,8 @@ get_symbol:
 get_instruction:
 	mov	edx,esi
 	mov	ebp,ecx
+	call	lower_case
+	mov	ecx,ebp
 	cmp	ecx,11
 	ja	no_instruction
 	sub	cl,2
@@ -82,7 +109,7 @@ get_instruction:
 	movzx	edi,word [instructions+ecx*2]
 	add	edi,instructions
       scan_instructions:
-	mov	esi,edx
+	mov	esi,converted
 	mov	al,[edi]
 	or	al,al
 	jz	no_instruction
@@ -101,7 +128,18 @@ get_instruction:
 	mov	ecx,ebp
 	stc
 	ret
+      lower_case:
+	mov	edi,converted
+	mov	ebx,characters
+      convert_case:
+	lods	byte [esi]
+	xlat	byte [ebx]
+	stos	byte [edi]
+	loop	convert_case
+      case_ok:
+	ret
       instruction_ok:
+	lea	esi,[edx+ebp]
 	mov	al,[ebx]
 	mov	bx,[ebx+1]
 	clc
@@ -234,10 +272,8 @@ get_label_id:
 	jbe	out_of_memory
 	ret
 
-CASE_INSENSITIVE = 0
-
-symbol_characters db 25
- db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\'
+symbol_characters db 26
+ db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#'
 
 operators:
  db 1,'+',80h
@@ -370,7 +406,6 @@ symbols:
  db 0
 
 formatter_symbols:
- if CASE_INSENSITIVE
  db 6,'binary',18h,1
  db 4,'code',19h,5
  db 7,'console',1Bh,3
@@ -393,30 +428,6 @@ formatter_symbols:
  db 9,'shareable',19h,28
  db 5,'udata',19h,7
  db 9,'writeable',19h,31
- else
- db 3,'DLL',1Bh,80h
- db 3,'GUI',1Bh,2
- db 2,'MZ',18h,2
- db 2,'PE',18h,3
- db 6,'binary',18h,1
- db 4,'code',19h,5
- db 7,'console',1Bh,3
- db 4,'data',19h,6
- db 11,'discardable',19h,25
- db 10,'executable',19h,29
- db 6,'export',1Ah,0
- db 6,'fixups',1Ah,5
- db 4,'i386',1Bh,43h
- db 4,'i486',1Bh,44h
- db 4,'i586',1Bh,45h
- db 6,'import',1Ah,1
- db 6,'native',1Bh,1
- db 8,'readable',19h,30
- db 8,'resource',1Ah,2
- db 9,'shareable',19h,28
- db 5,'udata',19h,7
- db 9,'writeable',19h,31
- end if
  db 0
 
 preprocessor_directives:
@@ -1680,3 +1691,4 @@ instructions_11:
  db 'prefetchnta',0
  dw prefetch_instruction-assembler
  db 0
+

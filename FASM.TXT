@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.32
+			flat assembler	version 1.34
 
 	 Copyright (c) 1999-2002, Tomasz Grysztar. All rights reserved.
 
@@ -199,7 +199,8 @@ arguments.
     Floating point: 3.14, 1.0E3
     Special: $ - current address value, % - current repeat number (see 2.2.3)
     Operators: +,-,*,/,mod,not,and,or,xor,shl,shr
-    Address conversion operator: rva (only in PE format)
+    Address conversion operator: RVA (only in PE format)
+    Symbol concatenation operator: #
 
 2.1.3  Logical expressions syntax
 
@@ -296,7 +297,7 @@ macro - defines macroinstructions, arguments are macro name and names
 
 	macro align value { rb (value-1) - ($ + value-1) mod value }
 
-	Note that in PE format you should replace '$' with 'rva $' to allow
+	Note that in PE format you should replace '$' with 'RVA $' to allow
 	this calculations.
 
 	Macroinstructions may have empty arguments; to check if argument

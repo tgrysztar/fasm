@@ -116,9 +116,12 @@ parse_line:
 	cmp	byte [esi],'.'
 	je	local_label_name
 	call	get_label_id
+	cmp	eax,10h
+	jb	label_identified
 	mov	ebx,[eax+4]
 	dec	ebx
 	mov	[current_locals_prefix],ebx
+      label_identified:
 	ret
       local_label_name:
 	call	get_label_id
@@ -437,4 +440,6 @@ parse_line:
 	cmp	[parenthesis_stack],0
 	jne	invalid_expression
 	ret
+
+
 
