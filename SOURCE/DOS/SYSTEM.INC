@@ -247,35 +247,100 @@ xms_call dd ?				; XMS driver pointer
 xms_handle dw ? 			; handle of XMS memory block
 
 open:
-	push	edx esi di
-	mov	esi,edx
-	mov	di,buffer
-      .name:
-	lods	byte [esi]
-	stos	byte [di]
-	or	al,al
-	jnz	.name
-	mov	dx,buffer
+	push	esi di
+	call	convert_path
 	mov	ax,3D00h
 	int	21h
 	mov	bx,ax
-	pop	di esi edx
+	pop	di esi
 	ret
-create:
-	push	edx esi di
+    convert_path:
 	mov	esi,edx
 	mov	di,buffer
-      .name:
+      copy_path:
 	lods	byte [esi]
-	stos	byte [es:di]
+	cmp	al,'%'
+	je	environment_variable
+	cmp	al,'/'
+	jne	path_char_ok
+	mov	al,'\'
+      path_char_ok:
+	stos	byte [di]
 	or	al,al
-	jnz	.name
+	jnz	copy_path
+	sub	di,buffer
+	cmp	di,4000h
+	ja	out_of_memory
 	mov	dx,buffer
+	ret
+      environment_variable:
+	mov	ebx,esi
+      find_variable_end:
+	lods	byte [esi]
+	or	al,al
+	jz	not_environment_variable
+	cmp	al,'%'
+	jne	find_variable_end
+	push	esi
+	mov	si,cs
+	neg	si
+	add	si,[2Ch]
+	movsx	esi,si
+	sal	esi,4
+      compare_variable_names:
+	mov	edx,ebx
+      compare_character:
+	lods	byte [esi]
+	mov	ah,[edx]
+	inc	edx
+	cmp	al,'='
+	je	end_of_variable_name
+	cmp	ah,'%'
+	je	next_variable
+	sub	ah,al
+	jz	compare_character
+	cmp	ah,20h
+	jne	next_variable
+	cmp	al,41h
+	jb	next_variable
+	cmp	al,5Ah
+	jna	compare_character
+      next_variable:
+	lods	byte [esi]
+	or	al,al
+	jnz	next_variable
+	cmp	byte [esi],0
+	jne	compare_variable_names
+	pop	esi
+	jmp	copy_path
+      end_of_variable_name:
+	cmp	ah,'%'
+	jne	next_variable
+      copy_variable_value:
+	lods	byte [esi]
+	cmp	al,'/'
+	jne	value_char_ok
+	mov	al,'\'
+      value_char_ok:
+	stos	byte [di]
+	or	al,al
+	jnz	copy_variable_value
+	dec	di
+	pop	esi
+	jmp	copy_path
+      not_environment_variable:
+	mov	al,'%'
+	stos	byte [di]
+	mov	esi,ebx
+	jmp	copy_path
+create:
+	push	esi di
+	call	convert_path
 	mov	ah,3Ch
 	xor	cx,cx
 	int	21h
 	mov	bx,ax
-	pop	di esi edx
+	pop	di esi
 	ret
 write:
 	push	edx esi edi ebp
@@ -510,7 +575,91 @@ assembler_error:
 	int	21h
 	jmp	exit_program
 
-times 12 nop
+make_timestamp:
+	mov	ah,2Ah
+	int	21h
+	push	dx cx
+	movzx	ecx,cx
+	mov	eax,ecx
+	sub	eax,1970
+	mov	ebx,365
+	mul	ebx
+	mov	ebp,eax
+	mov	eax,ecx
+	sub	eax,1969
+	shr	eax,2
+	add	ebp,eax
+	mov	eax,ecx
+	sub	eax,1901
+	mov	ebx,100
+	div	ebx
+	sub	ebp,eax
+	mov	eax,ecx
+	xor	edx,edx
+	sub	eax,1601
+	mov	ebx,400
+	div	ebx
+	add	ebp,eax
+	movzx	ecx,byte [esp+3]
+	mov	eax,ecx
+	dec	eax
+	mov	ebx,30
+	mul	ebx
+	add	ebp,eax
+	cmp	ecx,8
+	jbe	months_correction
+	mov	eax,ecx
+	sub	eax,7
+	shr	eax,1
+	add	ebp,eax
+	mov	ecx,8
+      months_correction:
+	mov	eax,ecx
+	shr	eax,1
+	add	ebp,eax
+	sub	ebp,2
+	cmp	ecx,2
+	jbe	day_correction_ok
+	pop	cx
+	test	ecx,11b
+	jnz	day_correction_ok
+	xor	edx,edx
+	mov	eax,ecx
+	mov	ebx,100
+	div	ebx
+	or	edx,edx
+	jnz	day_correction
+	mov	eax,ecx
+	mov	ebx,400
+	div	ebx
+	or	edx,edx
+	jnz	day_correction_ok
+      day_correction:
+	inc	ebp
+      day_correction_ok:
+	pop	dx
+	movzx	eax,dl
+	dec	eax
+	add	eax,ebp
+	mov	ebx,24
+	mul	ebx
+	push	eax
+	mov	ah,2Ch
+	int	21h
+	pop	eax
+	push	dx
+	movzx	ebx,ch
+	add	eax,ebx
+	mov	ebx,60
+	mul	ebx
+	movzx	ebx,cl
+	add	eax,ebx
+	mov	ebx,60
+	mul	ebx
+	pop	dx
+	movzx	ebx,dh
+	add	eax,ebx
+	ret
 
 character db ?,0
 bytes_count dd ?

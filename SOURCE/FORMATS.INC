@@ -176,6 +176,8 @@ segment_directive:
 	mov	edx,edi
 	xor	al,al
 	rep	stos byte [edi]
+	mov	[org_origin],edi
+	mov	[org_sib],0
 	mov	[org_start],edi
 	mov	eax,edx
 	call	undefined_data
@@ -539,31 +541,23 @@ format_pe:
 	mov	[machine],14Ch		; intel 80386
 	mov	[subsystem],3		; console subsystem
 	mov	[subsystem_version],3 + 10 shl 16
+	mov	[image_base],400000h
 	xor	edx,edx
       pe_settings:
 	cmp	byte [esi],84h
 	je	get_stub_name
+	cmp	byte [esi],80h
+	je	get_pe_base
 	cmp	byte [esi],1Bh
 	jne	pe_settings_ok
 	lods	byte [esi]
 	lods	byte [esi]
 	test	al,80h+40h
 	jz	subsystem_setting
-	test	al,80h
-	jz	machine_setting
 	cmp	al,80h
-	je	pe_dll
-	jmp	pe_settings
-      pe_dll:
+	jne	pe_settings
 	bts	[format_flags],8
 	jc	symbol_already_defined
-	jmp	pe_settings
-      machine_setting:
-	bts	[format_flags],6
-	jc	symbol_already_defined
-	and	ax,3Fh
-	add	ax,149h
-	mov	[machine],ax
 	jmp	pe_settings
       subsystem_setting:
 	bts	[format_flags],7
@@ -582,6 +576,23 @@ format_pe:
 	add	esi,12
 	mov	[subsystem_version],eax
 	jmp	pe_settings
+      get_pe_base:
+	bts	[format_flags],9
+	jc	symbol_already_defined
+	lods	word [esi]
+	cmp	ah,'('
+	jne	invalid_argument
+	cmp	byte [esi],'.'
+	je	invalid_value
+	push	edx edi
+	add	edi,[stub_size]
+	call	get_dword_value
+	pop	edi edx
+	cmp	[value_type],0
+	jne	invalid_use_of_symbol
+	mov	[image_base],eax
+	cmp	byte [esi],84h
+	jne	pe_settings_ok
       get_stub_name:
 	lods	byte [esi]
 	lods	word [esi]
@@ -624,10 +635,11 @@ format_pe:
 	mov	word [edx+4],ax
 	mov	dword [edx+14h],0E0h	; size of optional header
 	mov	dword [edx+16h],10B818Eh; flags and magic value
-	mov	dword [edx+34h],400000h ; base of image
 	mov	dword [edx+38h],1000h	; section alignment
 	mov	dword [edx+3Ch],200h	; file alignment
 	mov	word [edx+40h],1	; OS version
+	mov	eax,[image_base]
+	mov	dword [edx+34h],eax
 	mov	ax,[subsystem]
 	mov	[edx+5Ch],ax
 	mov	eax,[subsystem_version]
@@ -660,7 +672,9 @@ format_pe:
 	neg	eax
 	add	eax,edi
 	sub	eax,[edx+34h]
-	mov	[org_start],eax
+	mov	[org_origin],eax
+	mov	[org_sib],0
+	mov	[org_start],edi
 	bt	[format_flags],8
 	jnc	instruction_assembled
 	or	dword [edx+16h],2000h
@@ -730,7 +744,9 @@ pe_section:
 	mov	eax,edi
 	sub	eax,[ebx+0Ch]
 	sub	eax,[edx+34h]
-	mov	[org_start],eax
+	mov	[org_origin],eax
+	mov	[org_sib],0
+	mov	[org_start],edi
 	or	[reloc_labels],-1
       get_section_flags:
 	lods	byte [esi]
@@ -739,14 +755,6 @@ pe_section:
 	cmp	al,19h
 	je	section_flag
 	dec	esi
-	cmp	al,13h
-	jne	instruction_assembled
-	lods	byte [esi]
-	lods	byte [esi]
-	mov	[code_type],al
-	cmp	al,16
-	jne	instruction_assembled
-	or	byte [ebx+24h],4
 	jmp	instruction_assembled
       set_directory:
 	movzx	eax,byte [esi]
@@ -860,11 +868,8 @@ data_directive:
 	jmp	remove_structure_data
 pe_entry:
 	lods	byte [esi]
-	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	test	ah,not 4
-	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
@@ -882,11 +887,8 @@ pe_entry:
 	jmp	instruction_assembled
 pe_stack:
 	lods	byte [esi]
-	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	test	ah,not 4
-	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
@@ -898,11 +900,8 @@ pe_stack:
 	jne	default_stack_commit
 	lods	byte [esi]
 	lods	byte [esi]
-	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	test	ah,not 4
-	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
@@ -922,11 +921,8 @@ pe_stack:
 	jmp	instruction_assembled
 pe_heap:
 	lods	byte [esi]
-	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	test	ah,not 4
-	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
@@ -938,11 +934,8 @@ pe_heap:
 	jne	default_heap_commit
 	lods	byte [esi]
 	lods	byte [esi]
-	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	test	ah,not 4
-	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
@@ -1018,6 +1011,9 @@ close_pe:
 	call	close_pe_section
 	mov	edx,[header_data]
 	mov	[edx+50h],eax
+	call	make_timestamp
+	mov	edx,[header_data]
+	mov	[edx+8],eax
 	mov	eax,[number_of_relocations]
 	cmp	eax,0
 	jle	pe_flags_ok
@@ -1058,7 +1054,12 @@ format_coff:
 	mov	[ebx],eax
 	mov	[ebx+4],eax
 	mov	[ebx+8],edi
-	mov	dword [ebx+10h],0E0000060h
+	mov	eax,60h
+	bt	[format_flags],0
+	jnc	flat_section_flags_ok
+	or	eax,0E0000000h
+      flat_section_flags_ok:
+	mov	dword [ebx+10h],eax
 	mov	[current_section],ebx
 	mov	[number_of_sections],1
 	mov	[code_type],32
@@ -1076,6 +1077,8 @@ coff_section:
 	xor	eax,eax
 	mov	[ebx],al
 	mov	[ebx+8],edi
+	mov	[org_origin],edi
+	mov	[org_sib],0
 	mov	[org_start],edi
 	or	[reloc_labels],-1
 	mov	[ebx+10h],eax
@@ -1144,15 +1147,6 @@ public_directive:
 	mov	[ebx+8],eax
 	mov	eax,[current_line]
 	mov	[ebx+0Ch],eax
-	cmp	byte [esi],86h
-	jne	instruction_assembled
-	inc	esi
-	lods	word [esi]
-	cmp	al,'('
-	jne	invalid_argument
-	mov	[ebx+4],esi
-	lods	dword [esi]
-	lea	esi,[esi+eax+1]
 	jmp	instruction_assembled
 extrn_directive:
 	cmp	[output_format],4
@@ -1240,7 +1234,7 @@ mark_coff_relocation:
 	mov	[additional_memory],ebx
 	mov	byte [ebx-0Ch],al
 	mov	eax,edi
-	sub	eax,[org_start]
+	sub	eax,[org_origin]
 	mov	[ebx-0Ch+4],eax
 	mov	eax,[symbol_identifier]
 	mov	[ebx-0Ch+8],eax
@@ -1280,6 +1274,14 @@ coff_formatter:
 	mov	[additional_memory],edi
 	mov	word [ebx],14Ch
 	mov	word [ebx+12h],104h
+	bt	[format_flags],0
+	jnc	coff_flags_ok
+	or	byte [ebx+12h],80h
+      coff_flags_ok:
+	push	ebx
+	call	make_timestamp
+	pop	ebx
+	mov	[ebx+4],eax
 	mov	eax,[number_of_sections]
 	mov	[ebx+2],ax
 	mov	esi,[sections_data]

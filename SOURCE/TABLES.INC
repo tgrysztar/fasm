@@ -148,6 +148,8 @@ get_instruction:
 get_label_id:
 	cmp	ecx,100h
 	jae	name_too_long
+	cmp	byte [esi],'@'
+	je	anonymous_label
 	cmp	byte [esi],'.'
 	jne	standard_label
 	cmp	byte [esi+1],'.'
@@ -181,6 +183,56 @@ get_label_id:
 	mov	esi,ebx
 	call	get_label_id
 	pop	esi
+	ret
+      anonymous_label:
+	cmp	ecx,2
+	jne	standard_label
+	mov	al,[esi+1]
+	mov	ebx,characters
+	xlat	byte [ebx]
+	cmp	al,'@'
+	je	new_anonymous
+	cmp	al,'b'
+	je	anonymous_back
+	cmp	al,'r'
+	je	anonymous_back
+	cmp	al,'f'
+	jne	standard_label
+	add	esi,2
+	mov	eax,[anonymous_forward]
+	or	eax,eax
+	jnz	anonymous_ok
+	mov	eax,[labels_list]
+	sub	eax,16
+	mov	[labels_list],eax
+	cmp	eax,edi
+	jbe	out_of_memory
+	mov	dword [eax],0
+	mov	[eax+4],eax
+	mov	[anonymous_forward],eax
+      anonymous_ok:
+	ret
+      anonymous_back:
+	add	esi,2
+	mov	eax,[anonymous_reverse]
+	or	eax,eax
+	jz	invalid_value
+	ret
+      new_anonymous:
+	add	esi,2
+	mov	eax,[anonymous_forward]
+	or	eax,eax
+	jnz	new_anonymous_ok
+	mov	eax,[labels_list]
+	sub	eax,16
+	mov	[labels_list],eax
+	cmp	eax,edi
+	jbe	out_of_memory
+	mov	dword [eax],0
+	mov	[eax+4],eax
+      new_anonymous_ok:
+	mov	[anonymous_reverse],eax
+	mov	[anonymous_forward],0
 	ret
       standard_label:
 	cmp	ecx,1
@@ -296,7 +348,6 @@ single_operand_operators:
  db 0
 
 directive_operators:
- db 2,'as',86h
  db 2,'at',80h
  db 2,'eq',81h
  db 4,'from',82h
@@ -419,9 +470,6 @@ formatter_symbols:
  db 6,'export',1Ah,0
  db 6,'fixups',1Ah,5
  db 3,'gui',1Bh,2
- db 4,'i386',1Bh,43h
- db 4,'i486',1Bh,44h
- db 4,'i586',1Bh,45h
  db 6,'import',1Ah,1
  db 2,'ms',18h,41h
  db 2,'mz',18h,2
@@ -440,6 +488,8 @@ preprocessor_directives:
  dw define_macro-preprocessor
  db 5,'purge'
  dw purge_macro-preprocessor
+ db 7,'restore'
+ dw restore_symbolic_constant-preprocessor
  db 5,'struc'
  dw define_struc-preprocessor
  db 0
@@ -1679,10 +1729,6 @@ instructions_10:
  dw cmp_ps_instruction-assembler
  db 'cmpunordss',3
  dw cmp_ss_instruction-assembler
- db 'loadall286',5
- dw simple_extended_instruction-assembler
- db 'loadall386',7
- dw simple_extended_instruction-assembler
  db 'maskmovdqu',0
  dw maskmovdqu_instruction-assembler
  db 'prefetcht0',1

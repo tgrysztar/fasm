@@ -23,6 +23,10 @@ start:
 	je	information
 	inc	eax
 	mov	[output_file],eax
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	jne	information
 
 	call	init_memory
 
@@ -204,11 +208,14 @@ macro_constants dd ?
 macro_block dd ?
 macro_block_line_number dd ?
 struc_name dd ?
+anonymous_reverse dd ?
+anonymous_forward dd ?
 current_locals_prefix dd ?
 labels_list dd ?
 label_hash dd ?
-org_start dd ?
+org_origin dd ?
 org_sib dd ?
+org_start dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
@@ -222,6 +229,7 @@ current_offset dd ?
 value dq ?
 fp_value rd 8
 symbol_identifier dd ?
+address_symbol dd ?
 format_flags dd ?
 number_of_relocations dd ?
 number_of_sections dd ?
@@ -232,6 +240,7 @@ current_section dd ?
 machine dw ?
 subsystem dw ?
 subsystem_version dd ?
+image_base dd ?
 
 macro_status db ?
 parenthesis_stack db ?
@@ -262,8 +271,8 @@ nextbyte db ?
 
 characters rb 100h
 converted rb 100h
-params rb 100h
-buffer rb 100h
+params rb 1000h
+buffer rb 4000h
 
 stack 4000h
 
@@ -280,9 +289,11 @@ section '.idata' import data readable writeable
     CloseHandle dd rva _CloseHandle
     SetFilePointer dd rva _SetFilePointer
     GetCommandLine dd rva _GetCommandLineA
+    GetEnvironmentVariable dd rva _GetEnvironmentVariable
     GetStdHandle dd rva _GetStdHandle
     VirtualAlloc dd rva _VirtualAlloc
     GetTickCount dd rva _GetTickCount
+    GetSystemTime dd rva _GetSystemTime
     GlobalMemoryStatus dd rva _GlobalMemoryStatus
     dd 0
 
@@ -302,12 +313,16 @@ section '.idata' import data readable writeable
     db 'SetFilePointer',0
   _GetCommandLineA dw 0
     db 'GetCommandLineA',0
+  _GetEnvironmentVariable dw 0
+    db 'GetEnvironmentVariableA',0
   _GetStdHandle dw 0
     db 'GetStdHandle',0
   _VirtualAlloc dw 0
     db 'VirtualAlloc',0
   _GetTickCount dw 0
     db 'GetTickCount',0
+  _GetSystemTime dw 0
+    db 'GetSystemTime',0
   _GlobalMemoryStatus dw 0
     db 'GlobalMemoryStatus',0
 

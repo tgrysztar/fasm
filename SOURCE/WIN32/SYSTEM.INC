@@ -74,13 +74,14 @@ exit_program:
 	call	[ExitProcess]
 
 open:
+	call	convert_path
 	push	0
 	push	0
 	push	OPEN_EXISTING
 	push	0
 	push	0
 	push	GENERIC_READ
-	push	edx
+	push	buffer
 	call	[CreateFile]
 	cmp	eax,-1
 	je	file_error
@@ -90,14 +91,53 @@ open:
     file_error:
 	stc
 	ret
+    convert_path:
+	push	esi edi
+	mov	esi,edx
+	mov	edi,buffer
+      copy_path:
+	lods	byte [esi]
+	cmp	al,'%'
+	je	environment_variable
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_path
+	cmp	edi,buffer+4000h
+	ja	out_of_memory
+	pop	edi esi
+	ret
+      environment_variable:
+	mov	ebx,esi
+      find_variable_end:
+	lods	byte [esi]
+	or	al,al
+	jz	not_environment_variable
+	cmp	al,'%'
+	jne	find_variable_end
+	mov	byte [esi-1],0
+	mov	eax,buffer+4000h
+	sub	eax,edi
+	push	eax
+	push	edi
+	push	ebx
+	call	[GetEnvironmentVariable]
+	add	edi,eax
+	mov	byte [esi-1],'%'
+	jmp	copy_path
+      not_environment_variable:
+	mov	al,'%'
+	stos	byte [edi]
+	mov	esi,ebx
+	jmp	copy_path
 create:
+	call	convert_path
 	push	0
 	push	0
 	push	CREATE_ALWAYS
 	push	0
 	push	0
 	push	GENERIC_WRITE
-	push	edx
+	push	buffer
 	call	[CreateFile]
 	cmp	eax,-1
 	je	file_error
@@ -140,6 +180,8 @@ lseek:
 	push	edx
 	push	ebx
 	call	[SetFilePointer]
+	cmp	eax,-1
+	je	file_error
 	ret
 
 display_string:
@@ -175,10 +217,10 @@ display_block:
 	ret
 display_character:
 	push	ebx
+	mov	[character],dl
 	push	STD_OUTPUT_HANDLE
 	call	[GetStdHandle]
 	mov	ebx,eax
-	mov	[character],dl
 	push	0
 	push	bytes_count
 	push	1
@@ -205,9 +247,9 @@ display_number:
       display_digit:
 	mov	dl,al
 	add	dl,30h
-	push	ebx ecx
+	push	ecx
 	call	display_character
-	pop	ecx ebx
+	pop	ecx
       digit_ok:
 	mov	eax,ecx
 	xor	edx,edx
@@ -309,6 +351,84 @@ assembler_error:
 	mov	esi,error_suffix
 	call	display_string
 	jmp	exit_program
+
+make_timestamp:
+	push	buffer
+	call	[GetSystemTime]
+	movzx	ecx,word [buffer]
+	mov	eax,ecx
+	sub	eax,1970
+	mov	ebx,365
+	mul	ebx
+	mov	ebp,eax
+	mov	eax,ecx
+	sub	eax,1969
+	shr	eax,2
+	add	ebp,eax
+	mov	eax,ecx
+	sub	eax,1901
+	mov	ebx,100
+	div	ebx
+	sub	ebp,eax
+	mov	eax,ecx
+	xor	edx,edx
+	sub	eax,1601
+	mov	ebx,400
+	div	ebx
+	add	ebp,eax
+	movzx	ecx,word [buffer+2]
+	mov	eax,ecx
+	dec	eax
+	mov	ebx,30
+	mul	ebx
+	add	ebp,eax
+	cmp	ecx,8
+	jbe	months_correction
+	mov	eax,ecx
+	sub	eax,7
+	shr	eax,1
+	add	ebp,eax
+	mov	ecx,8
+      months_correction:
+	mov	eax,ecx
+	shr	eax,1
+	add	ebp,eax
+	sub	ebp,2
+	cmp	ecx,2
+	jbe	day_correction_ok
+	movzx	ecx,word [buffer]
+	test	ecx,11b
+	jnz	day_correction_ok
+	xor	edx,edx
+	mov	eax,ecx
+	mov	ebx,100
+	div	ebx
+	or	edx,edx
+	jnz	day_correction
+	mov	eax,ecx
+	mov	ebx,400
+	div	ebx
+	or	edx,edx
+	jnz	day_correction_ok
+      day_correction:
+	inc	ebp
+      day_correction_ok:
+	movzx	eax,word [buffer+6]
+	dec	eax
+	add	eax,ebp
+	mov	ebx,24
+	mul	ebx
+	movzx	ecx,word [buffer+8]
+	add	eax,ecx
+	mov	ebx,60
+	mul	ebx
+	movzx	ecx,word [buffer+10]
+	add	eax,ecx
+	mov	ebx,60
+	mul	ebx
+	movzx	ecx,word [buffer+12]
+	add	eax,ecx
+	ret
 
 character db ?,0
 bytes_count dd ?

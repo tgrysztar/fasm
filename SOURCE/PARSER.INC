@@ -6,7 +6,10 @@
 parser:
 	mov	eax,[memory_end]
 	mov	[labels_list],eax
-	mov	[current_locals_prefix],0
+	xor	eax,eax
+	mov	[current_locals_prefix],eax
+	mov	[anonymous_reverse],eax
+	mov	[anonymous_forward],eax
 	mov	esi,[source_start]
 	mov	edi,[code_start]
 	push	[additional_memory]
@@ -24,6 +27,8 @@ parser:
 	jb	parser_loop
 	xor	al,al
 	stos	byte [edi]
+	cmp	[anonymous_forward],0
+	jne	unexpected_end_of_file
 	pop	[additional_memory]
 	mov	eax,[code_start]
 	mov	[source_start],eax
@@ -92,13 +97,13 @@ parse_line:
       data_label:
 	pop	ecx ebx
 	pop	edi
-	push	ax esi
+	push	eax esi
 	mov	esi,ebx
 	call	identify_label
 	mov	byte [edi],2
 	inc	edi
 	stos	dword [edi]
-	pop	esi ax
+	pop	esi eax
 	stos	byte [edi]
 	push	edi
 	jmp	data_instruction
@@ -119,9 +124,15 @@ parse_line:
 	cmp	eax,10h
 	jb	label_identified
 	mov	ebx,[eax+4]
+	cmp	ebx,eax
+	je	anonymous_label_name
 	dec	ebx
 	mov	[current_locals_prefix],ebx
       label_identified:
+	ret
+      anonymous_label_name:
+	cmp	byte [esi-1],'@'
+	jne	reserved_word_used_as_symbol
 	ret
       local_label_name:
 	call	get_label_id
@@ -435,16 +446,11 @@ parse_line:
 	or	al,al
 	jz	line_parsed
 	cmp	al,':'
-	je	empty_label
+	je	invalid_name
 	cmp	al,3Bh
 	je	skip_preprocessed_symbol
 	dec	esi
 	jmp	parse_arguments
-      empty_label:
-	mov	eax,_counter
-	call	increase_counter
-	mov	[current_locals_prefix],eax
-	jmp	instruction_start
       skip_preprocessed_symbol:
 	lods	byte [esi]
 	movzx	eax,al

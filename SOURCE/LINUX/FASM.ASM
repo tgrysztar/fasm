@@ -3,7 +3,7 @@
 ; Copyright (c) 1999-2002, Tomasz Grysztar
 ; All rights reserved.
 
-	program_base = 0x700000
+	program_base = 0x8048000
 
 	org	program_base
 	use32
@@ -33,6 +33,8 @@ start:
 	pop	eax
 	pop	[input_file]
 	pop	[output_file]
+	pop	eax
+	pop	[environment]
 
 	call	init_memory
 
@@ -157,6 +159,7 @@ additional_memory dd ?
 additional_memory_end dd ?
 input_file dd ?
 output_file dd ?
+environment dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
@@ -171,10 +174,13 @@ macro_block dd ?
 macro_block_line_number dd ?
 struc_name dd ?
 current_locals_prefix dd ?
+anonymous_reverse dd ?
+anonymous_forward dd ?
 labels_list dd ?
 label_hash dd ?
-org_start dd ?
+org_origin dd ?
 org_sib dd ?
+org_start dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
@@ -188,6 +194,7 @@ current_offset dd ?
 value dq ?
 fp_value rd 8
 symbol_identifier dd ?
+address_symbol dd ?
 format_flags dd ?
 number_of_relocations dd ?
 number_of_sections dd ?
@@ -198,6 +205,7 @@ current_section dd ?
 machine dw ?
 subsystem dw ?
 subsystem_version dd ?
+image_base dd ?
 
 macro_status db ?
 parenthesis_stack db ?
@@ -228,6 +236,6 @@ nextbyte db ?
 
 characters rb 100h
 converted rb 100h
-buffer rb 100h
+buffer rb 4000h
 
 program_end:

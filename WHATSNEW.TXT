@@ -1,6 +1,19 @@
 
+Visit http://fasm.metro-nt.pl/ for more examples and documentation
 Questions or comments please send to fasm@metro-nt.pl
-Visit http://fasm.metro-nt.pl for more examples and tools
+
+version 1.40
+[04-08-2002]
+------------
+[+] added restore directive
+[+] concatenations processed before symbolic constants now
+[+] timestamps generated for COFF and PE
+[+] custom base of PE image allowed
+[+] added support for anonymous labels
+[+] load directive extended for code loading
+[+] environment variables in paths allowed
+[-] concatenations allowed in macroinstructions only
+[-] more fixes
 
 version 1.39
 [08-07-2002]
@@ -190,7 +203,7 @@ version 1.01
 version 1.00
 [19-06-2000]
 ------------
-[+] first serious release
+[+] first official release
 
 version 0.90
 [04-05-1999]

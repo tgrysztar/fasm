@@ -244,6 +244,12 @@ preprocess_line:
 	push	ecx esi
 	mov	esi,[current_line]
 	add	esi,12
+	test	[macro_status],0C0h
+	jz	concatenations_ok
+	call	process_concatenations
+	mov	esi,[current_line]
+	add	esi,12
+      concatenations_ok:
 	mov	al,[macro_status]
 	dec	al
 	jz	find_macro_block
@@ -299,9 +305,6 @@ preprocess_line:
 	mov	esi,[current_line]
 	add	esi,12
 	call	process_symbolic_constants
-	mov	esi,[current_line]
-	add	esi,12
-	call	process_concatenations
       line_preprocessed:
 	pop	esi ecx
 	pop	[struc_name]
@@ -349,11 +352,11 @@ process_symbolic_constants:
       check_symbol:
 	movzx	ecx,byte [esi]
 	inc	esi
-	call	replace_symbolic_constant
-	jnc	process_after_replaced
+	call	find_symbolic_constant
+	jnc	replace_symbolic_constant
 	add	esi,ecx
 	jmp	process_symbolic_constants
-      replace_symbolic_constant:
+      find_symbolic_constant:
 	push	edi
 	mov	ebx,esi
 	mov	eax,ecx
@@ -377,6 +380,9 @@ process_symbolic_constants:
 	ret
       symbolic_constant_found:
 	pop	edi
+	clc
+	ret
+      replace_symbolic_constant:
 	mov	ecx,[edx+8]
 	mov	edx,[edx+12]
 	xchg	esi,edx
@@ -391,8 +397,6 @@ process_symbolic_constants:
 	mov	cl,al
 	rep	movs byte [edi],[esi]
 	mov	esi,edx
-	clc
-	ret
       process_after_replaced:
 	lods	byte [esi]
 	cmp	al,1Ah
@@ -425,8 +429,8 @@ process_symbolic_constants:
       symbol_after_replaced:
 	movzx	ecx,byte [esi]
 	inc	esi
-	call	replace_symbolic_constant
-	jnc	process_after_replaced
+	call	find_symbolic_constant
+	jnc	replace_symbolic_constant
 	mov	al,1Ah
 	mov	ah,cl
 	stos	word [edi]
@@ -540,6 +544,39 @@ define_symbolic_constant:
 	mov	[edx],al
 	mov	[edx+4],ebx
 	jmp	line_preprocessed
+restore_symbolic_constant:
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	invalid_name
+	movzx	ecx,byte [esi]
+	inc	esi
+	call	find_symbolic_constant
+	jc	no_symbolic_constant
+	mov	ecx,edx
+	sub	ecx,[labels_list]
+	add	[labels_list],16
+	shr	ecx,2
+	jz	constant_restored
+	mov	ebx,esi
+	mov	esi,edx
+	xchg	edi,edx
+	add	edi,12
+	sub	esi,4
+	std
+	rep	movs dword [edi],[esi]
+	cld
+	mov	esi,ebx
+	mov	edi,edx
+	jmp	constant_restored
+      no_symbolic_constant:
+	add	esi,ecx
+      constant_restored:
+	lods	byte [esi]
+	cmp	al,','
+	je	restore_symbolic_constant
+	or	al,al
+	jnz	extra_characters_on_line
+	jmp	line_preprocessed
 define_struc:
 	or	ah,1
 define_macro:
@@ -650,6 +687,7 @@ purge_macro:
 use_macro:
 	push	[macro_constants] [macro_block] [macro_block_line_number]
 	push	[counter] [counter_limit]
+	push	dword [macro_status]
 	or	[macro_status],80h
 	or	byte [ebx+1],80h
 	mov	edx,esi
@@ -1000,7 +1038,8 @@ use_macro:
 	pop	[current_line]
 	mov	eax,[macro_constants]
 	mov	[additional_memory],eax
-	mov	[macro_status],0
+	pop	eax
+	mov	[macro_status],al
 	pop	[counter_limit] [counter]
 	pop	[macro_block_line_number] [macro_block] [macro_constants]
 	jmp	line_preprocessed

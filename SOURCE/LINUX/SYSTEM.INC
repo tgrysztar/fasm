@@ -60,29 +60,105 @@ exit_program:
 	int	0x80
 
 open:
-	push	edx esi edi ebp
-	mov	ebx,edx
+	push	esi edi ebp
+	call	convert_path
 	mov	eax,5
+	mov	ebx,buffer
 	mov	ecx,O_RDONLY
 	xor	edx,edx
 	int	0x80
-	pop	ebp edi esi edx
+	pop	ebp edi esi
 	test	eax,eax
 	js	file_error
 	mov	ebx,eax
 	clc
 	ret
-    file_error:
-	stc
+    convert_path:
+	mov	esi,edx
+	mov	edi,buffer
+      copy_path:
+	lods	byte [esi]
+	cmp	al,'%'
+	je	environment_variable
+	cmp	al,'\'
+	jne	path_char_ok
+	mov	al,'/'
+      path_char_ok:
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_path
+	cmp	edi,buffer+4000h
+	ja	out_of_memory
 	ret
+      convert_backslash:
+	mov	al,'/'
+	stos	byte [edi]
+	jmp	copy_path
+      environment_variable:
+	mov	ebx,esi
+      find_variable_end:
+	lods	byte [esi]
+	or	al,al
+	jz	not_environment_variable
+	cmp	al,'%'
+	jne	find_variable_end
+	push	esi
+	mov	esi,[environment]
+      compare_variable_names:
+	mov	edx,ebx
+      compare_character:
+	lods	byte [esi]
+	mov	ah,[edx]
+	inc	edx
+	cmp	al,'='
+	je	end_of_variable_name
+	cmp	ah,'%'
+	je	next_variable
+	sub	ah,al
+	jz	compare_character
+	cmp	ah,20h
+	jne	next_variable
+	cmp	al,41h
+	jb	next_variable
+	cmp	al,5Ah
+	jna	compare_character
+      next_variable:
+	lods	byte [esi]
+	or	al,al
+	jnz	next_variable
+	cmp	byte [esi],0
+	jne	compare_variable_names
+	pop	esi
+	jmp	copy_path
+      end_of_variable_name:
+	cmp	ah,'%'
+	jne	next_variable
+      copy_variable_value:
+	lods	byte [esi]
+	cmp	al,'\'
+	jne	value_char_ok
+	mov	al,'/'
+      value_char_ok:
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_variable_value
+	dec	di
+	pop	esi
+	jmp	copy_path
+      not_environment_variable:
+	mov	al,'%'
+	stos	byte [edi]
+	mov	esi,ebx
+	jmp	copy_path
 create:
-	push	edx esi edi ebp
-	mov	ebx,edx
+	push	esi edi ebp
+	call	convert_path
 	mov	eax,5
+	mov	ebx,buffer
 	mov	ecx,O_CREAT+O_TRUNC+O_WRONLY
 	mov	edx,S_IRUSR+S_IWUSR+S_IRGRP
 	int	0x80
-	pop	ebp edi esi edx
+	pop	ebp edi esi
 	test	eax,eax
 	js	file_error
 	mov	ebx,eax
@@ -104,6 +180,9 @@ read:
 	jne	file_error
 	clc
 	ret
+    file_error:
+	stc
+	ret
 write:
 	push	edx esi edi ebp
 	mov	eax,4
@@ -120,6 +199,8 @@ lseek:
 	mov	dl,al
 	mov	eax,19
 	int	0x80
+	test	eax,eax
+	js	file_error
 	clc
 	ret
 
@@ -279,6 +360,12 @@ assembler_error:
 	mov	esi,error_suffix
 	call	display_string
 	jmp	exit_program
+
+make_timestamp:
+	mov	eax,13
+	xor	ebx,ebx
+	int	0x80
+	ret
 
 character db ?,0
 
