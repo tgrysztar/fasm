@@ -4,9 +4,28 @@
 ; All rights reserved.
 
 preprocessor:
+	mov	edi,characters
+	mov	ecx,100h
+	xor	al,al
+      make_characters_table:
+	stosb
+	inc	al
+	loop	make_characters_table
+	mov	esi,characters+'a'
+	mov	edi,characters+'A'
+	mov	ecx,26
+	rep	movsb
+	mov	edi,characters
+	mov	esi,symbol_characters+1
+	movzx	ecx,byte [esi-1]
+	xor	eax,eax
+      mark_symbol_characters:
+	lodsb
+	mov	byte [edi+eax],0
+	loop	mark_symbol_characters
 	mov	edi,[memory_start]
 	mov	[include_paths],edi
-	mov	esi,_include
+	mov	esi,include_variable
 	call	get_environment_variable
 	xor	al,al
 	stosb
@@ -1383,7 +1402,7 @@ use_macro:
 	mov	[edx],eax
 	mov	[edx+4],esi
 	mov	[edx+12],edi
-	movzx	eax,[_counter]
+	movzx	eax,[locals_counter]
 	add	eax,ecx
 	inc	eax
 	cmp	eax,100h
@@ -1398,8 +1417,8 @@ use_macro:
 	mov	al,'?'
 	stos	byte [edi]
 	push	esi
-	mov	esi,_counter+1
-	movzx	ecx,[_counter]
+	mov	esi,locals_counter+1
+	movzx	ecx,[locals_counter]
 	rep	movs byte [edi],[esi]
 	pop	esi
 	mov	eax,edi
@@ -1444,7 +1463,7 @@ use_macro:
 	jmp	process_macro_line
       close_macro_block:
 	push	ecx
-	mov	eax,_counter
+	mov	eax,locals_counter
 	call	increase_counter
 	pop	ecx
 	cmp	[counter],0
@@ -1628,6 +1647,8 @@ increase_counter:
       digit_increased:
 	clc
 	ret
+
+include_variable db 'INCLUDE',0
 
 symbol_characters db 27
  db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#`'

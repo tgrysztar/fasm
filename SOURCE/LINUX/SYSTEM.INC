@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2004, Tomasz Grysztar.
+; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 0003o
@@ -32,37 +32,24 @@ init_memory:
 	mov	eax,45
 	int	0x80
 	mov	[additional_memory],eax
-	mov	ebx,buffer
-	mov	eax,116
-	int	0x80
-    allocate_memory:
+	mov	ecx,[memory_setting]
+	or	ecx,ecx
+	jnz	allocate_memory
+	mov	ecx,4000h
+      allocate_memory:
+	shl	ecx,10
 	mov	ebx,[additional_memory]
-	mov	eax,dword [buffer+14h]
-	add	eax,dword [buffer+24h]
-	mov	edx,[memory_setting]
-	shl	edx,10
-	jz	memory_size_ok
-	cmp	eax,edx
-	jbe	memory_size_ok
-	mov	eax,edx
-    memory_size_ok:
-	add	ebx,eax
+	add	ebx,ecx
 	mov	eax,45
 	int	0x80
 	mov	[memory_end],eax
 	sub	eax,[additional_memory]
-	jz	not_enough_memory
 	shr	eax,3
 	imul	eax,3
 	add	eax,[additional_memory]
 	mov	[additional_memory_end],eax
 	mov	[memory_start],eax
 	ret
-    not_enough_memory:
-	shr	dword [buffer+14h],1
-	cmp	dword [buffer+14h],4000h
-	jb	out_of_memory
-	jmp	allocate_memory
 
 exit_program:
 	movzx	ebx,al
@@ -243,12 +230,21 @@ open:
 	ja	out_of_memory
 	ret
 create:
-	push	esi edi ebp
+	push	esi edi ebp edx
 	call	adapt_path
-	mov	eax,5
 	mov	ebx,buffer
 	mov	ecx,O_CREAT+O_TRUNC+O_WRONLY
-	mov	edx,S_IRUSR+S_IWUSR+S_IRGRP
+	mov	edx,S_IRUSR+S_IWUSR+S_IRGRP+S_IROTH
+	pop	eax
+	cmp	eax,[output_file]
+	jne	do_create
+	cmp	[output_format],5
+	jne	do_create
+	bt	[format_flags],0
+	jnc	do_create
+	or	edx,S_IXUSR+S_IXGRP+S_IXOTH
+      do_create:
+	mov	eax,5
 	int	0x80
 	pop	ebp edi esi
 	test	eax,eax
@@ -489,10 +485,6 @@ make_timestamp:
 	xor	ebx,ebx
 	int	0x80
 	ret
-
-character db ?,0
-displayed_count dd ?
-last_displayed db ?
 
 error_prefix db 'error: ',0
 error_suffix db '.'

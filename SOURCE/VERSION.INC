@@ -1,10 +1,10 @@
 
-; flat assembler  version 1.56
-; Copyright (c) 1999-2004, Tomasz Grysztar.
+; flat assembler  version 1.57
+; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 ;
 ; This programs is free for commercial and non-commercial use as long as
-; the following conditions are aheared to.
+; the following conditions are adhered to.
 ;
 ; Redistribution and use in source and binary forms, with or without
 ; modification, are permitted provided that the following conditions are
@@ -33,7 +33,7 @@
 ; cannot simply be copied and put under another distribution licence
 ; (including the GNU Public Licence).
 
-VERSION_STRING equ "1.56"
+VERSION_STRING equ "1.57"
 
 VERSION_MAJOR = 1
-VERSION_MINOR = 56
+VERSION_MINOR = 57

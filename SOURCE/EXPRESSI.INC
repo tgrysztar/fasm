@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2004, Tomasz Grysztar.
+; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 
 convert_expression:
@@ -162,7 +162,6 @@ get_number:
 	cmp	al,'$'
 	je	number_begin
 	sub	al,30h
-	jb	invalid_number
 	cmp	al,9
 	ja	invalid_number
       number_begin:
@@ -225,7 +224,6 @@ get_number:
 	mov	[edi+4],eax
 	movzx	eax,byte [esi]
 	sub	al,30h
-	jc	bad_number
 	cmp	al,9
 	ja	bad_number
 	add	[edi],eax
@@ -253,7 +251,6 @@ get_number:
 	jb	number_ok
 	movzx	eax,byte [esi]
 	sub	al,30h
-	jc	bad_number
 	cmp	al,1
 	ja	bad_number
 	xor	edx,edx
@@ -291,16 +288,17 @@ get_number:
 	cmp	al,'$'
 	je	pascal_hex_ok
 	sub	al,30h
-	jc	bad_number
 	cmp	al,9
 	jbe	hex_digit_ok
 	sub	al,7
 	cmp	al,15
-	jbe	hex_digit_ok
+	jbe	hex_letter_digit_ok
 	sub	al,20h
-	jc	bad_number
 	cmp	al,15
 	ja	bad_number
+      hex_letter_digit_ok:
+	cmp	al,10
+	jb	bad_number
       hex_digit_ok:
 	xor	edx,edx
 	mov	cl,bl
@@ -330,7 +328,6 @@ get_number:
 	jb	number_ok
 	movzx	eax,byte [esi]
 	sub	al,30h
-	jc	bad_number
 	cmp	al,7
 	ja	bad_number
       oct_digit_ok:
@@ -1545,7 +1542,7 @@ calculate_expression:
 	add	edi,14h
 	jmp	calculation_loop
       div_64:
-	xor	bl,bl
+	xor	ebx,ebx
 	cmp	dword [edi],0
 	jne	divider_ok
 	cmp	dword [edi+4],0
@@ -1560,7 +1557,7 @@ calculate_expression:
 	not	dword [esi+4]
 	add	dword [esi],1
 	adc	dword [esi+4],0
-	not	bl
+	not	bx
       div_first_sign_ok:
 	bt	dword [edi+4],31
 	jnc	div_second_sign_ok
@@ -1631,6 +1628,13 @@ calculate_expression:
 	pop	edx eax
 	jmp	div_high_correction
       div_done:
+	or	bh,bh
+	jz	remainder_ok
+	not	eax
+	not	edx
+	add	eax,1
+	adc	edx,0
+      remainder_ok:
 	or	bl,bl
 	jz	div_ok
 	not	dword [esi]

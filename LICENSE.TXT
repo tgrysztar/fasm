@@ -1,10 +1,10 @@
 
-flat assembler	version 1.56
-Copyright (c) 1999-2004, Tomasz Grysztar.
+flat assembler	version 1.57
+Copyright (c) 1999-2005, Tomasz Grysztar.
 All rights reserved.
 
 This program is free for commercial and non-commercial use as long as
-the following conditions are aheared to.
+the following conditions are adhered to.
 
 Copyright remains Tomasz Grysztar, and as such any Copyright notices
 in the code are not to be removed.

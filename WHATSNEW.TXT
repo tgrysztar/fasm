@@ -1,6 +1,11 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.57
+[19-01-2005]
+------------
+[-] cleanups and bugfixes
+
 version 1.56
 [27-09-2004]
 ------------

@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2004, Tomasz Grysztar.
+; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 
 simple_instruction:
@@ -5632,7 +5632,7 @@ get_address:
 	mov	[address_size],al
 	mov	[value_size],al
       address_size_prefix_ok:
-	call	get_address_value
+	call	calculate_address
 	mov	edx,eax
 	ret
 
