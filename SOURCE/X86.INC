@@ -7042,6 +7042,10 @@ instructions_5:
  dw mmx_instruction-assembler
  db 'pavgw',0E3h
  dw mmx_instruction-assembler
+ db 'pf2id',1Dh
+ dw amd3dnow_instruction-assembler
+ db 'pf2iw',1Ch
+ dw amd3dnow_instruction-assembler
  db 'pfacc',0AEh
  dw amd3dnow_instruction-assembler
  db 'pfadd',9Eh
@@ -7059,10 +7063,6 @@ instructions_5:
  db 'pi2fd',0Dh
  dw amd3dnow_instruction-assembler
  db 'pi2fw',0Ch
- dw amd3dnow_instruction-assembler
- db 'pi2id',1Dh
- dw amd3dnow_instruction-assembler
- db 'pi2iw',1Ch
  dw amd3dnow_instruction-assembler
  db 'popad',61h
  dw simple_instruction_32bit-assembler

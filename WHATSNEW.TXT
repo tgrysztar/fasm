@@ -1,8 +1,15 @@
 
 Visit http://fasm.sourceforge.net for more information
 
+version 1.44
+[19-01-2003]
+------------
+[+] added "eqtype" operator
+[-] fixed cache waste in label parser
+[-] small fixes and optimizations
+
 version 1.43
-[10-01-2002]
+[30-12-2002]
 ------------
 [+] introduced ELF output format
 [+] extended public and extrn syntax

@@ -1,5 +1,5 @@
 
-flat assembler	version 1.43
+flat assembler	version 1.44
 Copyright (c) 1999-2003, Tomasz Grysztar.
 All rights reserved.
 

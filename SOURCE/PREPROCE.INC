@@ -293,9 +293,23 @@ preprocess_line:
 	je	preprocess_instruction
 	cmp	al,1Ah
 	jne	not_preprocessor_symbol
-	cmp	dword [esi],3+'equ' shl 8
-	je	define_symbolic_constant
 	lods	byte [esi]
+	cmp	al,3
+	jne	not_symbolic_constant
+	mov	ebx,characters
+	movzx	eax,byte [esi]
+	xlat	byte [ebx]
+	ror	eax,8
+	mov	al,[esi+1]
+	xlat	byte [ebx]
+	ror	eax,8
+	mov	al,[esi+2]
+	xlat	byte [ebx]
+	ror	eax,16
+	cmp	eax,'equ'
+	je	define_symbolic_constant
+	mov	al,3
+      not_symbolic_constant:
 	mov	ah,1
 	call	get_macro
 	jc	not_preprocessor_symbol
@@ -370,7 +384,7 @@ process_symbolic_constants:
 	mov	ecx,eax
 	mov	esi,ebx
 	cmp	edx,[additional_memory_end]
-	je	not_symbolic_constant
+	je	symbolic_constants_ok
 	cmp	al,[edx]
 	jne	next_symbolic_constant
 	mov	edi,[edx+4]
@@ -379,7 +393,7 @@ process_symbolic_constants:
       next_symbolic_constant:
 	add	edx,16
 	jmp	scan_symbolic_constants
-      not_symbolic_constant:
+      symbolic_constants_ok:
 	pop	edi
 	stc
 	ret
@@ -525,7 +539,7 @@ include_file:
 	jc	file_not_found
 	jmp	line_preprocessed
 define_symbolic_constant:
-	add	esi,4
+	add	esi,3
 	push	esi
 	call	process_symbolic_constants
 	pop	ebx

@@ -1999,6 +1999,8 @@ get_logical_value:
       find_eq_symbol:
 	cmp	byte [esi],81h
 	je	compare_symbols
+	cmp	byte [esi],87h
+	je	compare_symbol_types
 	cmp	byte [esi],83h
 	je	scan_symbols_list
 	call	check_character
@@ -2031,6 +2033,40 @@ get_logical_value:
 	call	check_character
 	jc	return_true
 	jmp	symbols_different
+
+      compare_symbol_types:
+	inc	esi
+	pop	ebx
+      type_comparision:
+	call	check_character
+	jc	types_compared
+	mov	al,[esi]
+	cmp	al,[ebx]
+	jne	symbols_different
+	cmp	al,'('
+	jne	equal_type
+	mov	al,[esi+1]
+	mov	ah,[ebx+1]
+	cmp	al,ah
+	je	equal_type
+	or	al,al
+	jz	symbols_different
+	or	ah,ah
+	jz	symbols_different
+	cmp	al,'.'
+	je	symbols_different
+	cmp	ah,'.'
+	je	symbols_different
+      equal_type:
+	call	skip_symbol
+	xchg	esi,ebx
+	call	skip_symbol
+	xchg	esi,ebx
+	jmp	type_comparision
+      types_compared:
+	cmp	byte [ebx],87h
+	jne	return_false
+	jmp	return_true
       scan_symbols_list:
 	or	bl,bl
 	jnz	invalid_expression
@@ -2211,25 +2247,22 @@ get_logical_value:
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
 	inc	esi
+	or	byte [eax+8],10h
 	test	byte [eax+8],8
-	jz	never_used
+	jz	not_used
 	mov	cl,[current_pass]
 	sub	cl,[eax+16]
 	cmp	cl,1
 	jb	return_true
 	ja	not_used
 	mov	cl,[current_pass]
-	mov	[eax+18],cl
-	mov	byte [eax+19],1
+	mov	[eax+17],cl
+	or	byte [eax+8],20h
 	jmp	return_true
-      never_used:
-	cmp	[current_pass],0
-	jne	not_used
-	or	[next_pass_needed],-1
       not_used:
 	mov	cl,[current_pass]
-	mov	[eax+18],cl
-	mov	byte [eax+19],2
+	mov	[eax+17],cl
+	and	byte [eax+8],not 20h
       return_false:
 	xor	al,al
 	jmp	logical_value_ok

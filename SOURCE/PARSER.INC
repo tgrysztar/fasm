@@ -123,9 +123,8 @@ parse_line:
 	call	get_label_id
 	cmp	eax,10h
 	jb	label_identified
-	mov	ebx,[eax+4]
-	cmp	ebx,eax
-	je	anonymous_label_name
+	or	ebx,ebx
+	jz	anonymous_label_name
 	dec	ebx
 	mov	[current_locals_prefix],ebx
       label_identified:
@@ -762,37 +761,36 @@ get_label_id:
 	or	eax,eax
 	jnz	anonymous_ok
 	mov	eax,[labels_list]
-	sub	eax,20
+	sub	eax,8
 	mov	[labels_list],eax
 	cmp	eax,edi
 	jbe	out_of_memory
 	mov	dword [eax],0
-	mov	[eax+4],eax
 	mov	[anonymous_forward],eax
       anonymous_ok:
-	ret
+	xor	ebx,ebx
+	jmp	make_label_id
       anonymous_back:
 	add	esi,2
 	mov	eax,[anonymous_reverse]
 	or	eax,eax
 	jz	invalid_value
-	ret
+	jmp	anonymous_ok
       new_anonymous:
 	add	esi,2
 	mov	eax,[anonymous_forward]
 	or	eax,eax
 	jnz	new_anonymous_ok
 	mov	eax,[labels_list]
-	sub	eax,20
+	sub	eax,8
 	mov	[labels_list],eax
 	cmp	eax,edi
 	jbe	out_of_memory
 	mov	dword [eax],0
-	mov	[eax+4],eax
       new_anonymous_ok:
 	mov	[anonymous_reverse],eax
 	mov	[anonymous_forward],0
-	ret
+	jmp	anonymous_ok
       standard_label:
 	cmp	ecx,1
 	jne	find_label
@@ -832,24 +830,10 @@ get_label_id:
 	mov	ebx,esi
 	mov	edx,ecx
 	mov	eax,[labels_list]
-      check_label:
-	mov	esi,ebx
-	mov	ecx,edx
 	cmp	eax,[memory_end]
-	je	add_label
-	cmp	ebp,[eax]
-	jne	next_label
-	mov	edi,[eax+4]
-	repe	cmps byte [esi],[edi]
-	je	label_found
-      next_label:
-	add	eax,20
-	jmp	check_label
-      label_found:
-	add	esp,4
-	pop	edi
-	ret
+	jne	scan_hashes
       add_label:
+	mov	ecx,edx
 	pop	esi
 	cmp	byte [esi-1],0
 	je	label_name_ok
@@ -880,19 +864,45 @@ get_label_id:
 	jnc	reserved_word
       label_name_ok:
 	mov	eax,[labels_list]
-	sub	eax,20
+	sub	eax,8
 	mov	[labels_list],eax
 	mov	[eax+4],esi
+	mov	ebx,esi
 	add	esi,ecx
 	mov	edx,[label_hash]
 	mov	[eax],edx
 	pop	edi
 	cmp	eax,edi
 	jbe	out_of_memory
-	ret
+	jmp	make_label_id
       reserved_word:
 	mov	eax,0Fh
 	pop	edi
+	ret
+	align	16
+      scan_hashes:
+	cmp	ebp,[eax]
+	je	check_label
+      next_label:
+	add	eax,8
+	cmp	eax,[memory_end]
+	jne	scan_hashes
+	jmp	add_label
+      check_label:
+	mov	esi,ebx
+	mov	ecx,edx
+	mov	edi,[eax+4]
+	repe	cmps byte [esi],[edi]
+	jne	next_label
+      label_found:
+	add	esp,4
+	pop	edi
+	mov	ebx,[eax+4]
+      make_label_id:
+	sub	eax,[memory_end]
+	sar	eax,3
+	imul	eax,20
+	add	eax,[memory_end]
 	ret
 
 operators:
@@ -920,6 +930,7 @@ directive_operators:
  db 2,'at',80h
  db 7,'defined',88h
  db 2,'eq',81h
+ db 6,'eqtype',87h
  db 4,'from',82h
  db 2,'in',83h
  db 2,'on',84h

@@ -654,7 +654,10 @@ make_timestamp:
 	mov	eax,ecx
 	shr	eax,1
 	add	ebp,eax
+	cmp	ecx,2
+	jb	months_correction_ok
 	sub	ebp,2
+      months_correction_ok:
 	cmp	ecx,2
 	jbe	day_correction_ok
 	pop	cx

@@ -3,9 +3,9 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-	format	PE console on '..\dos\fasm.com'
+	format	PE console on '..\DOS\fasm.com'
 
-	macro	align value { rb (value-1) - (rva $ + value-1) mod value }
+	macro	align value { rb (value-1) - (RVA $ + value-1) mod value }
 
 start:
 

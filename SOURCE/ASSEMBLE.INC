@@ -4,9 +4,15 @@
 ; All rights reserved.
 
 assembler:
-	mov	edi,[labels_list]
 	mov	ecx,[memory_end]
-	sub	ecx,edi
+	mov	edi,ecx
+	sub	ecx,[labels_list]
+	shr	ecx,3
+	imul	ecx,20
+	sub	edi,ecx
+	cmp	edi,[code_start]
+	jbe	out_of_memory
+	mov	[labels_list],edi
 	shr	ecx,2
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -68,17 +74,17 @@ assembler:
 	jz	symbol_defined_ok
 	sub	cl,[eax+9]
 	cmp	cl,1
-	jne	check_next_symbol
+	jne	symbol_defined_ok
 	and	byte [eax+8],not 1
 	or	[next_pass_needed],-1
       symbol_defined_ok:
+	test	byte [eax+8],10h
+	jz	check_next_symbol
 	mov	cl,[current_pass]
-	cmp	cl,[eax+18]
+	cmp	cl,[eax+17]
 	jne	check_next_symbol
-	cmp	byte [eax+19],1
-	je	check_used_prediction
-	cmp	byte [eax+19],2
-	jne	check_next_symbol
+	test	byte [eax+8],20h
+	jnz	check_used_prediction
 	cmp	cl,[eax+16]
 	jne	check_next_symbol
 	test	byte [eax+8],8
@@ -200,6 +206,12 @@ assemble_line:
 	jmp	continue_line
       define_constant:
 	lods	dword [esi]
+	inc	esi
+	or	eax,eax
+	jz	org_directive
+	cmp	eax,0Fh
+	jb	invalid_use_of_symbol
+	je	reserved_word_used_as_symbol
 	mov	edx,[eax+8]
 	push	edx
 	cmp	[current_pass],0
@@ -213,7 +225,7 @@ assemble_line:
 	mov	[eax+8],dl
       get_constant_value:
 	push	eax
-	lods	byte [esi]
+	mov	al,byte [esi-1]
 	push	eax
 	call	get_value
 	pop	ebx
