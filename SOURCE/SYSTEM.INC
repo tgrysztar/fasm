@@ -320,5 +320,3 @@ line_number_start db ' [',0
 line_data_start db ':',0Dh,0Ah,0
 
 macro dm string { db string,0 }
-
-

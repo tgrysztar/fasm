@@ -7544,4 +7544,3 @@ store_instruction:
 	stos	byte [edi]
       instruction_prefix_ok:
 	ret
-

@@ -310,5 +310,3 @@ section '.idata' import data readable writeable
     db 'GlobalMemoryStatus',0
 
 section '.reloc' fixups data readable discardable
-
-

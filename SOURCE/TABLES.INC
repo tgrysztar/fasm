@@ -301,6 +301,7 @@ directive_operators:
  db 4,'from',82h
  db 2,'in',83h
  db 2,'on',84h
+ db 3,'ptr',85h
  db 0
 
 address_registers:
@@ -1570,21 +1571,124 @@ instructions_7:
  dw virtual_directive-assembler
  db 0
 instructions_8:
+ db 'cmpnleps',6
+ dw cmp_ps_instruction-assembler
+ db 'cmpnless',6
+ dw cmp_ss_instruction-assembler
+ db 'cmpordps',7
+ dw cmp_ps_instruction-assembler
+ db 'cmpordss',7
+ dw cmp_ss_instruction-assembler
+ db 'cvtdq2pd',0E6h
+ dw cvtdq2pd_instruction-assembler
+ db 'cvtdq2ps',5Bh
+ dw sse_ps_instruction-assembler
+ db 'cvtpd2dq',0E6h
+ dw cvtpd2dq_instruction-assembler
+ db 'cvtpd2pi',2Dh
+ dw cvtpd2pi_instruction-assembler
+ db 'cvtpd2ps',5Ah
+ dw sse_pd_instruction-assembler
+ db 'cvtpi2pd',2Ah
+ dw cvtpi2pd_instruction-assembler
+ db 'cvtpi2ps',2Ah
+ dw cvtpi2ps_instruction-assembler
+ db 'cvtps2dq',5Bh
+ dw sse_pd_instruction-assembler
+ db 'cvtps2pd',5Ah
+ dw sse_ps_instruction-assembler
+ db 'cvtps2pi',2Dh
+ dw cvtps2pi_instruction-assembler
+ db 'cvtsd2si',2Dh
+ dw cvtsd2si_instruction-assembler
+ db 'cvtsd2ss',5Ah
+ dw sse_sd_instruction-assembler
+ db 'cvtsi2sd',2Ah
+ dw cvtsi2sd_instruction-assembler
+ db 'cvtsi2ss',2Ah
+ dw cvtsi2ss_instruction-assembler
+ db 'cvtss2sd',5Ah
+ dw sse_ss_instruction-assembler
+ db 'cvtss2si',2Dh
+ dw cvtss2si_instruction-assembler
+ db 'fcmovnbe',0D0h
+ dw fcomi_instruction-assembler
+ db 'maskmovq',0
+ dw maskmovq_instruction-assembler
+ db 'movmskpd',0
+ dw movmskpd_instruction-assembler
+ db 'movmskps',0
+ dw movmskps_instruction-assembler
+ db 'packssdw',6Bh
+ dw mmx_instruction-assembler
+ db 'packsswb',63h
+ dw mmx_instruction-assembler
+ db 'packuswb',67h
+ dw mmx_instruction-assembler
+ db 'pmovmskb',0D7h
+ dw pmovmskb_instruction-assembler
  db 'sysenter',34h
  dw simple_extended_instruction-assembler
+ db 'unpckhpd',15h
+ dw sse_pd_instruction-assembler
+ db 'unpckhps',15h
+ dw sse_ps_instruction-assembler
+ db 'unpcklpd',14h
+ dw sse_pd_instruction-assembler
+ db 'unpcklps',14h
+ dw sse_ps_instruction-assembler
  db 0
 instructions_9:
  db 'cmpxchg8b',0
  dw cmpxchg8b_instruction-assembler
+ db 'cvttpd2dq',0E6h
+ dw sse_pd_instruction-assembler
+ db 'cvttpd2pi',2Ch
+ dw cvtpd2pi_instruction-assembler
+ db 'cvttps2dq',5Bh
+ dw cvtdq2pd_instruction-assembler
+ db 'cvttps2pi',2Ch
+ dw cvtps2pi_instruction-assembler
+ db 'cvttsd2si',2Ch
+ dw cvtsd2si_instruction-assembler
+ db 'cvttss2si',2Ch
+ dw cvtss2si_instruction-assembler
+ db 'punpckhbw',68h
+ dw mmx_instruction-assembler
+ db 'punpckhdq',6Ah
+ dw mmx_instruction-assembler
+ db 'punpckhwd',69h
+ dw mmx_instruction-assembler
+ db 'punpcklbw',60h
+ dw mmx_instruction-assembler
+ db 'punpckldq',62h
+ dw mmx_instruction-assembler
+ db 'punpcklwd',61h
+ dw mmx_instruction-assembler
  db 0
 instructions_10:
+ db 'cmpunordps',3
+ dw cmp_ps_instruction-assembler
+ db 'cmpunordss',3
+ dw cmp_ss_instruction-assembler
  db 'loadall286',5
  dw simple_extended_instruction-assembler
  db 'loadall386',7
  dw simple_extended_instruction-assembler
+ db 'maskmovdqu',0
+ dw maskmovdqu_instruction-assembler
+ db 'prefetcht0',1
+ dw prefetch_instruction-assembler
+ db 'prefetcht1',2
+ dw prefetch_instruction-assembler
+ db 'prefetcht2',3
+ dw prefetch_instruction-assembler
+ db 'punpckhqdq',6Dh
+ dw sse_pd_instruction-assembler
+ db 'punpcklqdq',6Ch
+ dw sse_pd_instruction-assembler
  db 0
 instructions_11:
  db 'prefetchnta',0
  dw prefetch_instruction-assembler
  db 0
-

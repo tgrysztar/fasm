@@ -979,4 +979,3 @@ finish_pe:
 	sub	eax,[code_start]
 	mov	[code_size],eax
 	ret
-

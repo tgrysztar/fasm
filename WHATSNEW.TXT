@@ -2,6 +2,11 @@
 Questions or comments please send to fasm@metro-nt.pl
 Visit http://fasm.metro-nt.pl for more examples and tools
 
+version 1.36
+[22-05-2002]
+------------
+[+] ptr operator for addressing allowed
+
 version 1.35
 [06-05-2002]
 ------------

@@ -224,9 +224,16 @@ parse_line:
 	jmp	argument_parsed
       operator_argument:
 	pop	edi
+	cmp	al,85h
+	je	ptr_argument
 	stos	byte [edi]
 	cmp	al,80h
 	je	forced_expression
+	jmp	argument_parsed
+      ptr_argument:
+	call	parse_address
+	mov	al,']'
+	stos	byte [edi]
 	jmp	argument_parsed
       check_argument:
 	push	esi ecx
@@ -313,6 +320,13 @@ parse_line:
 	stos	byte [edi]
 	jmp	expression_parsed
       address_argument:
+	call	parse_address
+	lods	byte [esi]
+	cmp	al,']'
+	jne	invalid_address
+	stos	byte [edi]
+	jmp	argument_parsed
+      parse_address:
 	mov	al,'['
 	stos	byte [edi]
 	cmp	word [esi],021Ah
@@ -339,7 +353,7 @@ parse_line:
 	stos	byte [edi]
       convert_address:
 	cmp	byte [esi],1Ah
-	jne	convert_address_value
+	jne	convert_expression
 	push	esi
 	lods	word [esi]
 	movzx	ecx,ah
@@ -352,16 +366,10 @@ parse_line:
 	add	al,70h
 	stos	byte [edi]
 	add	esp,4
-	jmp	convert_address_value
+	jmp	convert_expression
       no_size_prefix:
 	pop	esi
-      convert_address_value:
-	call	convert_expression
-	lods	byte [esi]
-	cmp	al,']'
-	jne	invalid_address
-	stos	byte [edi]
-	jmp	argument_parsed
+	jmp	convert_expression
       close_expression:
 	mov	al,'}'
       separator:
@@ -440,6 +448,3 @@ parse_line:
 	cmp	[parenthesis_stack],0
 	jne	invalid_expression
 	ret
-
-
-

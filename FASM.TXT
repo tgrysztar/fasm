@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.35
+			flat assembler	version 1.36
 
 	 Copyright (c) 1999-2002, Tomasz Grysztar. All rights reserved.
 
@@ -115,6 +115,8 @@ been defined as an 8-bit or a 16-bit variable; eax will contain whatever is
 in the four bytes beginning at the address of 'myvar'! Allowed size overrides
 are: byte (8-bit), word (16-bit), dword (32-bit), pword (48-bit),
 qword (64-bit), tword (80-bit), dqword (128-bit).
+    You can also use 'ptr' operator instead of brackets to get the value of
+the variable, so 'mov byte ptr myvar,7' is the same as 'mov byte [myvar],7'.
 
 2.1.1.2  Jumps and calls
 
@@ -537,4 +539,3 @@ Thanks to:
 		    be started
 
     and all others who helped me (there were many of them)!
-
