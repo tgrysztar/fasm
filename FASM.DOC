@@ -9,7 +9,7 @@
 		       ÛÛ   Û	   ÛÛ Ü     ŞÛ ŞÛ  Û  İ
 		     ßßßßßß  ßßßßß ßß  ßßßßßß	ß  ß  ß
 
-			flat assembler	version 1.03
+			flat assembler	version 1.04
 
 	 Copyright (c) 1999-2000, Tomasz Grysztar. All rights reserved.
 
@@ -22,6 +22,7 @@ Table of Contents
     1.3  Software and OS requirements
     1.4  Output formats
     1.5  Output file ordering
+    1.6  Output code optimization
 
  2  Using flat assembler
     2.1  Assembler syntax
@@ -37,7 +38,7 @@ Table of Contents
 	 2.1.5	Defining data
     2.2  Directives
 	 2.2.1	Preprocessor directives
-	 2.2.2	Code settings
+	 2.2.2	Code and format settings
 	 2.2.3	Other directives
 
 ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -46,13 +47,15 @@ Table of Contents
 
 1.1  What is fasm?
 
-     The fasm assembler is a fast, efficient 80x86 assembler that runs
+     The flat assembler is a fast, efficient 80x86 assembler that runs
 in 'flat real mode'.  So, it must be run on at least an 80386 PC, but
 it can certainly assemble programs for any 80x86 PC.  Unlike many other
 80x86 assemblers, fasm only requires the source code to include the
 information it really needs.  See the 'asm' files in the 'examples'
 subdirectory to see how simple it can be!  The files in the 'source' and
 'examples' subdirectories are good references for more complex examples.
+You may notice that fasm is case sensitive for all symbols (even instructions
+and directives).
 
 1.2  Hardware requirements
 
@@ -64,22 +67,31 @@ reccommended for best performance.
 
      Other than an OS compatible with MSDOS 2.0+, fasm needs no other
 software.  Note that fasm will not run if the CPU is in protected or
-V86 modes, since flat real mode cannot be entered in that case.
+V86 modes, since flat real mode cannot be entered in that case.  The
+fasmw needs to run an OS compatible with Win32.
 
 1.4  Output formats
 
-     There are two possible output formats; by default, the output of
+     There are three possible output formats; by default, the output of
 fasm is a non-relocatable binary image such as a 'com' or 'sys' program.
 Use of the directive 'format MZ' produces a relocatable and possibly
-multi-segment 'exe' program.  No extra 'linking' step is needed!
+multi-segment 'exe' program.  No extra 'linking' step is needed! Use of
+the directive 'format PE' produces Win32 portable executable.
 
 1.5  Output file ordering
 
      All output code is in the order in which it was entered into the
 source file.  So, program code or at least an instruction such as 'jmp
 start' must be at the beginning of the source code unless the program
-is in multi-segment MZ format.	In that case, see the 'entry' directive
+is in format other than binary.  In that case, see the 'entry' directive
 (below).
+
+1.6  Output code optimization
+
+     The flat assembler will do multiple (but fast) assembly passes to
+generate optimal output code. When size of jump or address in instruction
+is not specified, fasm will generate as small instruction code as possible.
+That's the only code optimization fasm will do.
 
 2  Using flat assembler
 
@@ -161,9 +173,11 @@ arguments). 'xlatb', 'movsb', etc. accept no arguments.
 
     Decimal numbers: 15, 15d
     Binary: 1011b
-    Hexadecimal: ABh, 0xAB (case sensitive)
+    Hexadecimal: 0ABh, 0xAB
+    Floating point: 3.14, 1.0E3
     Special: $ - current address value, % - current repeat number (see 2.2.3)
     Operators: +,-,*,/,mod,not,and,or,xor,shl,shr
+    Address conversion operator: rva (only in PE format)
 
 2.1.3  Logical expressions syntax
 
@@ -200,6 +214,7 @@ to a specific value, the forms are:
 	dw   ; 16-bit word
 	dp   ; 48-bit pointer
 	dq   ; 64-bit quad word
+	dt   ; 80-bit floating point
 
     If it is only desired to reserve space for data, the forms are:
 
@@ -212,6 +227,7 @@ to a specific value, the forms are:
 	rw   ; 16-bit word
 	rp   ; 48-bit pointer
 	rq   ; 64-bit quad word
+	rt   ; 80-bit floating point
 
     Note that if the pre-defined 'times' macro is to be used to define
 multiple data items, any label used must end with a colon. The other way is
@@ -244,6 +260,24 @@ cases you can do the same thing easily using macros:
     To handle cases, when one or more of macro params are empty (for
 example just: 'pixel mypix'), you can write something like '.x dw x+0',
 or use 'if <x> equ <>'.
+    To create union of some variables, you can use label directive with
+'at <address>' phrase, or virtual directive, for example:
+
+	GDT_limit dw 15
+	GDT_address dd ?
+
+	; now define virtual variable for lgdt and sgdt instructions
+
+	label GDTR pword at GDT_limit
+
+	; and now the other method
+
+	LDTR dp ?
+
+	virtual at LDTR
+	  LDT_limit dw ?
+	  LDT_address dd ?
+	end virtual
 
 2.2  Directives
 
@@ -283,12 +317,37 @@ macro - defines macroinstructions, arguments are macro name and names
 	     mov   arg2,arg3
 	  end if
 	 }
-	mov   ax,bx	   ; just 'mov ax,bx'
-	mov   ds,es	   ; 'push es' and 'pop ds'
-	mov   es,ds,dx	   ; 'push ds', 'pop es' and 'mov ds,dx'
+	mov   ax,bx	      ; just 'mov ax,bx'
+	mov   ds,es	      ; 'push es' and 'pop ds'
+	mov   es,ds,dx	      ; 'push ds', 'pop es' and 'mov ds,dx'
 
 	But note that using these macros in big programs will dramatically
 	slow down assembly (up to 4 times!) and increase memory requirements.
+
+	If you type arguments in brackets, macroinstruction will allow
+	multiple groups of arguments, and will repeat all instructions for
+	each arguments group separately. For example:
+
+	macro stoschar [char]
+	 {
+	     mov   al,char
+	     stosb
+	 }
+
+	stoschar 1,2,3,4      ; store four bytes at es:di
+
+	Also macroinstruction can be divided into parts, each beginning
+	with '{', and ending with '}' character. Each macroinstruction part
+	will be processed for all groups of arguments before processing next
+	part. Local symbol defined in one of parts will be available in all
+	next parts, when processing the same group of arguments.
+	For example, to create table of addresses to strings, and then
+	strings data, use this macro:
+
+	macro strtbl [string]
+	 { local label
+	   dd label }
+	 { label db string,0 }
 
 local - used inside macro definitions, defines local symbols, which
 	will have unique names in every macro call; arguments are local
@@ -316,7 +375,7 @@ purge - argument is one or more macro names, separated with commas; this
 
 equ - defines symbolic constant.
 
-2.2.2  Code settings
+2.2.2  Code and format settings
 
 use16 - set code type to 16-bit (this is default code setting).
 
@@ -325,8 +384,11 @@ use32 - set code type to 32-bit.
 org - argument must be an address value; set from what address this
       code will start in memory.
 
-format - set output file format, can be set binary or MZ; binary
-	 is the default format, MZ is an EXE file format.
+format - set output file format, can be set binary, MZ or PE; binary
+	 is the default format, MZ is an EXE file format, PE is an portable
+	 executable file format.  When specified format is PE, more format
+	 settings can be specified, use 'console' or 'GUI' words to set
+	 target subsystem type, 'DLL' to create dynamic link library.
 
 label - define label, needed argument is a name of label, optional
 	arguments are size of label and 'at <address>' phrase.
@@ -335,18 +397,28 @@ segment - define segment at current position (only in MZ format),
 	  code will be aligned to paragraph.  In segment definition, after
 	  segment name, 'use16' or 'use32' is allowed.
 
-entry - define program entry point (only in MZ format), argument must
-	be a segment:offset address (like in far jump).
+section - define section at current position (only in PE format), code will
+	  be aligned to page (4096 bytes). First argument is a string
+	  containing section name, optional next arguments are section type
+	  (code, data, udata, import, export, resource), and section
+	  attributes (readable, writeable, executable, shareable).
 
-stack - define program stack size (only in MZ format), when no stack
-	is defined, default size of 2000h bytes is used.  Or, the stack
-	location can be defined in segment:offset form.
+entry - define program entry point (only in MZ and PE formats). In MZ format
+	argument must be a segment:offset address (like in far jump).
 
-heap - define 'heap' size in paragraphs (only in MZ format) - argument
-       is a 16-bit value, defining maximum size of additional heap in
-       paragraphs (note that this is heap in addition to stack and undefined
-       data; use 'heap 0' to always allocate only memory program really
-       needs); default value of 'heap' is FFFFh.
+stack - define program stack size (only in MZ and PE formats), when no stack
+	is defined, default size of 1000h bytes is used.  In MZ format the
+	stack location can be defined in segment:offset form.  In PE format
+	second argument is allowed to define stack reserve (first argument
+	defines stack commit).
+
+heap - define 'heap' size in paragraphs (only in MZ and PE formats).  In MZ
+       format argument is a 16-bit value, defining maximum size of additional
+       heap in paragraphs (note that this is heap in addition to stack and
+       undefined data; use 'heap 0' to always allocate only memory program
+       really needs); default value of 'heap' is FFFFh.  In PE format
+       argument is a 32-bit value, defining heap commit; second argument is
+       allowed to define heap reserve.
 
 2.2.3  Other directives
 

@@ -1,4 +1,13 @@
 
+version 1.04
+------------
+[+] PE output format support
+[+] Win32 version of fasm executable
+[+] advanced macroinstructions
+[+] floating point data allowed
+[-] changed hexadecimal numbers format to standard
+[-] many other fixes and improvements
+
 version 1.03
 ------------
 [-] more bugs fixed

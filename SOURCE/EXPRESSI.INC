@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.03
+; flat assembler  version 1.04
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -22,7 +22,7 @@ convert_expression:
 	xor	al,al
 	jmp	expression_number
       init_negative:
-	mov	al,D1h
+	mov	al,0D1h
 	jmp	expression_number
       expression_loop:
 	push	ebp edi
@@ -31,6 +31,8 @@ convert_expression:
 	pop	edi
       expression_number:
 	push	ax
+	cmp	byte [esi],0
+	je	invalid_expression
 	call	convert_number
 	pop	ax
 	or	al,al
@@ -47,9 +49,9 @@ convert_expression:
 	cmp	esp,ebp
 	je	push_operator
 	mov	bl,al
-	and	bl,F0h
+	and	bl,0F0h
 	mov	bh,byte [esp]
-	and	bh,F0h
+	and	bh,0F0h
 	cmp	bl,bh
 	ja	push_operator
 	pop	bx
@@ -127,7 +129,7 @@ convert_number:
 	ret
       register_value:
 	pop	edi
-	add	sp,8
+	add	esp,8
 	mov	byte [edi-1],10h
 	mov	al,ah
 	stos	byte [edi]
@@ -142,6 +144,11 @@ get_number:
 	lods	byte [esi]
 	movzx	ecx,al
 	mov	[number_start],esi
+	mov	al,[esi]
+	sub	al,30h
+	jb	invalid_number
+	cmp	al,9
+	ja	invalid_number
 	mov	eax,esi
 	add	esi,ecx
 	push	esi
@@ -234,6 +241,10 @@ get_number:
 	sub	al,7
 	jc	no_number
 	cmp	al,15
+	jbe	hex_digit_ok
+	sub	al,20h
+	jc	no_number
+	cmp	al,15
 	ja	no_number
       hex_digit_ok:
 	xor	edx,edx
@@ -287,8 +298,370 @@ get_number:
 	clc
 	ret
 
+get_fp_value:
+	push	edi esi
+	lods	byte [esi]
+	cmp	al,1Ah
+	je	fp_value_start
+	cmp	al,'-'
+	je	fp_sign_ok
+	cmp	al,'+'
+	jne	not_fp_value
+      fp_sign_ok:
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	not_fp_value
+      fp_value_start:
+	lods	byte [esi]
+	movzx	ecx,al
+	xor	ah,ah
+      check_fp_value:
+	lods	byte [esi]
+	cmp	al,'.'
+	je	fp_character_dot
+	cmp	al,'E'
+	je	fp_character_exp
+	cmp	al,'0'
+	jb	not_fp_value
+	cmp	al,'9'
+	ja	not_fp_value
+	jmp	fp_character_ok
+      fp_character_dot:
+	or	ah,ah
+	jnz	not_fp_value
+	or	ah,1
+	jmp	fp_character_ok
+      fp_character_exp:
+	cmp	ah,1
+	ja	not_fp_value
+	mov	ah,2
+	cmp	ecx,1
+	jne	fp_character_ok
+	cmp	byte [esi],'+'
+	je	fp_exp_sign
+	cmp	byte [esi],'-'
+	jne	fp_character_ok
+      fp_exp_sign:
+	inc	esi
+	cmp	byte [esi],1Ah
+	jne	not_fp_value
+	inc	esi
+	lods	byte [esi]
+	movzx	ecx,al
+	inc	ecx
+      fp_character_ok:
+	loop	check_fp_value
+	or	ah,ah
+	jz	not_fp_value
+	pop	esi
+	lods	byte [esi]
+	mov	[fp_sign],0
+	cmp	al,1Ah
+	je	fp_get
+	inc	esi
+	cmp	al,'+'
+	je	fp_get
+	mov	[fp_sign],1
+      fp_get:
+	lods	byte [esi]
+	movzx	ecx,al
+	xor	edx,edx
+	mov	edi,fp_value
+	mov	[edi],edx
+	mov	[edi+4],edx
+	mov	[edi+12],edx
+	call	fp_optimize
+	mov	al,[esi]
+      fp_before_dot:
+	lods	byte [esi]
+	cmp	al,'.'
+	je	fp_dot
+	cmp	al,'E'
+	je	fp_exponent
+	sub	al,30h
+	mov	edi,fp_value+16
+	xor	edx,edx
+	mov	dword [edi+12],edx
+	mov	dword [edi],edx
+	mov	dword [edi+4],edx
+	mov	[edi+7],al
+	mov	dl,7
+	mov	dword [edi+8],edx
+	call	fp_optimize
+	mov	edi,fp_value
+	push	ecx
+	mov	ecx,10
+	call	fp_mul
+	pop	ecx
+	mov	ebx,fp_value+16
+	call	fp_add
+	loop	fp_before_dot
+      fp_dot:
+	mov	edi,fp_value+16
+	xor	edx,edx
+	mov	[edi],edx
+	mov	[edi+4],edx
+	mov	byte [edi+7],80h
+	mov	[edi+8],edx
+	mov	dword [edi+12],edx
+	dec	ecx
+	jz	fp_done
+      fp_after_dot:
+	lods	byte [esi]
+	cmp	al,'E'
+	je	fp_exponent
+	dec	esi
+	mov	edi,fp_value+16
+	push	ecx
+	mov	ecx,10
+	call	fp_div
+	push	dword [edi]
+	push	dword [edi+4]
+	push	dword [edi+8]
+	push	dword [edi+12]
+	lods	byte [esi]
+	sub	al,30h
+	movzx	ecx,al
+	call	fp_mul
+	mov	ebx,edi
+	mov	edi,fp_value
+	call	fp_add
+	mov	edi,fp_value+16
+	pop	dword [edi+12]
+	pop	dword [edi+8]
+	pop	dword [edi+4]
+	pop	dword [edi]
+	pop	ecx
+	loop	fp_after_dot
+	jmp	fp_done
+      fp_exponent:
+	xor	edx,edx
+	xor	ebp,ebp
+	dec	ecx
+	jnz	get_exponent
+	cmp	byte [esi],'+'
+	je	fp_exponent_sign
+	cmp	byte [esi],'-'
+	jne	fp_done
+      fp_exponent_sign:
+	not	ebp
+	add	esi,2
+	lods	byte [esi]
+	movzx	ecx,al
+      get_exponent:
+	lods	byte [esi]
+	sub	al,30h
+	imul	edx,10
+	cmp	edx,8000h
+	jae	value_out_of_range
+	movzx	eax,al
+	add	edx,eax
+	loop	get_exponent
+	mov	edi,fp_value
+	or	edx,edx
+	jz	fp_done
+	mov	ecx,edx
+	or	ebp,ebp
+	jnz	fp_negative_power
+      fp_power:
+	push	ecx
+	mov	ecx,10
+	call	fp_mul
+	pop	ecx
+	loop	fp_power
+	jmp	fp_done
+      fp_negative_power:
+	push	ecx
+	mov	ecx,10
+	call	fp_div
+	pop	ecx
+	loop	fp_negative_power
+      fp_done:
+	mov	edi,fp_value
+	mov	al,[fp_sign]
+	mov	byte [edi+11],al
+	test	byte [edi+15],80h
+	jz	fp_ok
+	add	dword [edi],1
+	adc	dword [edi+4],0
+	jnc	fp_ok
+	mov	eax,[edi+4]
+	shrd	[edi],eax,1
+	shr	eax,1
+	or	eax,80000000h
+	mov	[edi+4],eax
+	inc	word [edi+8]
+      fp_ok:
+	pop	edi
+	clc
+	ret
+      not_fp_value:
+	pop	esi edi
+	stc
+	ret
+      fp_mul:
+	or	ecx,ecx
+	jz	fp_zero
+	mov	eax,[edi+12]
+	mul	ecx
+	mov	[edi+12],eax
+	mov	ebx,edx
+	mov	eax,[edi]
+	mul	ecx
+	add	eax,ebx
+	adc	edx,0
+	mov	[edi],eax
+	mov	ebx,edx
+	mov	eax,[edi+4]
+	mul	ecx
+	add	eax,ebx
+	adc	edx,0
+	mov	[edi+4],eax
+      .loop:
+	or	edx,edx
+	jz	.done
+	mov	eax,[edi]
+	shrd	[edi+12],eax,1
+	mov	eax,[edi+4]
+	shrd	[edi],eax,1
+	shrd	eax,edx,1
+	mov	[edi+4],eax
+	shr	edx,1
+	inc	dword [edi+8]
+	cmp	dword [edi+8],8000h
+	jge	value_out_of_range
+	jmp	.loop
+      .done:
+	ret
+      fp_div:
+	mov	eax,[edi+4]
+	xor	edx,edx
+	div	ecx
+	mov	[edi+4],eax
+	mov	eax,[edi]
+	div	ecx
+	mov	[edi],eax
+	mov	eax,[edi+12]
+	div	ecx
+	mov	[edi+12],eax
+	mov	ebx,eax
+	or	ebx,[edi]
+	or	ebx,[edi+4]
+	jz	fp_zero
+      .loop:
+	test	byte [edi+7],80h
+	jnz	.exp_ok
+	mov	eax,[edi]
+	shld	[edi+4],eax,1
+	mov	eax,[edi+12]
+	shld	[edi],eax,1
+	shl	eax,1
+	mov	[edi+12],eax
+	dec	dword [edi+8]
+	shl	edx,1
+	jmp	.loop
+      .exp_ok:
+	mov	eax,edx
+	xor	edx,edx
+	div	ecx
+	add	[edi+12],eax
+	adc	dword [edi],0
+	adc	dword [edi+4],0
+	jnc	.done
+	mov	eax,[edi+4]
+	mov	ebx,[edi]
+	shrd	[edi],eax,1
+	shrd	[edi+12],ebx,1
+	shr	eax,1
+	or	eax,80000000h
+	mov	[edi+4],eax
+	inc	dword [edi+8]
+      .done:
+	ret
+      fp_add:
+	cmp	dword [ebx+8],8000h
+	je	.done
+	cmp	dword [edi+8],8000h
+	je	.copy
+	mov	eax,[ebx+8]
+	cmp	eax,[edi+8]
+	jge	.exp_ok
+	mov	eax,[edi+8]
+      .exp_ok:
+	call	.change_exp
+	xchg	ebx,edi
+	call	.change_exp
+	xchg	ebx,edi
+	mov	edx,[ebx+12]
+	mov	eax,[ebx]
+	mov	ebx,[ebx+4]
+	add	[edi+12],edx
+	adc	[edi],eax
+	adc	[edi+4],ebx
+	jnc	.done
+	mov	eax,[edi]
+	shrd	[edi+12],eax,1
+	mov	eax,[edi+4]
+	shrd	[edi],eax,1
+	shr	eax,1
+	or	eax,80000000h
+	mov	[edi+4],eax
+	inc	dword [edi+8]
+      .done:
+	ret
+      .copy:
+	mov	eax,[ebx]
+	mov	[edi],eax
+	mov	eax,[ebx+4]
+	mov	[edi+4],eax
+	mov	eax,[ebx+8]
+	mov	[edi+8],eax
+	mov	eax,[ebx+12]
+	mov	[edi+12],eax
+	ret
+      .change_exp:
+	push	ecx
+	mov	ecx,eax
+	sub	ecx,[ebx+8]
+	mov	edx,[ebx+4]
+	jecxz	.exp_done
+      .exp_loop:
+	mov	ebp,[ebx]
+	shrd	[ebx+12],ebp,1
+	shrd	[ebx],edx,1
+	shr	edx,1
+	inc	dword [ebx+8]
+	loop	.exp_loop
+      .exp_done:
+	mov	[ebx+4],edx
+	pop	ecx
+	ret
+      fp_optimize:
+	mov	eax,[edi]
+	mov	ebp,[edi+4]
+	or	ebp,[edi]
+	or	ebp,[edi+12]
+	jz	fp_zero
+      .loop:
+	test	byte [edi+7],80h
+	jnz	.done
+	shld	[edi+4],eax,1
+	mov	ebp,[edi+12]
+	shld	eax,ebp,1
+	mov	[edi],eax
+	shl	dword [edi+12],1
+	dec	dword [edi+8]
+	jmp	.loop
+      .done:
+	ret
+      fp_zero:
+	mov	dword [edi+8],8000h
+	ret
+
 calculate_expression:
 	lods	byte [esi]
+	cmp	al,'.'
+	je	convert_fp
 	cmp	al,1
 	je	get_byte_number
 	cmp	al,2
@@ -310,9 +683,11 @@ calculate_expression:
 	sub	ebx,20h
 	mov	dx,[ebx+24]
 	or	dx,[edi+24]
-	cmp	al,D0h
+	cmp	al,0E0h
+	je	calculate_rva
+	cmp	al,0D0h
 	je	calculate_not
-	cmp	al,D1h
+	cmp	al,0D1h
 	je	calculate_neg
 	cmp	al,80h
 	je	calculate_add
@@ -327,17 +702,17 @@ calculate_expression:
 	je	calculate_div
 	or	dx,dx
 	jnz	invalid_value
-	cmp	al,A0h
+	cmp	al,0A0h
 	je	calculate_mod
-	cmp	al,B0h
+	cmp	al,0B0h
 	je	calculate_and
-	cmp	al,B1h
+	cmp	al,0B1h
 	je	calculate_or
-	cmp	al,B2h
+	cmp	al,0B2h
 	je	calculate_xor
-	cmp	al,C0h
+	cmp	al,0C0h
 	je	calculate_shl
-	cmp	al,C1h
+	cmp	al,0C1h
 	je	calculate_shr
 	jmp	invalid_value
       expression_calculated:
@@ -435,8 +810,8 @@ calculate_expression:
 	jne	operand_sizes_do_not_match
 	jmp	calculate_expression
       current_offset_label:
-	cmp	[output_format],3
-	jne	get_current_offset
+	cmp	[reloc_labels],0
+	je	get_current_offset
 	mov	byte [edi+26],2
       get_current_offset:
 	mov	eax,[current_offset]
@@ -834,6 +1209,23 @@ calculate_expression:
 	sbb	[edi+4],edx
 	add	edi,20h
 	jmp	calculate_expression
+      calculate_rva:
+	cmp	word [edi+24],0
+	jne	invalid_value
+	mov	al,[edi+26]
+	cmp	al,2
+	je	rva_ok
+	or	al,al
+	jnz	invalid_use_of_symbol
+	cmp	[next_pass_needed],0
+	je	invalid_use_of_symbol
+      rva_ok:
+	mov	byte [edi+26],0
+	mov	eax,[image_base]
+	sub	[edi],eax
+	sbb	dword [edi+4],0
+	add	edi,20h
+	jmp	calculate_expression
       mul_64:
 	xor	bl,bl
 	test	dword [esi+4],1 shl 31
@@ -959,6 +1351,81 @@ calculate_expression:
 	add	dword [esi],1
 	adc	dword [esi+4],0
       div_ok:
+	ret
+      convert_fp:
+	mov	word [edi+24],0
+	mov	byte [edi+26],0
+	mov	al,[value_size]
+	cmp	al,4
+	je	convert_fp_dword
+	cmp	al,8
+	je	convert_fp_qword
+	jmp	invalid_value
+      convert_fp_dword:
+	xor	eax,eax
+	cmp	word [esi+8],8000h
+	je	fp_dword_store
+	mov	bx,[esi+8]
+	mov	eax,[esi+4]
+	shl	eax,1
+	shr	eax,9
+	jnc	fp_dword_ok
+	inc	eax
+	test	eax,1 shl 23
+	jz	fp_dword_ok
+	and	eax,1 shl 23 - 1
+	inc	bx
+	shr	eax,1
+      fp_dword_ok:
+	add	bx,7Fh
+	cmp	bx,100h
+	jae	value_out_of_range
+	shl	ebx,23
+	or	eax,ebx
+	mov	bl,[esi+11]
+	shl	ebx,31
+	or	eax,ebx
+      fp_dword_store:
+	mov	[edi],eax
+	xor	eax,eax
+	mov	[edi+4],eax
+	add	esi,12
+	ret
+      convert_fp_qword:
+	xor	eax,eax
+	xor	edx,edx
+	cmp	word [esi+8],8000h
+	je	fp_qword_store
+	mov	bx,[esi+8]
+	mov	eax,[esi]
+	mov	edx,[esi+4]
+	shl	eax,1
+	rcl	edx,1
+	mov	ecx,edx
+	shr	edx,12
+	shrd	eax,ecx,12
+	jnc	fp_qword_ok
+	add	eax,1
+	adc	edx,0
+	test	edx,1 shl 20
+	jz	fp_qword_ok
+	and	edx,1 shl 20 - 1
+	inc	bx
+	shr	edx,1
+	rcr	eax,1
+      fp_qword_ok:
+	add	bx,3FFh
+	cmp	bx,800h
+	jae	value_out_of_range
+	shl	ebx,20
+	or	edx,ebx
+	mov	bl,[esi+11]
+	shl	ebx,31
+	or	edx,ebx
+      fp_qword_store:
+	mov	[edi],eax
+	mov	[edi+4],edx
+	add	esi,12
 	ret
 
 get_byte_value:
@@ -1406,6 +1873,8 @@ get_logical_value:
 	ret
 
 number_start dd ?
+fp_value rd 8
+fp_sign db ?
 expression_stack dd ?
 value_size db ?
 forced_size db ?

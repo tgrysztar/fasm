@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.03
+; flat assembler  version 1.04
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -11,7 +11,7 @@ parser:
 	mov	[labels_list],eax
 	mov	[current_locals_prefix],0
 	xor	al,al
-	mov	edi,[conventional_memory_end]
+	mov	edi,[additional_memory_end]
 	dec	edi
 	mov	[edi],al
 	mov	[names_list],edi
@@ -51,19 +51,18 @@ parse_line:
 	mov	eax,[current_line]
 	stos	dword [edi]
 	push	edi
-	mov	edi,[conventional_memory]
+	mov	edi,[additional_memory]
 	mov	[symbol_counter],0
       convert_line_data:
+	call	skip_spaces
 	lods	byte [esi]
 	stos	byte [edi]
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	je	convert_separator
-	or	al,al
-	jz	convert_separator
+	mov	ah,al
+	mov	ebx,characters
+	xlatb
+	xchg	al,ah
+	or	ah,ah
+	jnz	convert_separator
 	cmp	al,27h
 	je	copy_string
 	mov	al,1Ah
@@ -74,12 +73,12 @@ parse_line:
       convert_symbol:
 	lods	byte [esi]
 	stos	byte [edi]
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	je	symbol_end
+	mov	ah,al
+	mov	ebx,characters
+	xlatb
+	xchg	al,ah
+	or	ah,ah
+	jnz	symbol_end
 	or	al,al
 	jz	symbol_end
 	inc	edx
@@ -118,7 +117,10 @@ parse_line:
 	cmp	[symbol_counter],0
 	je	check_name
 	cmp	[symbol_counter],2
-	jbe	convert_separator
+	ja	check_name
+	dec	esi
+	dec	edi
+	jmp	convert_line_data
       check_name:
 	push	ax esi
 	mov	ebx,[names_list]
@@ -126,7 +128,7 @@ parse_line:
 	sub	esi,edx
       compare_names:
 	mov	eax,esi
-	mov	cx,dx
+	mov	ecx,edx
 	cmp	byte [ebx],0
 	je	symbol_converted
 	cmp	[ebx],cl
@@ -134,7 +136,6 @@ parse_line:
 	lea	edi,[ebx+1]
 	repe	cmps byte [esi],[edi]
 	jne	next_name
-	mov	dl,[esi]
 	lea	esi,[edi+4]
 	mov	ecx,[edi]
 	lea	edi,[eax-2]
@@ -142,10 +143,9 @@ parse_line:
 	rep	movs byte [edi],[esi]
 	mov	ecx,ebx
 	mov	esi,eax
-	mov	al,dl
-	stos	byte [edi]
 	pop	esi ax
-	jmp	convert_separator
+	dec	esi
+	jmp	convert_line_data
       next_name:
 	mov	esi,eax
 	movzx	eax,byte [ebx]
@@ -155,13 +155,11 @@ parse_line:
 	jmp	compare_names
       symbol_converted:
 	add	esi,ecx
-	lea	edi,[esi+1]
+	mov	edi,esi
 	pop	esi ax
+	dec	esi
+	jmp	convert_line_data
       convert_separator:
-	cmp	al,20h
-	je	convert_space
-	cmp	al,9
-	je	convert_space
 	cmp	al,3Bh
 	je	ignore_comment
 	or	al,al
@@ -178,7 +176,7 @@ parse_line:
       line_converted:
 	pop	edi
 	push	esi
-	mov	esi,[conventional_memory]
+	mov	esi,[additional_memory]
 	mov	[parenthesis_stack],0
 	cmp	[line_type],'{'
 	je	skip_line_data
@@ -267,7 +265,7 @@ parse_line:
 	mov	[ebx],al
 	mov	[names_list],ebx
 	sub	ebx,100h
-	cmp	ebx,[conventional_memory]
+	cmp	ebx,[additional_memory]
 	jbe	out_of_memory
 	mov	ecx,eax
 	cmp	byte [esi],27h
@@ -306,17 +304,16 @@ parse_line:
 	mov	al,[esi]
 	cmp	al,27h
 	je	invalid_name
+	cmp	al,30h
+	jb	name_first_char_ok
+	cmp	al,39h
+	jbe	invalid_name
+      name_first_char_ok:
 	cmp	ecx,1
 	jne	check_for_reserved_word
 	cmp	al,'$'
 	je	reserved_word_used_as_symbol
       check_for_reserved_word:
-	push	ecx esi
-	sub	esi,2
-	mov	ebp,value
-	call	get_number
-	jnc	reserved_word_used_as_symbol
-	pop	esi ecx
 	call	get_instruction
 	jnc	reserved_word_used_as_symbol
 	mov	edi,symbols
@@ -425,8 +422,11 @@ parse_line:
 	pop	edi
 	sub	esi,2
       string_argument:
+	cmp	[instruction_type],300h
+	je	forced_string
 	cmp	[instruction_type],101h
 	jne	no_string
+      forced_string:
 	mov	al,[esi]
 	cmp	al,27h
 	jne	no_string
@@ -462,6 +462,18 @@ parse_line:
       parse_expression:
 	mov	al,'('
 	stos	byte [edi]
+	call	get_fp_value
+	jc	expression
+	mov	al,'.'
+	stos	byte [edi]
+	mov	eax,[fp_value]
+	stos	dword [edi]
+	mov	eax,[fp_value+4]
+	stos	dword [edi]
+	mov	eax,[fp_value+8]
+	stos	dword [edi]
+	jmp	expression_parsed
+      expression:
 	call	convert_expression
 	mov	al,')'
 	stos	byte [edi]
@@ -504,7 +516,7 @@ parse_line:
 	mov	al,ah
 	add	al,70h
 	stos	byte [edi]
-	add	sp,4
+	add	esp,4
 	jmp	convert_address_value
       no_size_prefix:
 	pop	esi
@@ -542,7 +554,7 @@ parse_line:
 	cmp	[parenthesis_stack],0
 	je	parse_arguments
 	dec	[parenthesis_stack]
-	add	sp,8
+	add	esp,8
 	jmp	argument_parsed
       expression_parsed:
 	cmp	[parenthesis_stack],0

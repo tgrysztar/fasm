@@ -1,14 +1,14 @@
 
-; flat assembler  version 1.03
+; flat assembler  version 1.04
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
 preprocessor:
 	mov	eax,[memory_start]
 	mov	[source_start],eax
-	mov	eax,[conventional_memory]
+	mov	eax,[additional_memory]
 	mov	[files_list],eax
-	mov	eax,[conventional_memory_end]
+	mov	eax,[additional_memory_end]
 	mov	[names_list],eax
 	mov	[file_number],1
 	mov	[macro_defined],0
@@ -23,7 +23,7 @@ preprocessor:
 
 preprocess_file:
 	push	edi
-	mov	edi,[conventional_memory]
+	mov	edi,[additional_memory]
 	mov	edx,edi
 	xor	al,al
 	stos	byte [edi]
@@ -69,7 +69,7 @@ preprocess_file:
 	jae	out_of_memory
 	mov	eax,edx
 	stos	dword [edi]
-	mov	[conventional_memory],edi
+	mov	[additional_memory],edi
 	call	read
 	call	close
 	pop	edi
@@ -94,7 +94,7 @@ preprocess_file:
 	clc
 	ret
       no_source_file:
-	add	sp,4
+	add	esp,4
 	stc
 	ret
       convert_line:
@@ -102,6 +102,7 @@ preprocess_file:
 	stos	dword [edi]
 	mov	al,bl
 	stos	byte [edi]
+	mov	ebx,edi
       copy_line:
 	cmp	edi,edx
 	jae	out_of_memory
@@ -132,18 +133,77 @@ preprocess_file:
       line_end:
 	xor	al,al
 	stos	byte [edi]
+	push	esi
+	mov	esi,ebx
+      check_for_concate:
+	lods	byte [esi]
+	or	al,al
+	jz	line_done
+	cmp	al,27h
+	je	check_line_string
+	cmp	al,'\'
+	je	concate
+	jmp	check_for_concate
+      check_line_string:
+	mov	al,[esi-2]
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jz	check_for_concate
+      skip_line_string:
+	lods	byte [esi]
+	or	al,al
+	jz	line_done
+	cmp	al,27h
+	jne	skip_line_string
+	lods	byte [esi]
+	cmp	al,27h
+	je	skip_line_string
+	dec	esi
+	jmp	check_for_concate
+      concate:
+	inc	ecx
+	mov	ebx,edi
+	pop	esi
+	cmp	esi,ebp
+	jae	unexpected_end_of_file
+	jmp	copy_line
+      line_done:
+	pop	esi
 	ret
+      skip_spaces:
+	lods	byte [esi]
+	cmp	al,20h
+	je	skip_spaces
+	cmp	al,9
+	je	skip_spaces
+	cmp	al,'\'
+	je	skip_concate
+	dec	esi
+	ret
+      skip_concate:
+	lods	byte [esi]
+	cmp	al,20h
+	je	skip_concate
+	cmp	al,9
+	je	skip_concate
+	or	al,al
+	jz	skip_spaces
+	cmp	al,';'
+	jne	unexpected_characters
+      skip_concate_comment:
+	lods	byte [esi]
+	or	al,al
+	jnz	skip_concate_comment
+	jmp	skip_spaces
 
 preprocess_instruction:
 	push	ecx esi edi ebp
 	mov	esi,[current_line]
 	add	esi,5
       find_directive:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_directive
-	cmp	al,9
-	je	find_directive
 	or	al,al
 	jz	instruction_preprocessed
 	cmp	al,';'
@@ -152,10 +212,12 @@ preprocess_instruction:
 	mov	edx,esi
       find_directive_end:
 	lods	byte [esi]
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	jne	find_directive_end
+	mov	ah,al
+	mov	ebx,characters
+	xlatb
+	xchg	al,ah
+	or	ah,ah
+	jz	find_directive_end
 	cmp	al,':'
 	je	find_directive
 	lea	ecx,[esi-1]
@@ -175,7 +237,7 @@ preprocess_instruction:
 	mov	edi,[files_list]
 	mov	eax,1
       get_macro:
-	cmp	edi,[conventional_memory]
+	cmp	edi,[additional_memory]
 	je	no_macro
 	cmp	byte [edi],0
 	je	.skip_file
@@ -191,6 +253,7 @@ preprocess_instruction:
 	je	use_macro
 	mov	esi,edx
 	mov	edi,ebx
+	inc	eax
 	jmp	get_macro
       .skip_macro:
 	mov	edi,ebx
@@ -205,12 +268,8 @@ preprocess_instruction:
 	jmp	get_macro
       no_macro:
 	add	esi,ebp
-      find_equ_directive:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_equ_directive
-	cmp	al,9
-	je	find_equ_directive
 	or	al,al
 	jz	instruction_preprocessed
 	cmp	al,';'
@@ -219,10 +278,10 @@ preprocess_instruction:
 	mov	edx,esi
       find_equ_symbol_end:
 	lods	byte [esi]
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	jne	find_equ_symbol_end
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jz	find_equ_symbol_end
 	lea	ecx,[esi-1]
 	mov	esi,edx
 	sub	ecx,esi
@@ -244,11 +303,8 @@ preprocess_instruction:
 	ret
 
 include_file:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	include_file
-	cmp	al,9
-	je	include_file
 	cmp	al,27h
 	jne	invalid_argument
 	mov	edx,[current_line]
@@ -258,7 +314,7 @@ include_file:
 	mov	al,';'
       set_include_line_type:
 	mov	byte [edx+4],al
-	mov	eax,[conventional_memory_end]
+	mov	eax,[additional_memory_end]
 	cmp	eax,[names_list]
 	jne	illegal_instruction
 	mov	edx,esi
@@ -272,16 +328,12 @@ include_file:
 	cmp	al,27h
 	je	find_include_end
 	dec	esi
-      check_include_line:
+	call	skip_spaces
 	lods	byte [esi]
 	or	al,al
 	jz	preprocess_included_file
 	cmp	al,';'
 	je	preprocess_included_file
-	cmp	al,20h
-	je	check_include_line
-	cmp	al,9
-	je	check_include_line
 	jmp	extra_characters_on_line
       preprocess_included_file:
 	mov	esi,edx
@@ -289,21 +341,19 @@ include_file:
 	call	preprocess_file
 	jc	file_not_found
 	pop	ebp
-	add	sp,4
+	add	esp,4
 	pop	esi ecx
 	ret
 define_macro:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	define_macro
-	cmp	al,9
-	je	define_macro
 	cmp	al,27h
 	je	invalid_name
 	dec	esi
 	mov	edx,[current_line]
 	mov	byte [edx+4],':'
-	mov	eax,[conventional_memory_end]
+	inc	[file_number]
+	mov	eax,[additional_memory_end]
 	cmp	eax,[names_list]
 	jne	illegal_instruction
 	cmp	[macro_defined],0
@@ -311,16 +361,16 @@ define_macro:
 	mov	edx,esi
       .find_name_end:
 	lods	byte [esi]
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	jne	.find_name_end
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jz	.find_name_end
 	lea	ebp,[esi-1]
 	mov	esi,edx
 	sub	ebp,esi
 	mov	edi,[files_list]
       .find_macro:
-	cmp	edi,[conventional_memory]
+	cmp	edi,[additional_memory]
 	je	create_macro
 	cmp	byte [edi],0
 	je	.skip_file
@@ -347,77 +397,78 @@ define_macro:
 	add	edi,5
 	jmp	.find_macro
       redefine_macro:
-	push	esi edi
-	sub	ebx,ebp
-	sub	ebx,6
-	mov	esi,[conventional_memory]
-	mov	edi,esi
-	add	edi,ebp
-	add	edi,6
-	cmp	edi,[names_list]
-	jae	out_of_memory
-	mov	[conventional_memory],edi
-	std
-	mov	ecx,esi
-	sub	ecx,ebx
-	dec	edi
-	dec	esi
-	rep	movs byte [edi],[esi]
-	cld
-	pop	edi esi
-	jmp	macro_name_ok
+	mov	ebp,esi
+	xchg	ebp,[edi+1]
+	mov	esi,edx
+	jmp	add_macro
       create_macro:
+	xor	ebp,ebp
+      add_macro:
 	mov	[macro_defined],1
-	mov	edx,[conventional_memory]
+	mov	edx,[additional_memory]
 	mov	ebx,edx
 	inc	edx
       copy_macro_name:
 	lods	byte [esi]
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	je	macro_name_end
+	mov	ah,al
+	push	ebx
+	mov	ebx,characters
+	xlatb
+	xchg	al,ah
+	pop	ebx
+	or	ah,ah
+	jnz	macro_name_end
 	mov	[edx],al
 	inc	edx
 	jmp	copy_macro_name
       macro_name_end:
 	dec	esi
 	mov	edi,edx
-	sub	edx,[conventional_memory]
+	sub	edx,[additional_memory]
 	dec	edx
 	cmp	edx,100h
 	jae	name_too_long
 	mov	[ebx],dl
 	lea	ebx,[edi+5]
-	mov	[conventional_memory],ebx
-	inc	[file_number]
+	mov	[additional_memory],ebx
       macro_name_ok:
 	xor	al,al
 	stos	byte [edi]
 	mov	eax,esi
+	or	ebp,ebp
+	jz	store_macro_address
+	mov	eax,ebp
+      store_macro_address:
 	stos	dword [edi]
 	mov	edi,[current_line_end]
+	mov	[multi_macro_current],0
       find_macro_argument:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_macro_argument
-	cmp	al,9
-	je	find_macro_argument
 	cmp	al,27h
 	je	invalid_name
+	dec	esi
 	or	al,al
-	jz	find_macro_start
+	jz	find_next_macro_argument
 	cmp	al,';'
-	je	find_macro_start
+	je	find_next_macro_argument
 	cmp	al,'{'
-	je	find_macro_end
+	je	find_next_macro_argument
+	inc	esi
+	cmp	al,'['
+	jne	skip_macro_argument
+	cmp	[multi_macro_current],0
+	jne	invalid_name
+	mov	[multi_macro_current],1
+	call	skip_spaces
+	cmp	byte [esi],']'
+	je	invalid_macro_arguments
+	jmp	find_macro_argument
       skip_macro_argument:
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	je	macro_argument_end
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jnz	macro_argument_end
 	lods	byte [esi]
 	jmp	skip_macro_argument
       macro_argument_end:
@@ -427,26 +478,27 @@ define_macro:
 	cmp	byte [esi-1],9
 	je	invalid_macro_arguments
       find_next_macro_argument:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_next_macro_argument
-	cmp	al,9
-	je	find_next_macro_argument
+	cmp	al,','
+	je	next_macro_argument
+	cmp	[multi_macro_current],0
+	je	macro_arguments_end
+	cmp	al,']'
+	jne	invalid_macro_arguments
+	call	skip_spaces
+	lods	byte [esi]
+      macro_arguments_end:
 	or	al,al
 	jz	find_macro_start
 	cmp	al,';'
 	je	find_macro_start
 	cmp	al,'{'
 	je	find_macro_end
-	cmp	al,','
-	je	next_macro_argument
 	jmp	invalid_macro_arguments
       next_macro_argument:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	next_macro_argument
-	cmp	al,9
-	je	next_macro_argument
 	dec	esi
 	or	al,al
 	jz	invalid_macro_arguments
@@ -456,13 +508,10 @@ define_macro:
       find_macro_start:
 	mov	ebp,esp
 	call	get_macro_line
+	jc	unexpected_end_of_file
 	add	esi,5
-      check_macro_start:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	check_macro_start
-	cmp	al,9
-	je	check_macro_start
 	or	al,al
 	jz	find_macro_start
 	cmp	al,';'
@@ -470,13 +519,14 @@ define_macro:
 	cmp	al,'{'
 	jne	unexpected_characters
       find_macro_end:
+	call	skip_spaces
 	lods	byte [esi]
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	je	special_character_in_macro
+	mov	ah,al
+	mov	ebx,characters
+	xlatb
+	xchg	al,ah
+	or	ah,ah
+	jnz	special_character_in_macro
 	jmp	find_macro_end
       skip_string_in_macro:
 	lods	byte [esi]
@@ -494,81 +544,120 @@ define_macro:
 	jnz	check_macro_end
 	mov	ebp,esp
 	call	get_macro_line
+	jc	unexpected_end_of_file
 	add	esi,5
 	jmp	find_macro_end
       check_macro_end:
 	cmp	al,'}'
-	je	check_macro_after_end
+	je	macro_last_line
 	lods	byte [esi]
 	cmp	al,27h
 	je	skip_string_in_macro
 	dec	esi
 	jmp	find_macro_end
-      check_macro_after_end:
+      macro_last_line:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	check_macro_after_end
-	cmp	al,9
-	je	check_macro_after_end
 	or	al,al
-	jz	macro_definition_ok
+	jz	macro_after_end_new_line
 	cmp	al,';'
-	je	macro_definition_ok
+	je	macro_after_end_comment
+	cmp	al,'{'
+	je	find_macro_end
 	jmp	extra_characters_on_line
+      check_macro_after_end:
+	call	skip_spaces
+	lods	byte [esi]
+	or	al,al
+	jz	macro_after_end_new_line
+	cmp	al,';'
+	je	macro_after_end_comment
+	cmp	al,'{'
+	je	find_macro_end
       macro_definition_ok:
 	pop	ebp
-	add	sp,4
+	add	esp,4
 	pop	esi ecx
 	ret
+      macro_after_end_comment:
+	lods	byte [esi]
+	or	al,al
+	jnz	macro_after_end_comment
+      macro_after_end_new_line:
+	mov	esi,[esp+8]
+	call	skip_spaces
+	lods	byte [esi]
+	cmp	al,0Dh
+	je	macro_after_end_new_line_get
+	cmp	al,0Ah
+	je	macro_after_end_new_line_get
+	cmp	al,1Ah
+	je	macro_after_end_new_line_get
+	or	al,al
+	jz	macro_after_end_new_line_get
+	cmp	al,';'
+	je	macro_after_end_new_line_get
+	cmp	al,'{'
+	jne	macro_definition_ok
+      macro_after_end_new_line_get:
+	mov	ebp,esp
+	call	get_macro_line
+	jc	macro_definition_ok
+	add	esi,5
+	jmp	check_macro_after_end
       get_macro_line:
 	push	edi
 	mov	[current_line],edi
 	mov	[home_line],edi
 	mov	esi,[ebp+8]
-	mov	ecx,[ebp+Ch]
+	mov	ecx,[ebp+0Ch]
 	inc	ecx
-	mov	[ebp+Ch],ecx
 	mov	edx,[memory_end]
 	mov	bl,'{'
 	push	ebp
 	mov	ebp,[ebp]
 	cmp	esi,ebp
-	jae	unexpected_end_of_file
+	jae	no_next_macro_line
 	call	convert_line
 	cmp	byte [esi-1],1Ah
-	je	unexpected_end_of_file
+	je	no_next_macro_line
 	pop	ebp
+	mov	[ebp+0Ch],ecx
 	mov	[ebp+8],esi
 	pop	esi
+	clc
 	ret
+      no_next_macro_line:
+	pop	ebp
+	pop	esi
+	stc
+	ret
+
 purge_macro:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	purge_macro
-	cmp	al,9
-	je	purge_macro
 	cmp	al,27h
 	je	invalid_name
 	dec	esi
 	mov	edx,[current_line]
 	mov	byte [edx+4],':'
-	mov	eax,[conventional_memory_end]
+	mov	eax,[additional_memory_end]
 	cmp	eax,[names_list]
 	jne	illegal_instruction
 	mov	edx,esi
       .find_name_end:
 	lods	byte [esi]
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	jne	.find_name_end
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jz	.find_name_end
 	lea	ebp,[esi-1]
 	push	ebp
 	mov	esi,edx
 	sub	ebp,esi
 	mov	edi,[files_list]
       .find_macro:
-	cmp	edi,[conventional_memory]
+	cmp	edi,[additional_memory]
 	je	purge_done
 	cmp	byte [edi],0
 	je	.skip_file
@@ -600,12 +689,8 @@ purge_macro:
 	jmp	purge_done
       purge_done:
 	pop	esi
-      purge_next:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	purge_next
-	cmp	al,9
-	je	purge_next
 	cmp	al,','
 	je	purge_macro
 	or	al,al
@@ -641,12 +726,17 @@ use_macro:
 	dec	edi
 	mov	byte [edi],0
 	mov	[names_list],edi
+	mov	[multi_macro_current],0
+	mov	[multi_macro_count],1
       find_argument:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_argument
-	cmp	al,9
-	je	find_argument
+	cmp	al,'['
+	jne	argument_found
+	mov	[multi_macro_current],1
+	mov	[multi_macro_arguments],esi
+	jmp	find_argument
+      argument_found:
 	dec	esi
 	or	al,al
 	jz	macro_without_arguments
@@ -658,13 +748,8 @@ use_macro:
 	jmp	find_argument_end
       macro_without_arguments:
 	xchg	esi,ebx
-      .check:
-	lods	byte [esi]
-	cmp	al,20h
-	je	.check
-	cmp	al,9
-	je	.check
-	dec	esi
+	call	skip_spaces
+	mov	al,[esi]
 	or	al,al
 	jz	no_arguments
 	cmp	al,'{'
@@ -685,6 +770,10 @@ use_macro:
 	je	argument_end
 	cmp	al,'{'
 	je	argument_end
+	cmp	al,']'
+	je	argument_end
+	cmp	al,'\'
+	je	argument_end
 	cmp	al,9
 	je	argument_end
 	cmp	al,20h
@@ -692,13 +781,7 @@ use_macro:
       argument_end:
 	dec	esi
 	xchg	esi,ebx
-      find_argument_value:
-	lods	byte [esi]
-	cmp	al,20h
-	je	find_argument_value
-	cmp	al,9
-	je	find_argument_value
-	dec	esi
+	call	skip_spaces
 	mov	ebp,esi
       find_argument_value_end:
 	lods	byte [esi]
@@ -712,23 +795,21 @@ use_macro:
 	je	argument_value_end
 	cmp	al,9
 	je	argument_spaces
+	cmp	al,'\'
+	je	argument_spaces
 	cmp	al,20h
 	jne	find_argument_value_end
       argument_spaces:
 	push	esi
-      check_argument_spaces:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	check_argument_spaces
-	cmp	al,9
-	je	check_argument_spaces
 	cmp	al,','
 	je	no_argument_spaces
 	or	al,al
 	jz	no_argument_spaces
 	cmp	al,';'
 	je	no_argument_spaces
-	add	sp,4
+	add	esp,4
 	dec	esi
 	jmp	find_argument_value_end
       no_argument_spaces:
@@ -752,8 +833,8 @@ use_macro:
 	sub	ebx,ebp
 	sub	edi,esi
 	sub	edi,ebx
-	sub	edi,2
-	cmp	edi,[conventional_memory]
+	sub	edi,4
+	cmp	edi,[additional_memory]
 	jbe	out_of_memory
 	mov	[names_list],edi
 	mov	ecx,esi
@@ -762,6 +843,8 @@ use_macro:
 	mov	esi,edx
 	mov	al,cl
 	stos	byte [edi]
+	mov	ax,[multi_macro_current]
+	stos	word [edi]
 	rep	movs byte [edi],[esi]
 	mov	ecx,ebx
 	cmp	ecx,100h
@@ -771,33 +854,28 @@ use_macro:
 	stos	byte [edi]
 	rep	movs byte [edi],[esi]
 	pop	esi ebx
-      check_for_next_argument:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	check_for_next_argument
-	cmp	al,9
-	je	check_for_next_argument
 	xchg	esi,ebx
 	cmp	al,','
 	je	next_argument
 	dec	ebx
-      check_arguments:
+	call	skip_spaces
 	lods	byte [esi]
 	or	al,al
 	jz	arguments_ok
 	cmp	al,';'
 	je	arguments_ok
-	cmp	al,20h
-	je	check_arguments
-	cmp	al,9
-	je	check_arguments
-	jmp	invalid_macro_arguments
+	cmp	[multi_macro_current],0
+	je	invalid_macro_arguments
+	mov	ebx,esi
+	inc	[multi_macro_count]
+	inc	[multi_macro_current]
+	mov	esi,[multi_macro_arguments]
+	jmp	find_argument
       next_argument:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	next_argument
-	cmp	al,9
-	je	next_argument
 	cmp	al,','
 	je	next_argument_ok
 	dec	esi
@@ -806,12 +884,19 @@ use_macro:
 	jmp	find_argument
       arguments_ok:
 	mov	esi,ebx
-      find_macro_instructions:
+	call	skip_spaces
+	cmp	[multi_macro_current],0
+	je	find_macro_instructions
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_macro_instructions
-	cmp	al,9
-	je	find_macro_instructions
+	cmp	al,']'
+	jne	invalid_macro_arguments
+	mov	[multi_macro_current],1
+	mov	[macro_instructions],esi
+	mov	eax,[esp]
+	mov	[multi_macro_line],eax
+      find_macro_instructions:
+	call	skip_spaces
+	lods	byte [esi]
 	cmp	al,'{'
 	je	macro_instructions_start
 	cmp	al,';'
@@ -840,12 +925,29 @@ use_macro:
       macro_process:
 	lods	byte [esi]
 	stos	byte [edi]
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	je	special_character
+	cmp	al,20h
+	je	macro_process
+	cmp	al,9
+	je	macro_process
+	dec	edi
+	cmp	al,'\'
+	je	macro_concate
+	dec	esi
+	jmp	macro_instruction
+      macro_concate:
+	lods	byte [esi]
+	or	al,al
+	jnz	macro_concate
+	jmp	macro_process
+      macro_instruction:
+	lods	byte [esi]
+	stos	byte [edi]
+	mov	ah,al
+	mov	ebx,characters
+	xlatb
+	xchg	al,ah
+	or	ah,ah
+	jnz	special_character
 	cmp	al,27h
 	je	skip_string
 	dec	esi
@@ -858,23 +960,29 @@ use_macro:
 	movzx	ecx,byte [edi]
 	jecxz	no_macro_variable
 	inc	edi
+	mov	ax,[edi]
+	add	edi,2
 	mov	ebp,edi
 	add	ebp,ecx
+	or	ax,ax
+	jz	compare_macro_variable
+	cmp	ax,[multi_macro_current]
+	jne	next_macro_variable
+      compare_macro_variable:
 	repe	cmps byte [esi],[edi]
 	jnz	next_macro_variable
 	mov	al,[esi]
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	jne	next_macro_variable
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jz	next_macro_variable
       macro_variable_ok:
 	pop	edi
 	mov	ebx,ebp
 	movzx	ecx,byte [ebx]
 	inc	ebx
-	jecxz	macro_process
+	or	ecx,ecx
+	jz	macro_process
       copy_macro_variable:
 	mov	al,[ebx]
 	inc	ebx
@@ -895,12 +1003,10 @@ use_macro:
       check_for_macro_directive:
 	lods	byte [esi]
 	stos	byte [edi]
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	jne	check_for_macro_directive
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jz	check_for_macro_directive
 	dec	esi
 	mov	ecx,esi
 	sub	ecx,edx
@@ -916,29 +1022,24 @@ use_macro:
 	call	get_symbol
 	pop	ebp edi
 	jc	no_macro_directive
-	add	sp,4
+	add	esp,4
 	mov	edi,ebp
 	movzx	eax,ax
 	add	eax,preprocessor
 	jmp	near eax
       local_symbols:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	local_symbols
-	cmp	al,9
-	je	local_symbols
 	or	al,al
 	jz	invalid_argument
 	cmp	al,';'
 	je	invalid_argument
 	lea	edx,[esi-1]
       get_local_name:
-	mov	ebx,edi
-	mov	edi,special_characters+1
-	movzx	ecx,[special_characters]
-	repne	scas byte [edi]
-	mov	edi,ebx
-	je	local_name_end
+	mov	ebx,characters
+	xlatb
+	or	al,al
+	jnz	local_name_end
 	lods	byte [esi]
 	jmp	get_local_name
       local_name_end:
@@ -952,13 +1053,15 @@ use_macro:
 	push	edi
 	mov	edi,[names_list]
 	sub	edi,ecx
-	sub	edi,2+5
+	sub	edi,4+5
 	sub	edi,ecx
-	cmp	edi,[conventional_memory]
+	cmp	edi,[additional_memory]
 	jbe	out_of_memory
 	mov	[names_list],edi
 	mov	al,cl
 	stos	byte [edi]
+	mov	ax,[multi_macro_current]
+	stos	word [edi]
 	push	cx
 	mov	esi,edx
 	rep	movs byte [edi],[esi]
@@ -974,12 +1077,8 @@ use_macro:
 	mov	eax,[locals_counter]
 	stos	dword [edi]
 	pop	edi
-      find_next_local_name:
+	call	skip_spaces
 	lods	byte [esi]
-	cmp	al,20h
-	je	find_next_local_name
-	cmp	al,9
-	je	find_next_local_name
 	cmp	al,','
 	je	local_symbols
 	or	al,al
@@ -996,8 +1095,8 @@ use_macro:
 	jmp	next_macro_line
       no_macro_directive:
 	pop	esi
-	lods	byte [esi]
-	jmp	special_character
+	dec	edi
+	jmp	macro_process
       skip_string:
 	lods	byte [esi]
 	stos	byte [edi]
@@ -1027,7 +1126,7 @@ use_macro:
 	add	esi,5
 	mov	[current_line_end],edi
 	mov	ebp,[esp+0Ah]
-	call	preprocess_instruction
+	call	macro_preprocess_instruction
 	mov	[current_line],edi
 	mov	eax,[esp]
 	stos	dword [edi]
@@ -1045,8 +1144,49 @@ use_macro:
 	mov	[current_line_end],edi
 	mov	ecx,[esp+1Ah]
 	mov	ebp,[esp+0Eh]
-	call	preprocess_instruction
-	add	sp,4
+	call	macro_preprocess_instruction
+	mov	ax,[multi_macro_current]
+	or	ax,ax
+	jz	check_for_next_macro_part
+	inc	ax
+	cmp	ax,[multi_macro_count]
+	ja	check_for_next_macro_part
+	mov	[multi_macro_current],ax
+	mov	[current_line],edi
+	mov	eax,[esp]
+	stos	dword [edi]
+	mov	al,20h
+	stos	byte [edi]
+	mov	eax,[multi_macro_line]
+	mov	[esp],eax
+	mov	[macro_directive_allowed],1
+	mov	esi,[macro_instructions]
+	jmp	find_macro_instructions
+      check_for_next_macro_part:
+	call	skip_spaces
+	lods	byte [esi]
+	or	al,al
+	jz	macro_end_new_line
+	cmp	al,';'
+	je	macro_end_comment
+	cmp	al,'{'
+	jne	macro_end
+	dec	esi
+	mov	[macro_instructions],esi
+	mov	eax,[esp]
+	mov	[multi_macro_line],eax
+	mov	[multi_macro_current],1
+	jmp	find_macro_instructions
+      macro_end_comment:
+	lods	byte [esi]
+	or	al,al
+	jnz	macro_end_comment
+      macro_end_new_line:
+	add	esi,5
+	jmp	check_for_next_macro_part
+      macro_end:
+	dec	esi
+	add	esp,4
 	pop	[names_list]
 	pop	esi
 	pop	ax
@@ -1054,6 +1194,17 @@ use_macro:
 	pop	ebp
 	pop	[current_line]
 	pop	esi ecx
+	ret
+      macro_preprocess_instruction:
+	push	[multi_macro_current]
+	push	[multi_macro_count]
+	push	[multi_macro_line]
+	push	[macro_instructions]
+	call	preprocess_instruction
+	pop	[macro_instructions]
+	pop	[multi_macro_line]
+	pop	[multi_macro_count]
+	pop	[multi_macro_current]
 	ret
       increase_counter:
 	inc	byte [ebx+3]
@@ -1077,5 +1228,10 @@ files_list dd ?
 names_list dd ?
 macro_defined db ?
 macro_directive_allowed db ?
+macro_instructions dd ?
+multi_macro_current dw ?
+multi_macro_count dw ?
+multi_macro_arguments dd ?
+multi_macro_line dd ?
 locals_counter dd '0000'
 current_line_end dd ?

@@ -33,21 +33,12 @@
 ; cannot simply be copied and put under another distribution licence
 ; (including the GNU Public Licence).
 
-	org	100h
+	format	PE console
 
 start:
 
-	mov	ah,4Ah
-	mov	bx,1010h
-	int	21h
-	mov	dx,_logo
-	mov	ah,9
-	int	21h
-
-	cld
-
-	call	init_flatrm
-	call	init_memory
+	mov	edx,_logo
+	call	display
 
 	call	get_params
 	cmp	[params],0
@@ -61,23 +52,23 @@ start:
 	inc	eax
 	mov	[output_file],eax
 
-	mov	di,characters
-	mov	cx,100h
+	call	init_memory
+
+	mov	edi,characters
+	mov	ecx,100h
 	xor	al,al
 	rep	stosb
-	mov	di,characters
-	mov	si,special_characters+1
-	movzx	cx,byte [si-1]
-	xor	bh,bh
+	mov	edi,characters
+	mov	esi,special_characters+1
+	movzx	ecx,byte [esi-1]
+	xor	ebx,ebx
       convert_table:
 	lodsb
 	mov	bl,al
-	mov	byte [di+bx],0FFh
+	mov	byte [edi+ebx],0FFh
 	loop	convert_table
 
-	mov	ebx,46Ch
-	sub	ebx,[program_base]
-	mov	eax,[ebx]
+	call	[GetTickCount]
 	mov	[start_time],eax
 
 	call	preprocessor
@@ -88,16 +79,12 @@ start:
 	movzx	eax,[current_pass]
 	inc	al
 	call	display_number
-	mov	ah,9
-	mov	dx,_passes_suffix
-	int	21h
-	mov	ebx,46Ch
-	sub	ebx,[program_base]
-	mov	eax,[ebx]
+	mov	edx,_passes_suffix
+	call	display
+	call	[GetTickCount]
 	sub	eax,[start_time]
+	xor	edx,edx
 	mov	ebx,100
-	mul	ebx
-	mov	ebx,182
 	div	ebx
 	or	eax,eax
 	jz	display_bytes_count
@@ -106,60 +93,76 @@ start:
 	div	ebx
 	push	edx
 	call	display_number
-	mov	ah,2
 	mov	dl,'.'
-	int	21h
+	call	display_character
 	pop	eax
 	call	display_number
-	mov	ah,9
-	mov	dx,_seconds_suffix
-	int	21h
+	mov	edx,_seconds_suffix
+	call	display
       display_bytes_count:
 	mov	eax,[written_size]
 	call	display_number
-	mov	ah,9
-	mov	dx,_bytes_suffix
-	int	21h
+	mov	edx,_bytes_suffix
+	call	display
 	xor	al,al
 	jmp	exit_program
 
 information:
-	mov	dx,_usage
-	mov	ah,9
-	int	21h
+	mov	edx,_usage
+	call	display
 	mov	al,1
 	jmp	exit_program
 
 get_params:
-	mov	si,81h
-	mov	di,params
+	call	[GetCommandLine]
+	mov	esi,eax
+	mov	edi,params
+    skip_name:
+	lodsb
+	cmp	al,20h
+	je	find_param
+	or	al,al
+	jz	all_params
+	jmp	skip_name
     find_param:
 	lodsb
 	cmp	al,20h
 	je	find_param
+	cmp	al,22h
+	je	string_param
 	cmp	al,0Dh
 	je	all_params
 	or	al,al
 	jz	all_params
-	inc	di
-	mov	bx,di
+	inc	edi
+	mov	ebx,edi
     copy_param:
 	stosb
 	lodsb
 	cmp	al,20h
 	je	param_end
-	cmp	al,0Dh
-	je	param_end
 	or	al,al
 	jz	param_end
 	jmp	copy_param
+    string_param:
+	inc	edi
+	mov	ebx,edi
+    copy_string_param:
+	lodsb
+	cmp	al,22h
+	je	string_param_end
+	or	al,al
+	jz	param_end
+	stosb
+	jmp	copy_string_param
     param_end:
-	dec	si
+	dec	esi
+    string_param_end:
 	xor	al,al
 	stosb
-	mov	ax,di
-	sub	ax,bx
-	mov	[bx-1],al
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[ebx-1],al
 	jmp	find_param
     all_params:
 	xor	al,al
@@ -168,23 +171,22 @@ get_params:
 
 include 'system.inc'
 include 'errors.inc'
-include 'expressi.inc'
-include 'preproce.inc'
-include 'parser.inc'
-include 'assemble.inc'
-include 'formats.inc'
-include 'tables.inc'
 
-_copyright db 'Copyright (c) 1999-2000, Tomasz Grysztar',24h
+include '..\expressi.inc'
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\assemble.inc'
+include '..\formats.inc'
+include '..\tables.inc'
 
-_logo db 'flat assembler  version 1.04',0Dh,0Ah,24h
-_usage db 'usage: fasm source output',0Dh,0Ah,24h
+_copyright db 'Copyright (c) 1999-2000, Tomasz Grysztar',0
 
-_passes_suffix db ' passes, ',24h
-_seconds_suffix db ' seconds, ',24h
-_bytes_suffix db ' bytes.',0Dh,0Ah,24h
+_logo db 'flat assembler  version 1.04',0Dh,0Ah,0
+_usage db 'usage: fasm source output',0Dh,0Ah,0
 
-program_base dd ?
+_passes_suffix db ' passes, ',0
+_seconds_suffix db ' seconds, ',0
+_bytes_suffix db ' bytes.',0Dh,0Ah,0
 
 additional_memory dd ?
 additional_memory_end dd ?
@@ -204,4 +206,46 @@ written_size dd ?
 
 params rb 100h
 characters rb 100h
-buffer rb 4000h
+
+stack 4000h
+
+section '.idata' import data readable
+
+  dd rva kernel_table,0,0,rva kernel_name,rva kernel_table
+  dd 0,0,0,0,0
+
+  kernel_table:
+    ExitProcess dd rva _ExitProcess
+    CreateFile dd rva _CreateFileA
+    ReadFile dd rva _ReadFile
+    WriteFile dd rva _WriteFile
+    CloseHandle dd rva _CloseHandle
+    SetFilePointer dd rva _SetFilePointer
+    GetCommandLine dd rva _GetCommandLineA
+    GetStdHandle dd rva _GetStdHandle
+    VirtualAlloc dd rva _VirtualAlloc
+    GetTickCount dd rva _GetTickCount
+    dd 0
+
+  kernel_name db 'KERNEL32.DLL',0
+
+  _ExitProcess dw 0
+    db 'ExitProcess',0
+  _CreateFileA dw 0
+    db 'CreateFileA',0
+  _ReadFile dw 0
+    db 'ReadFile',0
+  _WriteFile dw 0
+    db 'WriteFile',0
+  _CloseHandle dw 0
+    db 'CloseHandle',0
+  _SetFilePointer dw 0
+    db 'SetFilePointer',0
+  _GetCommandLineA dw 0
+    db 'GetCommandLineA',0
+  _GetStdHandle dw 0
+    db 'GetStdHandle',0
+  _VirtualAlloc dw 0
+    db 'VirtualAlloc',0
+  _GetTickCount dw 0
+    db 'GetTickCount',0

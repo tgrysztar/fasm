@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.03
+; flat assembler  version 1.04
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -13,12 +13,12 @@ init_flatrm:
 	jnz	pm_error		; if yes, generate error
 	pushf
 	pop	ax
-	or	ah,F0h			; try to set high 4 bits of FLAGS
+	or	ah,0F0h 		; try to set high 4 bits of FLAGS
 	push	ax
 	popf
 	pushf
 	pop	ax
-	test	ah,F0h
+	test	ah,0F0h
 	jz	processor_error 	; if bits not set, CPU is 80286
 	xor	eax,eax 		; calculate linear address of GDT
 	mov	ax,cs
@@ -57,7 +57,9 @@ GDTR dw 2*8-1				; limit of GDT
      dd ?				; linear address of GDT
 
 GDT rw 4				; null descriptor
-    dw FFFFh,0,9200h,8Fh		; 32-bit data descriptor
+    dw 0FFFFh,0,9200h,8Fh		; 32-bit data descriptor
+
+use32 equ use16
 
 init_memory:
 	mov	ax,4300h		; check for XMS
@@ -87,10 +89,10 @@ init_memory:
 	cmp	dword [bx+12h],'VDIS'	; VDISK memory allocation?
 	jne	byte no_vdisk		; if present, get base of free memory
 	mov	eax,dword [bx+2Ch]	; get first free extended memory byte
-	add	eax,Fh			; align on paragraph
-	and	eax,FFFFF0h		; address is only 24bit
+	add	eax,0Fh 		; align on paragraph
+	and	eax,0FFFFF0h		; address is only 24bit
     no_vdisk:
-	push	FFFFh			; DS := FFFFh for ext mem addressing
+	push	0FFFFh			; DS := FFFFh for ext mem addressing
 	pop	ds
 	cmp	dword [13h],'VDIS'	; VDISK memory allocation?
 	jne	byte vdisk_ok		; if present, get base of free memory
@@ -165,7 +167,7 @@ xms_init:
 	mov	[xms_handle],dx
 	cmp	ax,1
 	jne	no_extended_memory
-	mov	ah,Ch			; lock extended memory block
+	mov	ah,0Ch			; lock extended memory block
 	call	far dword [xms_call]
 	cmp	ax,1
 	jne	no_extended_memory
@@ -190,15 +192,15 @@ extended_memory_ok:
 	movzx	edi,ax
 	shl	edi,4
 	sub	edi,[program_base]
-	mov	[conventional_memory],edi
-	mov	[conventional_memory_end],edi
-	add	[conventional_memory_end],ecx
+	mov	[additional_memory],edi
+	mov	[additional_memory_end],edi
+	add	[additional_memory_end],ecx
 	cmp	[memory_start],0	; if extended memory available, done
 	jne	memory_ok
 	shr	ecx,2			; use part of conventional memory
 	add	edi,ecx 		; as a substitute for extended memory
 	mov	[memory_start],edi
-	xchg	[conventional_memory_end],edi
+	xchg	[additional_memory_end],edi
 	mov	[memory_end],edi
     memory_ok:
 	ret
@@ -207,10 +209,10 @@ exit_program:
 	cmp	[xms_handle],0
 	je	byte .exit
 	push	ax
-	mov	ah,Dh			; unlock extended memory block
+	mov	ah,0Dh			; unlock extended memory block
 	mov	dx,[xms_handle]
 	call	far dword [xms_call]
-	mov	ah,Ah			; free extended memory block
+	mov	ah,0Ah			; free extended memory block
 	call	far dword [xms_call]
 	pop	ax
       .exit:
@@ -221,7 +223,7 @@ xms_call dd ?				; XMS driver pointer
 xms_handle dw ? 			; handle of XMS memory block
 
 open:
-	push	esi di
+	push	edx esi di
 	mov	esi,edx
 	mov	di,buffer
       .name:
@@ -233,10 +235,10 @@ open:
 	mov	ax,3D00h
 	int	21h
 	mov	bx,ax
-	pop	di esi
+	pop	di esi edx
 	ret
 create:
-	push	esi edi
+	push	edx esi di
 	mov	esi,edx
 	mov	di,buffer
       .name:
@@ -249,10 +251,10 @@ create:
 	xor	cx,cx
 	int	21h
 	mov	bx,ax
-	pop	edi esi
+	pop	di esi edx
 	ret
 write:
-	push	esi edi ebp
+	push	edx esi edi ebp
 	mov	ebp,ecx
 	mov	esi,edx
       .loop:
@@ -276,10 +278,10 @@ write:
 	int	21h
 	or	ebp,ebp
 	jnz	.loop
-	pop	ebp edi esi
+	pop	ebp edi esi edx
 	ret
 read:
-	push	esi edi ebp
+	push	edx esi edi ebp
 	mov	ebp,ecx
 	mov	edi,edx
       .loop:
@@ -303,7 +305,7 @@ read:
 	rep	movs byte [edi],[esi]
 	or	ebp,ebp
 	jnz	.loop
-	pop	ebp edi esi
+	pop	ebp edi esi edx
 	ret
 close:
 	mov	ah,3Eh
