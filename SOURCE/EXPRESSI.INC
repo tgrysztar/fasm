@@ -76,8 +76,7 @@ convert_number:
 	ret
       qword_number:
 	mov	byte [edi-1],8
-	scas	dword [edi]
-	scas	dword [edi]
+	add	edi,8
 	ret
       dword_number:
 	mov	byte [edi-1],4
@@ -734,6 +733,8 @@ get_fp_value:
 	ret
 
 calculate_expression:
+	mov	[current_offset],edi
+      calculation_loop:
 	lods	byte [esi]
 	or	al,al
 	jz	get_string_value
@@ -757,17 +758,17 @@ calculate_expression:
 	je	expression_calculated
 	cmp	al,']'
 	je	expression_calculated
-	sub	edi,10h
+	sub	edi,14h
 	mov	ebx,edi
-	sub	ebx,10h
-	mov	dx,[ebx+8]
-	or	dx,[edi+8]
+	sub	ebx,14h
 	cmp	al,0E0h
 	je	calculate_rva
 	cmp	al,0D0h
 	je	calculate_not
 	cmp	al,0D1h
 	je	calculate_neg
+	mov	dx,[ebx+8]
+	or	dx,[edi+8]
 	cmp	al,80h
 	je	calculate_add
 	cmp	al,81h
@@ -795,7 +796,9 @@ calculate_expression:
 	je	calculate_shr
 	jmp	invalid_expression
       expression_calculated:
-	sub	edi,10h
+	sub	edi,14h
+	mov	eax,[edi+16]
+	mov	[symbol_identifier],eax
 	ret
       get_byte_number:
 	mov	word [edi+8],0
@@ -805,9 +808,8 @@ calculate_expression:
 	stos	dword [edi]
 	xor	al,al
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       get_word_number:
 	mov	word [edi+8],0
 	mov	byte [edi+12],0
@@ -816,26 +818,23 @@ calculate_expression:
 	stos	dword [edi]
 	xor	ax,ax
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       get_dword_number:
 	mov	word [edi+8],0
 	mov	byte [edi+12],0
 	movs	dword [edi],[esi]
 	xor	eax,eax
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       get_qword_number:
 	mov	word [edi+8],0
 	mov	byte [edi+12],0
 	movs	dword [edi],[esi]
 	movs	dword [edi],[esi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       get_register:
 	mov	byte [edi+9],0
 	mov	byte [edi+12],0
@@ -845,9 +844,8 @@ calculate_expression:
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       get_label:
 	mov	word [edi+8],0
 	mov	byte [edi+12],0
@@ -876,33 +874,40 @@ calculate_expression:
 	mov	eax,[ebx+12]
 	mov	[edi+8],eax
 	mov	eax,[ebx]
+	mov	edx,[ebx+4]
+	cmp	byte [ebx+11],0
+	je	label_value_ok
+	mov	[edi+16],edx
+	cdq
+      label_value_ok:
 	stos	dword [edi]
-	mov	eax,[ebx+4]
+	mov	eax,edx
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
+	add	edi,0Ch
 	mov	al,[ebx+10]
 	or	al,al
-	jz	calculate_expression
+	jz	calculation_loop
 	cmp	[forced_size],2
-	je	calculate_expression
+	je	calculation_loop
 	cmp	[forced_size],1
 	jne	check_size
 	cmp	[operand_size],0
-	jne	calculate_expression
+	jne	calculation_loop
 	mov	[operand_size],al
-	jmp	calculate_expression
+	jmp	calculation_loop
       check_size:
 	xchg	[operand_size],al
 	or	al,al
-	jz	calculate_expression
+	jz	calculation_loop
 	cmp	al,[operand_size]
 	jne	operand_sizes_do_not_match
-	jmp	calculate_expression
+	jmp	calculation_loop
       current_offset_label:
 	cmp	[reloc_labels],0
 	je	get_current_offset
 	mov	byte [edi+12],2
+	mov	eax,[current_section]
+	mov	[edi+16],eax
       get_current_offset:
 	mov	eax,[current_offset]
 	sub	eax,[org_start]
@@ -912,16 +917,15 @@ calculate_expression:
 	stos	dword [edi]
 	mov	eax,[org_sib]
 	stos	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,8
+	jmp	calculation_loop
       counter_label:
 	mov	eax,[counter]
 	stos	dword [edi]
 	xor	eax,eax
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       label_undefined:
 	cmp	[current_pass],0
 	jne	invalid_value
@@ -930,25 +934,27 @@ calculate_expression:
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
-	scas	dword [edi]
-	scas	dword [edi]
-	jmp	calculate_expression
+	add	edi,0Ch
+	jmp	calculation_loop
       calculate_add:
 	cmp	[next_pass_needed],0
 	jne	add_values
+	mov	ecx,[ebx+16]
 	cmp	byte [edi+12],0
 	je	add_values
+	mov	ecx,[edi+16]
 	cmp	byte [ebx+12],0
 	jne	invalid_use_of_symbol
       add_values:
 	mov	al,[edi+12]
 	or	[ebx+12],al
+	mov	[ebx+16],ecx
 	mov	eax,[edi]
 	add	[ebx],eax
 	mov	eax,[edi+4]
 	adc	[ebx+4],eax
 	or	dx,dx
-	jz	calculate_expression
+	jz	calculation_loop
 	push	esi
 	mov	esi,ebx
 	lea	ebx,[edi+10]
@@ -958,7 +964,7 @@ calculate_expression:
 	mov	cl,[edi+9]
 	call	add_register
 	pop	esi
-	jmp	calculate_expression
+	jmp	calculation_loop
       add_register:
 	or	cl,cl
 	jz	add_register_done
@@ -1004,14 +1010,22 @@ calculate_expression:
 	cmp	al,ah
 	jne	invalid_use_of_symbol
 	xor	ah,ah
+	cmp	[output_format],4
+	jne	sub_values
+	mov	ecx,[edi+16]
+	cmp	ecx,[ebx+16]
+	je	sub_values
+	cmp	ecx,[current_section]
+	jne	invalid_use_of_symbol
+	mov	ah,3
       sub_values:
-	mov	byte [ebx+12],ah
+	mov	[ebx+12],ah
 	mov	eax,[edi]
 	sub	[ebx],eax
 	mov	eax,[edi+4]
 	sbb	[ebx+4],eax
 	or	dx,dx
-	jz	calculate_expression
+	jz	calculation_loop
 	push	esi
 	mov	esi,ebx
 	lea	ebx,[edi+10]
@@ -1021,7 +1035,7 @@ calculate_expression:
 	mov	cl,[edi+9]
 	call	sub_register
 	pop	esi
-	jmp	calculate_expression
+	jmp	calculation_loop
       sub_register:
 	or	cl,cl
 	jz	add_register_done
@@ -1133,7 +1147,7 @@ calculate_expression:
 	mov	[esi+11],al
       mul_calculated:
 	pop	esi
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_div:
 	push	esi dx
 	mov	esi,ebx
@@ -1176,7 +1190,7 @@ calculate_expression:
 	mov	[esi+11],al
       div_calculated:
 	pop	esi
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_mod:
 	push	esi
 	mov	esi,ebx
@@ -1184,19 +1198,19 @@ calculate_expression:
 	mov	[esi],eax
 	mov	[esi+4],edx
 	pop	esi
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_and:
 	mov	eax,[edi]
 	and	[ebx],eax
 	mov	eax,[edi+4]
 	and	[ebx+4],eax
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_or:
 	mov	eax,[edi]
 	or	[ebx],eax
 	mov	eax,[edi+4]
 	or	[ebx+4],eax
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_xor:
 	cmp	[value_size],1
 	je	xor_byte
@@ -1211,7 +1225,7 @@ calculate_expression:
 	xor	[ebx],eax
 	mov	eax,[edi+4]
 	xor	[ebx+4],eax
-	jmp	calculate_expression
+	jmp	calculation_loop
       xor_byte:
 	cmp	dword [edi+4],0
 	jne	xor_qword
@@ -1221,7 +1235,7 @@ calculate_expression:
 	jne	xor_qword
 	mov	al,[edi]
 	xor	[ebx],al
-	jmp	calculate_expression
+	jmp	calculation_loop
       xor_word:
 	cmp	dword [edi+4],0
 	jne	xor_qword
@@ -1229,13 +1243,13 @@ calculate_expression:
 	jne	xor_qword
 	mov	ax,[edi]
 	xor	[ebx],ax
-	jmp	calculate_expression
+	jmp	calculation_loop
       xor_dword:
 	cmp	dword [edi+4],0
 	jne	xor_qword
 	mov	eax,[edi]
 	xor	[ebx],eax
-	jmp	calculate_expression
+	jmp	calculation_loop
       xor_pword:
 	cmp	word [edi+6],0
 	jne	xor_qword
@@ -1243,7 +1257,7 @@ calculate_expression:
 	xor	[ebx],eax
 	mov	ax,[edi+4]
 	xor	[ebx+4],ax
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_shl:
 	mov	eax,dword [edi+4]
 	test	eax,1 shl 31
@@ -1261,14 +1275,14 @@ calculate_expression:
 	shl	eax,cl
 	mov	[ebx],eax
 	mov	[ebx+4],edx
-	jmp	calculate_expression
+	jmp	calculation_loop
       shl_high:
 	sub	cl,32
 	mov	eax,[ebx]
 	shl	eax,cl
 	mov	[ebx+4],eax
 	mov	dword [ebx],0
-	jmp	calculate_expression
+	jmp	calculation_loop
       shl_negative:
 	not	dword [edi]
 	not	dword [edi+4]
@@ -1291,14 +1305,14 @@ calculate_expression:
 	shr	edx,cl
 	mov	[ebx],eax
 	mov	[ebx+4],edx
-	jmp	calculate_expression
+	jmp	calculation_loop
       shr_high:
 	sub	cl,32
 	mov	eax,[ebx+4]
 	shr	eax,cl
 	mov	[ebx],eax
 	mov	dword [ebx+4],0
-	jmp	calculate_expression
+	jmp	calculation_loop
       shr_negative:
 	not	dword [edi]
 	not	dword [edi+4]
@@ -1308,7 +1322,7 @@ calculate_expression:
       zero_value:
 	mov	dword [ebx],0
 	mov	dword [ebx+4],0
-	jmp	calculate_expression
+	jmp	calculation_loop
       calculate_not:
 	cmp	word [edi+8],0
 	jne	invalid_expression
@@ -1325,8 +1339,8 @@ calculate_expression:
       not_qword:
 	not	dword [edi]
 	not	dword [edi+4]
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       not_byte:
 	cmp	dword [edi+4],0
 	jne	not_qword
@@ -1335,29 +1349,29 @@ calculate_expression:
 	cmp	byte [edi+1],0
 	jne	not_qword
 	not	byte [edi]
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       not_word:
 	cmp	dword [edi+4],0
 	jne	not_qword
 	cmp	word [edi+2],0
 	jne	not_qword
 	not	word [edi]
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       not_dword:
 	cmp	dword [edi+4],0
 	jne	not_qword
 	not	dword [edi]
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       not_pword:
 	cmp	word [edi+6],0
 	jne	not_qword
 	not	dword [edi]
 	not	word [edi+4]
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       calculate_neg:
 	cmp	word [edi+8],0
 	jne	invalid_expression
@@ -1369,8 +1383,8 @@ calculate_expression:
 	mov	dword [edi+4],0
 	sub	[edi],eax
 	sbb	[edi+4],edx
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       calculate_rva:
 	cmp	word [edi+8],0
 	jne	invalid_expression
@@ -1389,8 +1403,8 @@ calculate_expression:
 	mov	eax,[eax+34h]
 	sub	[edi],eax
 	sbb	dword [edi+4],0
-	add	edi,10h
-	jmp	calculate_expression
+	add	edi,14h
+	jmp	calculation_loop
       div_64:
 	xor	bl,bl
 	cmp	dword [edi],0
@@ -1560,7 +1574,6 @@ calculate_expression:
 get_byte_value:
 	mov	[value_size],1
 	mov	[forced_size],2
-	mov	[current_offset],edi
 	call	calculate_expression
 	cmp	word [edi+8],0
 	jne	invalid_value
@@ -1589,14 +1602,15 @@ get_byte_value:
 get_word_value:
 	mov	[value_size],2
 	mov	[forced_size],2
-	mov	[current_offset],edi
 	call	calculate_expression
 	cmp	word [edi+8],0
 	jne	invalid_value
 	mov	al,[edi+12]
-	cmp	al,2
-	je	invalid_use_of_symbol
 	mov	[value_type],al
+	or	al,al
+	jz	check_word_value
+	test	al,1
+	jz	invalid_use_of_symbol
       check_word_value:
 	mov	eax,[edi]
 	cmp	dword [edi+4],0
@@ -1613,8 +1627,8 @@ get_word_value:
 get_dword_value:
 	mov	[value_size],4
 	mov	[forced_size],2
-	mov	[current_offset],edi
 	call	calculate_expression
+      got_dword_value:
 	cmp	word [edi+8],0
 	jne	invalid_value
 	mov	al,[edi+12]
@@ -1632,7 +1646,6 @@ get_dword_value:
 get_pword_value:
 	mov	[value_size],6
 	mov	[forced_size],2
-	mov	[current_offset],edi
 	call	calculate_expression
 	cmp	word [edi+8],0
 	jne	invalid_value
@@ -1648,7 +1661,6 @@ get_pword_value:
 get_qword_value:
 	mov	[value_size],8
 	mov	[forced_size],2
-	mov	[current_offset],edi
 	call	calculate_expression
 	cmp	word [edi+8],0
 	jne	invalid_value
@@ -1728,7 +1740,6 @@ get_address_value:
 	mov	[value_size],4
 	push	address_ok
       calculate_address:
-	mov	[current_offset],edi
 	call	calculate_expression
 	mov	al,[edi+12]
 	mov	[value_type],al
@@ -1821,6 +1832,24 @@ get_address_value:
       address_ok:
 	mov	edx,eax
 	ret
+get_relative_offset:
+	mov	[value_size],4
+	mov	[forced_size],2
+	call	calculate_expression
+	push	esi
+	add	edi,14h
+	mov	esi,[display_buffer]
+	sub	esi,7
+	lea	eax,[esi-14h]
+	cmp	eax,edi
+	jb	out_of_memory
+	mov	byte [esi],11h
+	xor	eax,eax
+	mov	dword [esi+1],eax
+	mov	word [esi+5],')' shl 8 + 81h
+	call	calculation_loop
+	pop	esi
+	jmp	got_dword_value
 
 calculate_logical_expression:
 	call	get_logical_value

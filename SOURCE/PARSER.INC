@@ -134,6 +134,20 @@ parse_line:
 	movzx	ecx,byte [esi]
 	inc	esi
 	jmp	get_main_instruction
+      parse_public_directive:
+	cmp	byte [esi],1Ah
+	jne	invalid_argument
+	push	esi
+	movzx	ecx,byte [esi+1]
+	add	esi,2
+	mov	ax,'('
+	stos	word [edi]
+	mov	eax,ecx
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	xor	al,al
+	stos	byte [edi]
+	pop	esi
       parse_label_directive:
 	push	edi
 	lods	byte [esi]
@@ -168,6 +182,10 @@ parse_line:
 	je	parse_label_directive
 	cmp	bx,segment_directive-assembler
 	je	parse_label_directive
+	cmp	bx,public_directive-assembler
+	je	parse_public_directive
+	cmp	bx,extrn_directive-assembler
+	je	parse_public_directive
       parse_arguments:
 	lods	byte [esi]
 	cmp	al,':'

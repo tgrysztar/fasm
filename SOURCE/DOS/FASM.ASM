@@ -62,6 +62,7 @@ start:
 	call	preprocessor
 	call	parser
 	call	assembler
+	call	formatter
 
 	movzx	eax,[current_pass]
 	inc	al
@@ -205,6 +206,7 @@ number_start dd ?
 current_offset dd ?
 value dq ?
 fp_value rd 8
+symbol_identifier dd ?
 format_flags dd ?
 number_of_relocations dd ?
 number_of_sections dd ?

@@ -9,7 +9,7 @@
 		       ÛÛ   Û	   ÛÛ Ü     ŞÛ ŞÛ  Û  İ
 		     ßßßßßß  ßßßßß ßß  ßßßßßß	ß  ß  ß
 
-			flat assembler	version 1.37
+			flat assembler	version 1.39
 
 	 Copyright (c) 1999-2002, Tomasz Grysztar. All rights reserved.
 
@@ -39,8 +39,8 @@ Table of Contents
 	 2.1.5	Defining data
     2.2  Directives
 	 2.2.1	Preprocessor directives
-	 2.2.2	Code and format settings
-	 2.2.3	Label and constant definitions
+	 2.2.2	Label and constant definitions
+	 2.2.3	Code and format settings
 	 2.2.4	Other directives
 
 ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
@@ -76,11 +76,12 @@ a separate package.
 
 1.4  Output formats
 
-     There are three possible output formats; by default, the output of
+     There are four possible output formats; by default, the output of
 fasm is a non-relocatable binary image such as a 'com' or 'sys' program.
 Use of the directive 'format MZ' produces a relocatable and possibly
 multi-segment 'exe' program.  No extra 'linking' step is needed! Use of
-the directive 'format PE' produces portable executable.
+the directive 'format PE' produces portable executable and use of the
+diretive 'format COFF' produces object file.
 
 1.5  Output file ordering
 
@@ -146,7 +147,7 @@ the variable, so 'mov byte ptr myvar,7' is the same as 'mov byte [myvar],7'.
 	     label     beta	      ; as above
 	     label     gamma byte     ; low byte of delta dword
 	delta	       dd 0	      ; data label
-	epsilon = alpha + 1	      ; constant definition
+	epsilon = delta - alpha + 1   ; constant definition
 
     Local labels:
 
@@ -438,7 +439,17 @@ purge - argument is one or more macro names, separated with commas; this
 equ - defines symbolic constant. This directive should be preceded by the
       symbol name, and followed by the symbol value.
 
-2.2.2  Code and format settings
+2.2.2  Label and constant definitions
+
+label - define label, needed argument is a name of label, optional
+	arguments are size of labeled data and 'at <address>' phrase.
+
+load - define constant equal to binary value loaded from file; arguments are
+       constant name, optionally constant size (when no size is specified,
+       constant will be one byte), then 'from <file>' phrase, after file
+       name position in file preceded by a colon can follow.
+
+2.2.3  Code and format settings
 
 use16 - set code type to 16-bit (this is default code setting).
 
@@ -447,25 +458,36 @@ use32 - set code type to 32-bit (this is default code setting for PE format).
 org - argument must be an address value; set from what address this
       code will start in memory.
 
-format - set output file format, can be set binary, MZ or PE; binary
+format - set output file format, can be set binary, MZ, PE, or COFF; binary
 	 is the default format, MZ is an EXE file format, PE is a portable
-	 executable file format. When specified format is PE, more format
-	 settings can follow; use 'console', 'GUI' or 'native' words to set
-	 target subsystem type (subsystem version can follow); 'i386',
-	 'i486' or 'i586' to specify target machine type; 'DLL' to create
-	 dynamic link library. Use 'on <file>' phrase to specify custom
-	 stub program.
+	 executable file format and COFF is a common object file format.
+	 To make Microsoft COFF file, use 'format MS COFF' phrase.
+	 specified format is PE, more format settings can follow; use
+	 'console', 'GUI' or 'native' words to set target subsystem type
+	 (subsystem version can follow); 'i386', 'i486' or 'i586' to specify
+	 target machine type; 'DLL' to create dynamic link library. Use
+	 'on <file>' phrase to specify custom stub program.
 
 segment - define segment at current position (only in MZ format),
 	  code will be aligned to paragraph. In segment definition, after
 	  segment name, 'use16' or 'use32' is allowed.
 
-section - define section at current position (only in PE format), code will
-	  be aligned to page (4096 bytes). First argument is a string
-	  containing section name, optional next arguments are section type
-	  (code, data, udata, export, import, resource), and section
-	  attributes (readable, writeable, executable, shareable,
-	  discardable).
+section - define section at current position (only in PE and COFF formats).
+	  If output format is PE, code will be aligned to page (4096 bytes).
+	  First argument is a string containing section name (maximum 8
+	  characters), optional next arguments are section type (code, data),
+	  and section attributes (readable, writeable, executable, shareable,
+	  discardable). With PE format you can also specify that section
+	  is one of predefined data types: export, import, resource, fixups.
+
+public - declare the existing symbol as public (only in COFF format), needed
+	 argument is a name of symbol, optional argument is 'as <string>'
+	 (string should be quoted) to make this symbol visible outside
+	 with the different name.
+
+extrn - define the external symbol (only in COFF format), needed argument is
+	a name of symbol, optional argument is the size of data labeled by
+	this symbol.
 
 entry - define program entry point (only in MZ and PE formats). In MZ format
 	argument must be a segment:offset address (like in far jump).
@@ -485,18 +507,8 @@ heap - define 'heap' size in paragraphs (only in MZ and PE formats). In MZ
        allowed to define heap commit.
 
 data - begin PE format specific data definition. Argument is a number of PE
-       data directory, or a predefined data type (export, import, resource).
-       Data definition should be ended with 'end data' directive.
-
-2.2.3  Label and constant definitions
-
-label - define label, needed argument is a name of label, optional
-	arguments are size of labeled data and 'at <address>' phrase.
-
-load - define constant equal to binary value loaded from file; arguments are
-       constant name, optionally constant size (when no size is specified,
-       constant will be one byte), then 'from <file>' phrase, after file
-       name position in file preceded by a colon can follow.
+       data directory, or a predefined data type (export, import, resource,
+       fixups). Data definition should be ended with 'end data' directive.
 
 2.2.4  Other directives
 

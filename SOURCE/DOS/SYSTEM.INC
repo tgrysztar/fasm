@@ -226,20 +226,20 @@ extended_memory_ok:
 	ret
 
 exit_program:
+	push	ax
 	cmp	[xms_handle],0
 	je	byte .exit
-	push	ax
 	mov	ah,0Dh			; unlock extended memory block
 	mov	dx,[xms_handle]
 	call	far dword [xms_call]
 	mov	ah,0Ah			; free extended memory block
 	call	far dword [xms_call]
-	pop	ax
       .exit:
 	mov	ax,250Dh
 	mov	dx,word [irq_5]
 	mov	ds,word [irq_5+2]
 	int	21h
+	pop	ax
 	mov	ah,4Ch
 	int	21h
 

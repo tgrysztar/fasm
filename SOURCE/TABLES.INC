@@ -296,6 +296,7 @@ single_operand_operators:
  db 0
 
 directive_operators:
+ db 2,'as',86h
  db 2,'at',80h
  db 2,'eq',81h
  db 4,'from',82h
@@ -409,6 +410,7 @@ symbols:
 formatter_symbols:
  db 6,'binary',18h,1
  db 4,'code',19h,5
+ db 4,'coff',18h,4
  db 7,'console',1Bh,3
  db 4,'data',19h,6
  db 11,'discardable',19h,25
@@ -421,13 +423,13 @@ formatter_symbols:
  db 4,'i486',1Bh,44h
  db 4,'i586',1Bh,45h
  db 6,'import',1Ah,1
+ db 2,'ms',18h,41h
  db 2,'mz',18h,2
  db 6,'native',1Bh,1
  db 2,'pe',18h,3
  db 8,'readable',19h,30
  db 8,'resource',1Ah,2
  db 9,'shareable',19h,28
- db 5,'udata',19h,7
  db 9,'writeable',19h,31
  db 0
 
@@ -472,6 +474,7 @@ data_handlers:
 data_directives:
  db 2,'db',1,0
  db 2,'dd',4,6
+ db 2,'df',6,8
  db 2,'dp',6,8
  db 2,'dq',8,10
  db 2,'dt',10,12
@@ -480,6 +483,7 @@ data_directives:
  db 4,'file',1,1
  db 2,'rb',1,2
  db 2,'rd',4,7
+ db 2,'rf',6,9
  db 2,'rp',6,9
  db 2,'rq',8,11
  db 2,'rt',10,13
@@ -953,6 +957,8 @@ instructions_5:
  dw enter_instruction-assembler
  db 'entry',0
  dw entry_directive-assembler
+ db 'extrn',0
+ dw extrn_directive-assembler
  db 'f2xm1',110000b
  dw simple_fpu_instruction-assembler
  db 'faddp',0
@@ -1383,6 +1389,8 @@ instructions_6:
  dw mmx_instruction-assembler
  db 'psubsw',0E9h
  dw mmx_instruction-assembler
+ db 'public',0
+ dw public_directive-assembler
  db 'pushad',60h
  dw simple_instruction_32bit-assembler
  db 'pushaw',60h
