@@ -1,6 +1,16 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.52
+[03-04-2004]
+------------
+[+] more than 65535 relocations per section with MS COFF format
+[+] smarter searching for included files
+[+] added "store" directive
+[-] cleaned syntax of "load" directive (only loading from code allowed)
+[-] floating point values starting with dot no longer allowed
+[-] "clflush" fixed to accept byte operand
+
 version 1.51
 [31-01-2004]
 ------------

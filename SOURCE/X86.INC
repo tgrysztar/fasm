@@ -4815,7 +4815,7 @@ movq_instruction:
 	pop	eax
 	mov	[postbyte_register],al
 	mov	[base_code],0Fh
-	cmp	[operand_size],16
+	cmp	ah,16
 	je	movq_xmmreg_mem
 	mov	[extended_code],6Fh
 	call	store_instruction
@@ -4823,7 +4823,7 @@ movq_instruction:
       movq_xmmreg_mem:
 	mov	[extended_code],7Eh
 	mov	[mmx_prefix],0F3h
-	call	store_instruction
+	call	store_mmx_instruction
 	jmp	instruction_assembled
       movq_mmreg_mmreg:
 	pop	ebx
@@ -5786,11 +5786,17 @@ fxsave_instruction:
 	or	ah,ah
 	jz	fxsave_size_ok
 	mov	al,[postbyte_register]
+	cmp	al,111b
+	je	clflush_size_check
 	cmp	al,10b
 	jb	invalid_operand_size
 	cmp	al,11b
 	ja	invalid_operand_size
 	cmp	ah,4
+	jne	invalid_operand_size
+	jmp	fxsave_size_ok
+      clflush_size_check:
+	cmp	ah,1
 	jne	invalid_operand_size
       fxsave_size_ok:
 	call	store_instruction
@@ -7303,6 +7309,8 @@ instructions_5:
  dw set_instruction-assembler
  db 'stack',0
  dw stack_directive-assembler
+ db 'store',0
+ dw store_directive-assembler
  db 'stosb',0AAh
  dw simple_instruction-assembler
  db 'stosd',0ABh

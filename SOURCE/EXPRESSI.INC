@@ -426,6 +426,8 @@ get_fp_value:
 	ja	not_fp_value
 	jmp	fp_character_ok
       fp_character_dot:
+	cmp	esi,edx
+	je	not_fp_value
 	or	ah,ah
 	jnz	not_fp_value
 	or	ah,1
@@ -1507,8 +1509,9 @@ calculate_expression:
 	mov	byte [edi+12],0
 	mov	eax,[code_start]
 	mov	eax,[eax+34h]
+	cdq
 	sub	[edi],eax
-	sbb	dword [edi+4],0
+	sbb	dword [edi+4],edx
 	add	edi,14h
 	jmp	calculation_loop
       div_64:
@@ -1681,6 +1684,7 @@ get_byte_value:
 	mov	[value_size],1
 	mov	[forced_size],2
 	call	calculate_expression
+	mov	[value_type],0
 	cmp	word [edi+8],0
 	jne	invalid_value
 	cmp	byte [edi+12],0

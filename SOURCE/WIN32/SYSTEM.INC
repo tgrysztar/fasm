@@ -42,6 +42,9 @@ PAGE_GUARD	       = 100h
 PAGE_NOCACHE	       = 200h
 
 init_memory:
+	mov	eax,[memory_setting]
+	shl	eax,10
+	jnz	allocate_memory
 	push	buffer
 	call	[GlobalMemoryStatus]
 	mov	eax,dword [buffer+8]
@@ -80,6 +83,7 @@ exit_program:
 	call	[ExitProcess]
 
 get_params:
+	mov	[memory_setting],0
 	call	[GetCommandLine]
 	mov	esi,eax
 	mov	edi,params
@@ -109,6 +113,8 @@ get_params:
 	je	find_param
 	cmp	al,22h
 	je	string_param
+	cmp	al,'-'
+	je	option_param
 	cmp	al,0Dh
 	je	all_params
 	or	al,al
@@ -138,6 +144,51 @@ get_params:
 	jz	param_end
 	stosb
 	jmp	copy_string_param
+    option_param:
+	lodsb
+	cmp	al,'m'
+	je	memory_option
+	cmp	al,'M'
+	je	memory_option
+    bad_params:
+	stc
+	ret
+    memory_option:
+	lodsb
+	cmp	al,20h
+	je	memory_option
+	cmp	al,0Dh
+	je	bad_params
+	or	al,al
+	jz	bad_params
+	dec	esi
+	xor	eax,eax
+	mov	edx,eax
+    get_memory_setting:
+	lodsb
+	cmp	al,20h
+	je	memory_setting_ok
+	cmp	al,0Dh
+	je	memory_setting_ok
+	or	al,al
+	jz	memory_setting_ok
+	sub	al,30h
+	jc	bad_params
+	cmp	al,9
+	ja	bad_params
+	imul	edx,10
+	jo	bad_params
+	add	edx,eax
+	jc	bad_params
+	jmp	get_memory_setting
+    memory_setting_ok:
+	or	edx,edx
+	jz	bad_params
+	cmp	edx,1 shl (32-10)
+	jae	bad_params
+	mov	[memory_setting],edx
+	dec	esi
+	jmp	find_param
     param_end:
 	dec	esi
     string_param_end:
@@ -150,17 +201,47 @@ get_params:
     all_params:
 	xor	al,al
 	stosb
+	cmp	[params],0
+	je	bad_params
+	lea	eax,[params+1]
+	mov	[input_file],eax
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	je	bad_params
+	inc	eax
+	mov	[output_file],eax
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	jne	bad_params
+	clc
+	ret
+
+get_environment_variable:
+	mov	ecx,[memory_end]
+	sub	ecx,edi
+	cmp	ecx,4000h
+	jbe	buffer_for_variable_ok
+	mov	ecx,4000h
+    buffer_for_variable_ok:
+	push	ecx
+	push	edi
+	push	esi
+	call	[GetEnvironmentVariable]
+	add	edi,eax
+	cmp	edi,[memory_end]
+	jae	out_of_memory
 	ret
 
 open:
-	call	convert_path
 	push	0
 	push	0
 	push	OPEN_EXISTING
 	push	0
 	push	FILE_SHARE_READ
 	push	GENERIC_READ
-	push	buffer
+	push	edx
 	call	[CreateFile]
 	cmp	eax,-1
 	je	file_error
@@ -170,53 +251,14 @@ open:
     file_error:
 	stc
 	ret
-    convert_path:
-	push	esi edi
-	mov	esi,edx
-	mov	edi,buffer
-      copy_path:
-	lods	byte [esi]
-	cmp	al,'%'
-	je	environment_variable
-	stos	byte [edi]
-	or	al,al
-	jnz	copy_path
-	cmp	edi,buffer+4000h
-	ja	out_of_memory
-	pop	edi esi
-	ret
-      environment_variable:
-	mov	ebx,esi
-      find_variable_end:
-	lods	byte [esi]
-	or	al,al
-	jz	not_environment_variable
-	cmp	al,'%'
-	jne	find_variable_end
-	mov	byte [esi-1],0
-	mov	eax,buffer+4000h
-	sub	eax,edi
-	push	eax
-	push	edi
-	push	ebx
-	call	[GetEnvironmentVariable]
-	add	edi,eax
-	mov	byte [esi-1],'%'
-	jmp	copy_path
-      not_environment_variable:
-	mov	al,'%'
-	stos	byte [edi]
-	mov	esi,ebx
-	jmp	copy_path
 create:
-	call	convert_path
 	push	0
 	push	0
 	push	CREATE_ALWAYS
 	push	0
 	push	FILE_SHARE_READ
 	push	GENERIC_WRITE
-	push	buffer
+	push	edx
 	call	[CreateFile]
 	cmp	eax,-1
 	je	file_error

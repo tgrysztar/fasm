@@ -16,12 +16,24 @@ init_memory:
 	int	2Fh
 	cmp	al,80h			; XMS present?
 	je	xms_init
+	mov	ax,0E801h		; check for large free extended memory
+	int	15h
+	jnc	large_raw_memory
 	mov	ah,88h			; how much extended memory free?
 	int	15h
 	or	ax,ax
 	jz	no_extended_memory
 	movzx	eax,ax			; convert AX kilobytes to pointer
 	shl	eax,10
+	jmp	use_raw_memory
+    large_raw_memory:
+	movzx	ecx,cx
+	shl	ecx,10
+	movzx	edx,dx
+	shl	edx,16
+	mov	eax,ecx
+	add	eax,edx
+    use_raw_memory:
 	add	eax,100000h
 	sub	eax,[program_base]
 	mov	[memory_end],eax
@@ -55,6 +67,14 @@ init_memory:
 	pop	ds
 	sub	eax,[program_base]
 	mov	[memory_start],eax
+	mov	edx,[memory_setting]
+	shl	edx,10
+	jz	extended_memory_ok
+	mov	eax,[memory_end]
+	sub	eax,[memory_start]
+	sub	eax,edx
+	jbe	extended_memory_ok
+	sub	[memory_end],eax
 	jmp	extended_memory_ok
 enable_a20:
 	call	test_a20		; is A20 already enabled?
@@ -101,6 +121,11 @@ xms_init:
 	call	call_xms
 	cmp	ax,1			; error enabling A20?
 	jne	no_extended_memory
+	mov	ah,88h			; get free extended memory size (XMS 3.0)
+	xor	bl,bl
+	call	call_xms
+	or	bl,bl
+	jz	xms_large_init
 	mov	ah,8			; get free extended memory size
 	xor	bl,bl
 	call	call_xms
@@ -111,6 +136,15 @@ xms_init:
 	shl	eax,10
 	mov	[memory_end],eax
 	mov	ah,9			; allocate largest memory block
+    xms_allocate:
+	mov	ecx,[memory_setting]
+	shl	ecx,10
+	jz	xms_size_ok
+	cmp	ecx,[memory_end]
+	jae	xms_size_ok
+	mov	[memory_end],ecx
+	mov	edx,[memory_setting]
+    xms_size_ok:
 	call	call_xms
 	mov	[xms_handle],dx
 	cmp	ax,1
@@ -125,6 +159,12 @@ xms_init:
 	mov	[memory_start],edx	; store memory block address
 	add	[memory_end],edx
 	jmp	extended_memory_ok
+    xms_large_init:
+	mov	edx,eax
+	shl	eax,10
+	mov	[memory_end],eax
+	mov	ah,89h			; allocate largest memory block (XMS 3.0)
+	jmp	xms_allocate
     call_xms:
 	call	modes:switch_real16
 	use16
@@ -173,6 +213,13 @@ init_dpmi_memory:
 	int	31h
 	mov	ebx,[edi]
     allocate_dpmi_memory:
+	mov	edx,[memory_setting]
+	shl	edx,10
+	jz	dpmi_memory_size_ok
+	cmp	ebx,edx
+	jbe	dpmi_memory_size_ok
+	mov	ebx,edx
+    dpmi_memory_size_ok:
 	mov	[memory_end],ebx
 	mov	ecx,ebx
 	shr	ebx,16
@@ -301,6 +348,7 @@ xms_proc dd ?				; XMS driver pointer
 xms_handle dw ? 			; handle of XMS memory block
 
 get_params:
+	mov	[memory_setting],0
 	push	ds
 	mov	ds,[psp_segment]
 	mov	esi,81h
@@ -311,6 +359,8 @@ get_params:
 	je	find_param
 	cmp	al,22h
 	je	string_param
+	cmp	al,'-'
+	je	option_param
 	cmp	al,0Dh
 	je	all_params
 	or	al,al
@@ -340,6 +390,52 @@ get_params:
 	jz	param_end
 	stosb
 	jmp	copy_string_param
+    option_param:
+	lodsb
+	cmp	al,'m'
+	je	memory_option
+	cmp	al,'M'
+	je	memory_option
+    invalid_option:
+	pop	ds
+	stc
+	ret
+    memory_option:
+	lodsb
+	cmp	al,20h
+	je	memory_option
+	cmp	al,0Dh
+	je	invalid_option
+	or	al,al
+	jz	invalid_option
+	dec	esi
+	xor	eax,eax
+	mov	edx,eax
+    get_memory_setting:
+	lodsb
+	cmp	al,20h
+	je	memory_setting_ok
+	cmp	al,0Dh
+	je	memory_setting_ok
+	or	al,al
+	jz	memory_setting_ok
+	sub	al,30h
+	jc	invalid_option
+	cmp	al,9
+	ja	invalid_option
+	imul	edx,10
+	jo	invalid_option
+	add	edx,eax
+	jc	invalid_option
+	jmp	get_memory_setting
+    memory_setting_ok:
+	or	edx,edx
+	jz	invalid_option
+	cmp	edx,1 shl (32-10)
+	jae	invalid_option
+	mov	[es:memory_setting],edx
+	dec	esi
+	jmp	find_param
     param_end:
 	dec	esi
     string_param_end:
@@ -353,11 +449,74 @@ get_params:
 	xor	al,al
 	stosb
 	pop	ds
+	cmp	[params],0
+	je	bad_params
+	lea	eax,[params+1]
+	mov	[input_file],eax
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	je	bad_params
+	inc	eax
+	mov	[output_file],eax
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	jne	bad_params
+	clc
+	ret
+    bad_params:
+	stc
+	ret
+
+get_environment_variable:
+	mov	ebx,esi
+	push	ds
+	mov	ds,[environment_segment]
+	xor	esi,esi
+      compare_variable_names:
+	mov	edx,ebx
+      compare_character:
+	lodsb
+	mov	ah,[es:edx]
+	inc	edx
+	cmp	al,'='
+	je	end_of_variable_name
+	or	ah,ah
+	jz	next_variable
+	sub	ah,al
+	jz	compare_character
+	cmp	ah,20h
+	jne	next_variable
+	cmp	al,41h
+	jb	next_variable
+	cmp	al,5Ah
+	jna	compare_character
+      next_variable:
+	lodsb
+	or	al,al
+	jnz	next_variable
+	cmp	byte [esi],0
+	jne	compare_variable_names
+	pop	ds
+	ret
+      end_of_variable_name:
+	or	ah,ah
+	jnz	next_variable
+      copy_variable_value:
+	lodsb
+	cmp	edi,[memory_end]
+	jae	out_of_memory
+	stosb
+	or	al,al
+	jnz	copy_variable_value
+	dec	edi
+	pop	ds
 	ret
 
 open:
 	push	esi edi
-	call	convert_path
+	call	adapt_path
 	mov	ax,716Ch
 	mov	bx,100000b
 	mov	dx,1
@@ -377,13 +536,11 @@ open:
 	mov	bx,ax
 	pop	edi esi
 	ret
-    convert_path:
+    adapt_path:
 	mov	esi,edx
 	mov	edi,[buffer_address]
       copy_path:
 	lodsb
-	cmp	al,'%'
-	je	environment_variable
 	cmp	al,'/'
 	jne	path_char_ok
 	mov	al,'\'
@@ -392,66 +549,9 @@ open:
 	or	al,al
 	jnz	copy_path
 	ret
-      environment_variable:
-	mov	ebx,esi
-      find_variable_end:
-	lodsb
-	or	al,al
-	jz	not_environment_variable
-	cmp	al,'%'
-	jne	find_variable_end
-	push	ds esi
-	mov	ds,[environment_segment]
-	xor	esi,esi
-      compare_variable_names:
-	mov	edx,ebx
-      compare_character:
-	lodsb
-	mov	ah,[es:edx]
-	inc	edx
-	cmp	al,'='
-	je	end_of_variable_name
-	cmp	ah,'%'
-	je	next_variable
-	sub	ah,al
-	jz	compare_character
-	cmp	ah,20h
-	jne	next_variable
-	cmp	al,41h
-	jb	next_variable
-	cmp	al,5Ah
-	jna	compare_character
-      next_variable:
-	lodsb
-	or	al,al
-	jnz	next_variable
-	cmp	byte [esi],0
-	jne	compare_variable_names
-	pop	esi ds
-	jmp	copy_path
-      end_of_variable_name:
-	cmp	ah,'%'
-	jne	next_variable
-      copy_variable_value:
-	lodsb
-	cmp	al,'/'
-	jne	value_char_ok
-	mov	al,'\'
-      value_char_ok:
-	stosb
-	or	al,al
-	jnz	copy_variable_value
-	dec	edi
-	pop	esi ds
-	jmp	copy_path
-      not_environment_variable:
-	mov	al,'%'
-	stosb
-	mov	esi,ebx
-	jmp	copy_path
 create:
 	push	esi edi
-	call	convert_path
+	call	adapt_path
 	mov	ax,716Ch
 	mov	bx,100001b
 	mov	dx,10010b

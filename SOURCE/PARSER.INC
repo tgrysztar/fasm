@@ -717,13 +717,7 @@ get_label_id:
 	je	anonymous_label
 	cmp	byte [esi],'.'
 	jne	standard_label
-	mov	al,[esi+1]
-	cmp	al,30h
-	jb	local_name
-	cmp	al,39h
-	jbe	invalid_name
-      local_name:
-	cmp	al,'.'
+	cmp	byte [esi+1],'.'
 	je	standard_label
 	cmp	[current_locals_prefix],0
 	je	standard_label

@@ -4,6 +4,13 @@
 ; All rights reserved.
 
 preprocessor:
+	mov	edi,[memory_start]
+	mov	[include_paths],edi
+	mov	esi,_include
+	call	get_environment_variable
+	xor	al,al
+	stosb
+	mov	[memory_start],edi
 	mov	eax,[additional_memory]
 	mov	[free_additional_memory],eax
 	mov	[macros_list],eax
@@ -13,10 +20,12 @@ preprocessor:
 	mov	[fix_constants_count],eax
 	mov	[equ_constants_count],eax
 	mov	[macro_status],al
-	mov	edx,[input_file]
+	mov	esi,[input_file]
+	mov	edx,esi
+	call	open
+	jc	main_file_not_found
 	mov	edi,[memory_start]
 	call	preprocess_file
-	jc	main_file_not_found
 	cmp	[macro_status],0
 	jne	unexpected_end_of_file
 	mov	[source_start],edi
@@ -24,9 +33,7 @@ preprocessor:
 
 preprocess_file:
 	push	[memory_end]
-	push	edx
-	call	open
-	jc	no_source_file
+	push	esi
 	mov	al,2
 	xor	edx,edx
 	call	lseek
@@ -71,10 +78,6 @@ preprocess_file:
       file_end:
 	pop	[memory_end]
 	clc
-	ret
-      no_source_file:
-	pop	eax eax
-	stc
 	ret
 
 convert_line:
@@ -344,18 +347,56 @@ preprocess_line:
 	mov	cl,al
 	call	get_macro
 	jc	not_preprocessor_symbol
+	push	ebx esi
+	mov	esi,[struc_name]
+	movzx	ecx,byte [esi-1]
+	mov	[value_type],0
+	call	find_symbolic_constant
+	jc	struc_name_ok
+	mov	ecx,[edx+8]
+	add	ecx,3
+	lea	esi,[edi-1]
+	lea	ebx,[edi+ecx]
+	lea	edi,[ebx-1]
+	mov	ecx,ebx
+	sub	ecx,[struc_name]
+	sub	ecx,2
+	std
+	call	move_data
+	cld
+	mov	edi,[struc_name]
+	sub	edi,2
+	mov	esi,[edx+12]
+	mov	ecx,[edx+8]
+	add	[struc_name],ecx
+	add	[struc_name],3
+	call	move_data
+	mov	al,':'
+	stos	byte [edi]
+	mov	ax,3Bh
+	stos	word [edi]
+	mov	edi,ebx
+	pop	esi ebx
+	add	esi,[edx+8]
+	add	esi,3
+	jmp	use_macro
+      struc_name_ok:
+	mov	edx,[struc_name]
+	movzx	eax,byte [edx-1]
+	add	edx,eax
+	pop	esi ebx
 	mov	al,3Ah
-	mov	[edx-2],al
-	inc	al
-	xchg	al,[edx-1]
-	dec	al
 	mov	[edx],al
+	inc	al
+	xchg	al,[edx+1]
+	dec	al
+	mov	[edx+2],al
 	jmp	use_macro
       preprocess_label:
 	dec	esi
 	sub	esi,ecx
 	lea	ebp,[esi-2]
-	mov	[value_type],2
+	mov	[value_type],0
 	call	find_symbolic_constant
 	jnc	symbolic_constant_in_label
 	lea	esi,[esi+ecx+1]
@@ -950,8 +991,11 @@ purge_macro:
 	xor	ch,ch
 	mov	cl,al
 	call	get_macro
-	jc	macro_purged
+	jc	no_macro_to_purge
 	or	byte [ebx+1],2
+	jmp	macro_purged
+      no_macro_to_purge:
+	add	esi,ecx
       macro_purged:
 	lods	byte [esi]
 	cmp	al,','
@@ -1409,51 +1453,7 @@ use_macro:
 	or	[macro_status],al
 	pop	[counter_limit] [counter]
 	pop	[macro_block_line_number] [macro_block_line] [macro_block] [macro_constants]
-	mov	esi,[struc_name]
-	or	esi,esi
-	jz	line_preprocessed
-	movzx	ecx,byte [esi-1]
-	and	[value_type],0F0h
-	or	[value_type],1
-	call	find_symbolic_constant
-	jc	line_preprocessed
-	mov	ecx,[edx+8]
-	mov	ebx,[struc_name]
-	movzx	eax,byte [ebx-1]
-	lea	esi,[ebx+eax]
-	add	eax,2
-	sub	ecx,eax
-	jz	replace_struc_name
-	ja	move_struc_up
-	mov	eax,ecx
-	neg	eax
-	mov	ecx,edi
-	sub	ecx,esi
-	mov	edi,esi
-	sub	edi,eax
-	call	move_data
-	jmp	replace_struc_name
-      move_struc_up:
-	mov	eax,ecx
-	mov	ecx,edi
-	sub	ecx,esi
-	mov	esi,edi
-	add	edi,eax
-	mov	ebx,edi
-	dec	edi
-	dec	esi
-	std
-	rep	movs byte [edi],[esi]
-	cld
-	mov	edi,ebx
-      replace_struc_name:
-	push	edi
-	mov	edi,[struc_name]
-	sub	edi,2
-	mov	ecx,[edx+8]
-	mov	esi,[edx+12]
-	call	move_data
-	pop	edi
+
 	jmp	line_preprocessed
 
 include_file:
@@ -1461,13 +1461,119 @@ include_file:
 	cmp	al,22h
 	jne	invalid_argument
 	lods	dword [esi]
-	mov	edx,esi
-	add	esi,eax
-	cmp	byte [esi],0
+	cmp	byte [esi+eax],0
 	jne	extra_characters_on_line
-	call	preprocess_file
+	push	esi
+	push	edi
+	mov	esi,[current_line]
+	mov	esi,[esi]
+      copy_current_file_path:
+	lods	byte [esi]
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_current_file_path
+      cut_current_file_name:
+	cmp	edi,[esp]
+	je	current_file_path_ok
+	cmp	byte [edi-1],'\'
+	je	current_file_path_ok
+	cmp	byte [edi-1],'/'
+	je	current_file_path_ok
+	dec	edi
+	jmp	cut_current_file_name
+      current_file_path_ok:
+	mov	esi,[esp+4]
+	call	preprocess_path
+	pop	edx
+	mov	esi,edx
+	call	open
+	jnc	include_path_ok
+	mov	ebp,[include_paths]
+      try_include_directories:
+	mov	edi,esi
+	mov	esi,ebp
+	cmp	byte [esi],0
+	je	try_in_current_directory
+	push	ebp
+	push	edi
+      copy_include_directory:
+	lods	byte [esi]
+	cmp	al,';'
+	je	include_directory_ok
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_include_directory
+	dec	esi
+	dec	edi
+      include_directory_ok:
+	cmp	byte [edi-1],'/'
+	je	path_separator_ok
+	cmp	byte [edi-1],'\'
+	je	path_separator_ok
+	mov	al,'/'
+	stos	byte [edi]
+      path_separator_ok:
+	mov	[esp+4],esi
+	mov	esi,[esp+8]
+	call	preprocess_path
+	pop	edx
+	mov	esi,edx
+	call	open
+	pop	ebp
+	jnc	include_path_ok
+	jmp	try_include_directories
+	mov	edi,esi
+      try_in_current_directory:
+	mov	esi,[esp]
+	push	edi
+	call	preprocess_path
+	pop	edx
+	mov	esi,edx
+	call	open
 	jc	file_not_found
+      include_path_ok:
+	mov	edi,[esp]
+      copy_preprocessed_path:
+	lods	byte [esi]
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_preprocessed_path
+	pop	esi
+	lea	ecx,[edi-1]
+	sub	ecx,esi
+	mov	[esi-4],ecx
+	call	preprocess_file
 	jmp	line_preprocessed
+      preprocess_path:
+	lods	byte [esi]
+	cmp	al,'%'
+	je	environment_variable
+	stos	byte [edi]
+	or	al,al
+	jnz	preprocess_path
+	cmp	edi,[memory_end]
+	ja	out_of_memory
+	ret
+      environment_variable:
+	mov	ebx,esi
+      find_variable_end:
+	lods	byte [esi]
+	or	al,al
+	jz	not_environment_variable
+	cmp	al,'%'
+	jne	find_variable_end
+	mov	byte [esi-1],0
+	push	esi
+	mov	esi,ebx
+	call	get_environment_variable
+	pop	esi
+	mov	byte [esi-1],'%'
+	jmp	preprocess_path
+      not_environment_variable:
+	mov	al,'%'
+	stos	byte [edi]
+	mov	esi,ebx
+	jmp	preprocess_path
 
 increase_counter:
 	movzx	ecx,byte [eax]

@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.51
+                              flat assembler 1.52
                               Programmer's Manual
 
 
@@ -105,44 +105,49 @@ otherwise it will display the information about error that occurred.
   The source file should be a text file, and can be created in any text
 editor. Line breaks are accepted in both DOS and Unix standards, tabulators
 are treated as spaces.
-  There are no additional command line options, flat assembler requires only
-the source code to include the information it really needs. For example, to
-specify output format you specify it by using the "format" directive at the
-beginning of source.
+  In the command line you can also include "-m" option followed by a number,
+which specifies how many kilobytes of memory flat assembler should maximally
+use. In case of DOS version this options limits only the usage of extended
+memory.
+  There are no command line options that would affect the output of compiler,
+flat assembler requires only the source code to include the information it
+really needs. For example, to specify output format you specify it by using
+the "format" directive at the beginning of source.
 
 
 1.1.3  Compiler messages
 
-As it is stated above, after the successful compilation compiler displays the
-compilation summary. It includes the information of how many passes was done,
-how much time it took, and how many bytes were written into destination file.
-Here is an example of the compilation summary:
+As it is stated above, after the successful compilation, the compiler displays
+the compilation summary. It includes the information of how many passes was
+done, how much time it took, and how many bytes were written into the
+destination file.
+The following is an example of the compilation summary:
 
-flat assembler  version 1.51
+flat assembler  version 1.52
 38 passes, 5.3 seconds, 77824 bytes.
 
-In case of error during the compilation process, program will display an error
-message. For example, when compiler can't find the input file, it will display
-the following message:
+In case of error during the compilation process, the program will display an
+error message. For example, when compiler can't find the input file, it will
+display the following message:
 
-flat assembler  version 1.51
+flat assembler  version 1.52
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.51
+flat assembler  version 1.52
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
 
 It means that in the third line of the "example.asm" file compiler has
 encountered an unrecognized instruction. When the line that caused error
-contains a macroinstruction, also the line in macrinstruction definition
+contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.51
+flat assembler  version 1.52
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -180,11 +185,12 @@ set of the directives - the instructions for compiler.
 1.2.1  Instruction syntax
 
 Instructions in assembly language are separated by line breaks, and one
-instruction is expected to fill the one line of text. If line contains
-a semicolon (except for the semicolons in quoted strings), the rest of this
-line is the comment and compiler ignores it. If line contains "\"
-characters, the next line is attached at this point. Line should not contain
-anything but comments (started with semicolon) after the "\" character.
+instruction is expected to fill the one line of text. If a line contains
+a semicolon, except for the semicolons in quoted strings, the rest of this
+line is the comment and compiler ignores it. If a line contains "\"
+characters, the next line is attached at this point. After the "\" character,
+the line should not contain anything but comments, which are started with
+a semicolon.
   Every instruction consists of the mnemonic and the various number of
 operands, separated with commas. The operand can be register, immediate value
 or a data addressed in memory, it can also be preceded by size operator to
@@ -242,7 +248,7 @@ brackets or after the "ptr" operator).
 
 To define data or reserve a space for it, use one of the directives listed in
 table 1.3. The data definition directive should be followed by one or more of
-numerical expressions, separated with commas. These expression define the
+numerical expressions, separated with commas. These expressions define the
 values for data cells of size depending on which directive is used. For
 example "db 1,2,3" will define the three bytes of values 1, 2 and 3
 respectively.
@@ -300,7 +306,7 @@ directives. Each label can be defined only once and it is accessible from the
 any place of source (even before it was defined). Constant can be redefined
 many times, but in this case it is accessible only after it was defined, and
 is always equal to the value from last definition before the place where it's
-used. When constant is defined only once in source, it's - like the label -
+used. When a constant is defined only once in source, it is - like the label -
 accessible from anywhere.
   The definition of constant consists of name of the constant followed by the
 "=" character and numerical expression, which after calculation will become
@@ -316,8 +322,8 @@ the places in code. The other way is to follow the name of label (without a
 colon) by some data directive. It defines the label with value equal to
 offset of the beginning of defined data, and remembered as a label for data
 with cell size as specified for that data directive in table 1.3.
-  The label can be treated as constant of value equal to offset of labelled
-code or data. For example when you define data using the labelled directive
+  The label can be treated as constant of value equal to offset of labeled
+code or data. For example when you define data using the labeled directive
 "char db 224", to put the offset of this data into BX register you should use
 "mov bx,char" instruction, and to put the value of byte addressed by "char"
 label to DL register, you should use "mov dl,[char]" (or "mov dl,ptr char").
@@ -347,17 +353,14 @@ don't become the new prefix for local labels.
 the source. Symbol "@b" (or equivalent "@r") references the nearest preceding
 anonymous label, symbol "@f" references the nearest following anonymous label.
 These special symbol are case-insensitive.
-  The "load" directive allows to define constant with binary value loaded from
-a file during the assembly process. This directive should be followed by the
-name of constant, then optionally size operator, then "from" operator and
-quoted file name, which can be also followed by a colon and numerical
-expression specifying offset in file. The size operator has unusual meaning in
-this case - it states how many bytes (up to 8) have to be loaded to form the
-binary value of constant. If no size operator is specified, one byte is loaded
-(thus value is in range from 0 to 255). With giving only the offset value
-instead of quoted file name you can also load a value from the already
-assembled code. The given offset should be a valid address in currently
-generated code space, the loaded data cannot exceed current offset.
+  The "load" directive allows to define constant with a binary value loaded
+from the already assembled code. This directive should be followed by the name
+of the constant, then optionally size operator, then "from" operator and a
+numerical expression specifying a valid address in currently generated code
+space. The size operator has unusual meaning in this case - it states how many
+bytes (up to 8) have to be loaded to form the binary value of constant. If no
+size operator is specified, one byte is loaded (thus value is in range from 0
+to 255). The loaded data cannot exceed current offset.
 
 
 1.2.4  Numerical expressions
@@ -367,7 +370,7 @@ constants or labels. But they can be more complex, by using the arithmetical
 or logical operators for calculations at compile time. All these operators
 with their priority values are listed in table 1.4.
 The operations with higher priority value will be calculated first, you can
-of course change this behaviour by putting some parts of expression into
+of course change this behavior by putting some parts of expression into
 parenthesis. The "+", "-", "*" and "/" are standard arithmetical operations,
 "mod" calculates the remainder from division. The "and", "or", "xor", "shl",
 "shr" and "not" perform the same logical operations as assembly instructions
@@ -471,8 +474,8 @@ information, look for the Intel Architecture Software Developer's Manual.
 zero to three operands. If there are two or more operands, usually first is
 the destination operand and second is the source operand. Each operand can be
 register, memory or immediate value (see 1.2 for details about syntax of
-operands). After description of each instruction there are provided examples
-of different combinations of operands (if the instruction has any).
+operands). After the description of each instruction there are examples
+of different combinations of operands, if the instruction has any.
   Some instructions act as prefixes and can be followed by other instruction
 in the same line, and there can be more than one prefix in a line. Each name
 of the segment register is also a mnemonic of instruction prefix, altough it
@@ -559,7 +562,7 @@ instruction use "popaw" or "popad" mnemonic.
 2.1.2  Type conversion instructions
 
 The type conversion instructions convert bytes into words, words into double
-words, and double words into quad words. These conversion can be done using
+words, and double words into quad words. These conversions can be done using
 the sign extension or zero extension. The sign extension fills the extra bits
 of the larger item with the value of the sign bit of the smaller item, the
 zero extension simply fills them with zeros.
@@ -567,7 +570,7 @@ zero extension simply fills them with zeros.
 and store the extra bits into the DX or EDX register. The conversion is done
 using the sign extension. These instructions have no operands.
   "cbw" extends the sign of the byte in AL throughout AX, and "cwde" extends
-the sign of the word in AX throughout EAX. These instruction also have no
+the sign of the word in AX throughout EAX. These instructions also have no
 operands.
   "movsx" converts a byte to word or double word and a word to double word
 using the sign extension. "movzx" does the same, but it uses the zero
@@ -600,8 +603,9 @@ value, it can also be memory if the destination operand is register.
 operand with the result. Rules for the operands are the same as for the "add"
 instruction. An "add" followed by multiple "adc" instructions can be used to
 add numbers longer than 32 bits.
-  "inc" adds one to the operand. It does not affect CF. The operand can be
-general register or memory, size of operand can be byte, word or double word.
+  "inc" adds one to the operand, it does not affect CF. The operand can be a
+general register or memory, and the size of the operand can be byte, word or
+double word.
 
     inc ax          ; increment register by one
     inc byte [bx]   ; increment memory by one
@@ -614,7 +618,7 @@ one if CF is set, and stores the result to the destination operand. Rules for
 the operands are the same as for the "add" instruction. A "sub" followed by
 multiple "sbb" instructions may be used to subtract numbers longer than 32
 bits.
-  "dec" subtracts one from the operand. It does not affect CF. Rules for the
+  "dec" subtracts one from the operand, it does not affect CF. Rules for the
 operand are the same as for the "inc" instruction.
   "cmp" subtracts the source operand from the destination operand. It updates
 the flags as the "sub" instruction, but does not alter the source and
@@ -627,12 +631,12 @@ instruction.
   "xadd" exchanges the destination operand with the source operand, then loads
 the sum of the two values into the destination operand. Rules for the operands
 are the same as for the "add" instruction.
-  All the above binary arithmetic instruction update SF, ZF, PF and OF flags.
-SF is always set to the same value as the sign bit of the result, ZF is set
-when all bits of result are zero, PF is set when low order eight bits of
-result contain an even number of set bits, OF is set if result is too large a
-positive number or too small a negative number (excluding sign bit) to fit in
-destination operand.
+  All the above binary arithmetic instructions update SF, ZF, PF and OF flags.
+SF is always set to the same value as the result's sign bit, ZF is set when
+all the bits of result are zero, PF is set when low order eight bits of result
+contain an even number of set bits, OF is set if result is too large for a
+positive number or too small for a negative number (excluding sign bit) to fit
+in destination operand.
   "mul" performs an unsigned multiplication of the operand and the
 accumulator. If the operand is a byte, the processor multiplies it by the
 contents of AL and returns the 16-bit result to AH and AL. If the operand is a
@@ -2146,7 +2150,11 @@ assembled whether the value of "reg" is AX register or not.
 
 2.2.3  Other directives
 
-"virtual" defines virtual data at specified address. This data won't be
+"align" directive aligns code or data to the specified boundary. It should
+be followed by a numerical expression specyfing the number of bytes, to the
+multiply of which the current address has to be aligned. The boundary value
+has to be the power of two.
+  "virtual" defines virtual data at specified address. This data won't be
 included in the output file, but labels defined there can be used in other
 parts of source. This directive can be followed by "at" operator and the
 numerical expression specifying the address for virtual data, otherwise is
@@ -2209,10 +2217,15 @@ can be used to display values of some constants, for example:
 
 Instructions before the "display" directive calculate four digits of 16-bit
 value and convert them into characters for displaying.
-  "align" directive aligns code or data to the specified boundary. It should
-be followed by a numerical expression specyfing the number of bytes, to the
-multiply of which the current address has to be aligned. The boundary value
-has to be the power of two.
+  The "store" directive can modify the already generated code by replacing
+some of the previously generated data with the value defined by given
+numerical expression, which follow. The expression can be preceded by the
+optional size operator to specify how large value the expression defines, and
+therefore how much bytes will be stored, if there is no size operator, the
+size of one byte is assumed. Then the "at" operator and the numerical
+expression defining the valid address in currectly generated code space, at
+which the given value have to be stored should follow. This is a directive for
+advanced appliances and should be used carefully.
 
 
 2.3  Preprocessor directives
@@ -2579,7 +2592,7 @@ standard macroinstructions apply to structure macroinstructions.
         .y dw y
      }
 
-For example "my point 7,11" will define structure labelled "my", consisting of
+For example "my point 7,11" will define structure labeled "my", consisting of
 two variables: "my.x" with value 7 and "my.y" with value 11.
   Next example shows how to extend the data definition directive "db" with
 ability to calculate the size of defined data by using the structure
@@ -2701,7 +2714,7 @@ can be specified by providing the "align" operator followed by alignment value
 (any power of two up to 8192) among the section flags.
   "extrn" directive defines the external symbol, it should be followed by the
 name of symbol and optionally the size operator specifying the size of data
-labelled by this symbol. The name of symbol can be also preceded by quoted
+labeled by this symbol. The name of symbol can be also preceded by quoted
 string containing name of the external symbol and the "as" operator.
   "public" directive declares the existing symbol as public, it should be
 followed by the name of symbol, optionally it can be followed by the "as"

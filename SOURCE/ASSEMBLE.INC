@@ -573,44 +573,6 @@ load_directive:
 	lods	word [esi]
 	cmp	ax,82h+'(' shl 8
 	jne	invalid_argument
-	cmp	byte [esi],0
-	jne	load_from_code
-	inc	esi
-	lea	edx,[esi+4]
-	mov	eax,[esi]
-	lea	esi,[esi+4+eax+1]
-	call	open
-	jc	file_not_found
-	mov	al,2
-	xor	edx,edx
-	call	lseek
-	xor	edx,edx
-	cmp	byte [esi],':'
-	jne	load_position_ok
-	inc	esi
-	cmp	byte [esi],'('
-	jne	invalid_argument
-	inc	esi
-	cmp	byte [esi],'.'
-	je	invalid_value
-	push	ebx
-	call	get_dword_value
-	pop	ebx
-	mov	edx,eax
-      load_position_ok:
-	xor	al,al
-	call	lseek
-	movzx	ecx,[operand_size]
-	mov	edx,value
-	call	read
-	jc	error_reading_file
-	call	close
-      value_loaded:
-	mov	eax,dword [value]
-	mov	edx,dword [value+4]
-	pop	ebx
-	xor	cx,cx
-	jmp	make_constant
       load_from_code:
 	cmp	byte [esi],'.'
 	je	invalid_value
@@ -632,13 +594,71 @@ load_directive:
 	cmp	ecx,eax
 	ja	bad_load_address
 	rep	movs byte [edi],[esi]
-	pop	edi esi
 	jmp	value_loaded
       bad_load_address:
 	cmp	[next_pass_needed],0
 	je	value_out_of_range
+      value_loaded:
 	pop	edi esi
-	jmp	value_loaded
+	mov	eax,dword [value]
+	mov	edx,dword [value+4]
+	pop	ebx
+	xor	cx,cx
+	jmp	make_constant
+store_directive:
+	cmp	byte [esi],11h
+	je	sized_store
+	lods	byte [esi]
+	cmp	al,'('
+	jne	invalid_argument
+	call	get_byte_value
+	xor	edx,edx
+	movzx	eax,al
+	mov	[operand_size],1
+	jmp	store_value_ok
+      sized_store:
+	call	get_value
+      store_value_ok:
+	cmp	[value_type],0
+	jne	invalid_use_of_symbol
+	mov	dword [value],eax
+	mov	dword [value+4],edx
+	lods	word [esi]
+	cmp	ax,80h+'(' shl 8
+	jne	invalid_argument
+	cmp	byte [esi],'.'
+	je	invalid_value
+	call	get_relative_offset
+	neg	eax
+	cmp	[next_pass_needed],0
+	jne	store_address_ok
+	cmp	[value_type],0
+	jne	invalid_use_of_symbol
+      store_address_ok:
+	push	esi edi
+	sub	edi,eax
+	jc	bad_store_address
+	cmp	edi,[org_start]
+	jb	bad_store_address
+	mov	esi,value
+	movzx	ecx,[operand_size]
+	cmp	ecx,eax
+	ja	bad_store_address
+	rep	movs byte [edi],[esi]
+	mov	eax,edi
+	pop	edi esi
+	cmp	edi,[undefined_data_end]
+	jne	instruction_assembled
+	cmp	eax,[undefined_data_start]
+	jbe	instruction_assembled
+	mov	[undefined_data_start],eax
+	jmp	instruction_assembled
+      bad_store_address:
+	cmp	[next_pass_needed],0
+	je	value_out_of_range
+	pop	edi esi
+	jmp	instruction_assembled
+
 display_directive:
 	push	esi edi
       prepare_display:
@@ -1383,11 +1403,10 @@ data_file:
 	lods	word [esi]
 	cmp	ax,'('
 	jne	invalid_argument
-	lea	edx,[esi+4]
-	mov	eax,[esi]
-	lea	esi,[esi+4+eax+1]
-	call	open
-	jc	file_not_found
+	add	esi,4
+	call	open_binary_file
+	mov	eax,[esi-4]
+	lea	esi,[esi+eax+1]
 	mov	al,2
 	xor	edx,edx
 	call	lseek
@@ -1420,8 +1439,6 @@ data_file:
 	pop	edx ebx
 	mov	[esp],eax
       size_ok:
-	cmp	[next_pass_needed],0
-	jne	file_reserve
 	xor	al,al
 	call	lseek
 	pop	ecx
@@ -1433,20 +1450,49 @@ data_file:
 	call	read
 	jc	error_reading_file
 	call	close
-      check_for_next_name:
 	lods	byte [esi]
 	cmp	al,','
 	je	data_file
 	dec	esi
 	jmp	instruction_assembled
-      file_reserve:
-	call	close
-	pop	ecx
-	add	edi,ecx
-	jc	out_of_memory
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	jmp	check_for_next_name
+      open_binary_file:
+	push	esi
+	push	edi
+	mov	esi,[current_line]
+	mov	esi,[esi]
+      get_current_path:
+	lodsb
+	stosb
+	or	al,al
+	jnz	get_current_path
+      cut_current_path:
+	cmp	edi,[esp]
+	je	current_path_ok
+	cmp	byte [edi-1],'\'
+	je	current_path_ok
+	cmp	byte [edi-1],'/'
+	je	current_path_ok
+	dec	edi
+	jmp	cut_current_path
+      current_path_ok:
+	mov	esi,[esp+4]
+	call	preprocess_path
+	pop	edx
+	mov	esi,edx
+	call	open
+	jnc	file_opened
+	mov	edi,esi
+	mov	esi,[esp]
+	push	edi
+	call	preprocess_path
+	pop	edx
+	mov	esi,edx
+	call	open
+	jc	file_not_found
+      file_opened:
+	mov	edi,esi
+	pop	esi
+	ret
 reserve_bytes:
 	lods	byte [esi]
 	cmp	al,'('

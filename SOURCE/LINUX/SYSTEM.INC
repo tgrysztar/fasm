@@ -37,8 +37,16 @@ init_memory:
 	int	0x80
     allocate_memory:
 	mov	ebx,[additional_memory]
-	add	ebx,dword [buffer+14h]
-	add	ebx,dword [buffer+24h]
+	mov	eax,dword [buffer+14h]
+	add	eax,dword [buffer+24h]
+	mov	edx,[memory_setting]
+	shl	edx,10
+	jz	memory_size_ok
+	cmp	eax,edx
+	jbe	memory_size_ok
+	mov	eax,edx
+    memory_size_ok:
+	add	ebx,eax
 	mov	eax,45
 	int	0x80
 	mov	[memory_end],eax
@@ -61,9 +69,121 @@ exit_program:
 	mov	eax,1
 	int	0x80
 
+get_params:
+	mov	ebx,[command_line]
+	mov	[input_file],0
+	mov	[output_file],0
+	mov	[memory_setting],0
+	mov	ecx,[ebx]
+	add	ebx,8
+	dec	ecx
+	jz	bad_params
+      get_param:
+	mov	esi,[ebx]
+	mov	al,[esi]
+	cmp	al,'-'
+	je	option_param
+	cmp	[input_file],0
+	jne	get_output_file
+	mov	[input_file],esi
+	jmp	next_param
+      get_output_file:
+	cmp	[output_file],0
+	jne	bad_params
+	mov	[output_file],esi
+	jmp	next_param
+      option_param:
+	inc	esi
+	lodsb
+	cmp	al,'m'
+	je	memory_option
+	cmp	al,'M'
+	je	memory_option
+      bad_params:
+	stc
+	ret
+      memory_option:
+	xor	eax,eax
+	mov	edx,eax
+	cmp	byte [esi],0
+	jne	get_memory_setting
+	dec	ecx
+	jz	bad_params
+	add	ebx,4
+	mov	esi,[ebx]
+      get_memory_setting:
+	lodsb
+	or	al,al
+	jz	memory_setting_ok
+	sub	al,30h
+	jc	bad_params
+	cmp	al,9
+	ja	bad_params
+	imul	edx,10
+	jo	bad_params
+	add	edx,eax
+	jc	bad_params
+	jmp	get_memory_setting
+      memory_setting_ok:
+	or	edx,edx
+	jz	bad_params
+	cmp	edx,1 shl (32-10)
+	jae	bad_params
+	mov	[memory_setting],edx
+      next_param:
+	add	ebx,4
+	loop	get_param
+	cmp	[input_file],0
+	je	bad_params
+	cmp	[output_file],0
+	je	bad_params
+	clc
+	ret
+
+get_environment_variable:
+	mov	ebx,esi
+	mov	esi,[environment]
+      compare_variable_names:
+	mov	edx,ebx
+      compare_character:
+	lodsb
+	mov	ah,[edx]
+	inc	edx
+	cmp	al,'='
+	je	end_of_variable_name
+	or	ah,ah
+	jz	next_variable
+	sub	ah,al
+	jz	compare_character
+	cmp	ah,20h
+	jne	next_variable
+	cmp	al,41h
+	jb	next_variable
+	cmp	al,5Ah
+	jna	compare_character
+      next_variable:
+	lodsb
+	or	al,al
+	jnz	next_variable
+	cmp	byte [esi],0
+	jne	compare_variable_names
+	ret
+      end_of_variable_name:
+	or	ah,ah
+	jnz	next_variable
+      copy_variable_value:
+	lodsb
+	cmp	edi,[memory_end]
+	jae	out_of_memory
+	stosb
+	or	al,al
+	jnz	copy_variable_value
+	dec	edi
+	ret
+
 open:
 	push	esi edi ebp
-	call	convert_path
+	call	adapt_path
 	mov	eax,5
 	mov	ebx,buffer
 	mov	ecx,O_RDONLY
@@ -75,13 +195,11 @@ open:
 	mov	ebx,eax
 	clc
 	ret
-    convert_path:
+    adapt_path:
 	mov	esi,edx
 	mov	edi,buffer
       copy_path:
 	lods	byte [esi]
-	cmp	al,'%'
-	je	environment_variable
 	cmp	al,'\'
 	jne	path_char_ok
 	mov	al,'/'
@@ -92,69 +210,9 @@ open:
 	cmp	edi,buffer+1000h
 	ja	out_of_memory
 	ret
-      convert_backslash:
-	mov	al,'/'
-	stos	byte [edi]
-	jmp	copy_path
-      environment_variable:
-	mov	ebx,esi
-      find_variable_end:
-	lods	byte [esi]
-	or	al,al
-	jz	not_environment_variable
-	cmp	al,'%'
-	jne	find_variable_end
-	push	esi
-	mov	esi,[environment]
-      compare_variable_names:
-	mov	edx,ebx
-      compare_character:
-	lods	byte [esi]
-	mov	ah,[edx]
-	inc	edx
-	cmp	al,'='
-	je	end_of_variable_name
-	cmp	ah,'%'
-	je	next_variable
-	sub	ah,al
-	jz	compare_character
-	cmp	ah,20h
-	jne	next_variable
-	cmp	al,41h
-	jb	next_variable
-	cmp	al,5Ah
-	jna	compare_character
-      next_variable:
-	lods	byte [esi]
-	or	al,al
-	jnz	next_variable
-	cmp	byte [esi],0
-	jne	compare_variable_names
-	pop	esi
-	jmp	copy_path
-      end_of_variable_name:
-	cmp	ah,'%'
-	jne	next_variable
-      copy_variable_value:
-	lods	byte [esi]
-	cmp	al,'\'
-	jne	value_char_ok
-	mov	al,'/'
-      value_char_ok:
-	stos	byte [edi]
-	or	al,al
-	jnz	copy_variable_value
-	dec	di
-	pop	esi
-	jmp	copy_path
-      not_environment_variable:
-	mov	al,'%'
-	stos	byte [edi]
-	mov	esi,ebx
-	jmp	copy_path
 create:
 	push	esi edi ebp
-	call	convert_path
+	call	adapt_path
 	mov	eax,5
 	mov	ebx,buffer
 	mov	ecx,O_CREAT+O_TRUNC+O_WRONLY

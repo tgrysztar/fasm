@@ -3,97 +3,84 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-        format  PE console
+	format	PE console
 
 start:
 
-        mov     esi,_logo
-        call    display_string
+	mov	esi,_logo
+	call	display_string
 
-        call    get_params
-        cmp     [params],0
-        je      information
-        lea     eax,[params+1]
-        mov     [input_file],eax
-        movzx   ecx,byte [eax-1]
-        add     eax,ecx
-        cmp     byte [eax],0
-        je      information
-        inc     eax
-        mov     [output_file],eax
-        movzx   ecx,byte [eax-1]
-        add     eax,ecx
-        cmp     byte [eax],0
-        jne     information
+	call	get_params
+	jc	information
 
-        call    init_memory
+	call	init_memory
 
-        mov     edi,characters
-        mov     ecx,100h
-        xor     al,al
+	mov	edi,characters
+	mov	ecx,100h
+	xor	al,al
       make_characters_table:
-        stosb
-        inc     al
-        loop    make_characters_table
-        mov     esi,characters+'a'
-        mov     edi,characters+'A'
-        mov     ecx,26
-        rep     movsb
-        mov     edi,characters
-        mov     esi,symbol_characters+1
-        movzx   ecx,byte [esi-1]
-        xor     eax,eax
+	stosb
+	inc	al
+	loop	make_characters_table
+	mov	esi,characters+'a'
+	mov	edi,characters+'A'
+	mov	ecx,26
+	rep	movsb
+	mov	edi,characters
+	mov	esi,symbol_characters+1
+	movzx	ecx,byte [esi-1]
+	xor	eax,eax
       convert_table:
-        lodsb
-        mov     byte [edi+eax],0
-        loop    convert_table
-        mov     [display_buffer],0
+	lodsb
+	mov	byte [edi+eax],0
+	loop	convert_table
+	mov	[display_buffer],0
 
-        call    [GetTickCount]
-        mov     [start_time],eax
+	call	[GetTickCount]
+	mov	[start_time],eax
 
-        call    preprocessor
-        call    parser
-        call    assembler
-        call    formatter
+	call	preprocessor
+	call	parser
+	call	assembler
+	call	formatter
 
-        call    display_user_messages
-        movzx   eax,[current_pass]
-        inc     eax
-        call    display_number
-        mov     esi,_passes_suffix
-        call    display_string
-        call    [GetTickCount]
-        sub     eax,[start_time]
-        xor     edx,edx
-        mov     ebx,100
-        div     ebx
-        or      eax,eax
-        jz      display_bytes_count
-        xor     edx,edx
-        mov     ebx,10
-        div     ebx
-        push    edx
-        call    display_number
-        mov     dl,'.'
-        call    display_character
-        pop     eax
-        call    display_number
-        mov     esi,_seconds_suffix
-        call    display_string
+	call	display_user_messages
+	movzx	eax,[current_pass]
+	inc	eax
+	call	display_number
+	mov	esi,_passes_suffix
+	call	display_string
+	call	[GetTickCount]
+	sub	eax,[start_time]
+	xor	edx,edx
+	mov	ebx,100
+	div	ebx
+	or	eax,eax
+	jz	display_bytes_count
+	xor	edx,edx
+	mov	ebx,10
+	div	ebx
+	push	edx
+	call	display_number
+	mov	dl,'.'
+	call	display_character
+	pop	eax
+	call	display_number
+	mov	esi,_seconds_suffix
+	call	display_string
       display_bytes_count:
-        mov     eax,[written_size]
-        call    display_number
-        mov     esi,_bytes_suffix
-        call    display_string
-        xor     al,al
-        jmp     exit_program
+	mov	eax,[written_size]
+	call	display_number
+	mov	esi,_bytes_suffix
+	call	display_string
+	xor	al,al
+	jmp	exit_program
 
 information:
-        mov     esi,_usage
-        call    display_string
-        mov     al,1
-        jmp     exit_program
+	mov	esi,_usage
+	call	display_string
+	mov	al,1
+	jmp	exit_program
 
 include 'system.inc'
 
@@ -115,10 +102,13 @@ _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0Dh,0Ah,0
 
-_counter db 8,'00000000'
+_include db 'INCLUDE',0
+
+_counter db 7,'0000000'
 
 align 4
 
+memory_setting dd ?
 memory_start dd ?
 memory_end dd ?
 additional_memory dd ?
@@ -126,6 +116,7 @@ additional_memory_end dd ?
 free_additional_memory dd ?
 input_file dd ?
 output_file dd ?
+include_paths dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?

@@ -139,6 +139,9 @@ public_directive:
 	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
+	mov	dx,[current_pass]
+	mov	[eax+18],dx
+	or	byte [eax+8],8
 	inc	esi
 	mov	ebx,[free_additional_memory]
 	lea	edx,[ebx+10h]
@@ -508,11 +511,11 @@ make_stub:
       default_stub_end:
 	use32
       stub_from_file:
-	call	open
-	jc	file_not_found
+	push	esi
+	mov	esi,edx
+	call	open_binary_file
 	mov	edx,edi
 	mov	ecx,1Ch
-	push	esi
 	mov	esi,edx
 	call	read
 	jc	binary_stub
@@ -762,6 +765,10 @@ format_pe:
 	mov	dword [edx+74h],16	; number of directories
 	bsf	ecx,[edx+3Ch]
 	imul	ebx,[number_of_sections],28h
+	or	ebx,ebx
+	jnz	reserve_space_for_section_headers
+	mov	ebx,28h
+      reserve_space_for_section_headers:
 	add	ebx,ebp
 	dec	ebx
 	shr	ebx,cl
@@ -1139,9 +1146,10 @@ make_pe_resource:
 	ja	out_of_memory
 	jmp	resource_done
       resource_from_file:
-	call	open
-	jc	file_not_found
-	push	esi ebx
+	push	esi
+	mov	esi,edx
+	call	open_binary_file
+	push	ebx
 	mov	esi,[free_additional_memory]
 	lea	eax,[esi+20h]
 	cmp	eax,[structures_buffer]
@@ -1643,10 +1651,9 @@ make_pe_resource:
       update_data_records:
 	push	ebp
 	mov	ecx,edi
-	sub	ecx,[org_origin]
-	mov	eax,[code_start]
-	mov	eax,[eax+34h]
-	sub	ecx,eax
+	mov	eax,[current_section]
+	sub	ecx,[eax+14h]
+	add	ecx,[eax+0Ch]
 	xchg	ecx,[esi]
 	mov	edx,[ecx]
 	xor	al,al
@@ -1943,8 +1950,10 @@ mark_coff_relocation:
 	jae	out_of_memory
 	mov	[free_additional_memory],ebx
 	mov	byte [ebx-0Ch],al
-	mov	eax,edi
-	sub	eax,[org_origin]
+	mov	eax,[current_section]
+	mov	eax,[eax+8]
+	neg	eax
+	add	eax,edi
 	mov	[ebx-0Ch+4],eax
 	mov	eax,[symbol_identifier]
 	mov	[ebx-0Ch+8],eax
@@ -2142,7 +2151,31 @@ coff_formatter:
 	jmp	find_relocations
       section_relocations_done:
 	cmp	ecx,10000h
-	jae	format_limitations_exceeded
+	jb	section_relocations_count_16bit
+	bt	[format_flags],0
+	jnc	format_limitations_exceeded
+	mov	word [edi+20h],0FFFFh
+	or	dword [edi+24h],1000000h
+	mov	[edi+18h],edx
+	push	esi edi
+	push	ecx
+	lea	esi,[ebx-1]
+	add	ebx,0Ah
+	lea	edi,[ebx-1]
+	imul	ecx,0Ah
+	std
+	rep	movs byte [edi],[esi]
+	cld
+	pop	ecx
+	inc	esi
+	inc	ecx
+	mov	[esi],ecx
+	xor	eax,eax
+	mov	[esi+4],eax
+	mov	[esi+8],ax
+	pop	edi esi
+	jmp	section_relocations_ok
+      section_relocations_count_16bit:
 	mov	[edi+20h],cx
 	jcxz	section_relocations_ok
 	mov	[edi+18h],edx
@@ -2840,7 +2873,7 @@ format_elf_exe:
 	mov	[org_origin],eax
 	mov	[org_registers],0
 	mov	[org_start],edi
-	mov	[image_base],edi
+	mov	[symbols_stream],edi
 	jmp	instruction_assembled
 elf_entry:
 	lods	byte [esi]
@@ -2860,9 +2893,9 @@ elf_exe_section:
 	shl	ebx,5
 	add	ebx,[code_start]
 	add	ebx,34h
-	cmp	ebx,[image_base]
+	cmp	ebx,[symbols_stream]
 	jb	new_elf_exe_section
-	mov	ebx,[image_base]
+	mov	ebx,[symbols_stream]
 	sub	ebx,34h
 	push	edi
 	mov	edi,ebx
@@ -2897,8 +2930,7 @@ elf_exe_section:
 	mov	eax,edi
 	sub	eax,[code_start]
 	mov	[ebx+4],eax
-	mov	eax,edi
-	sub	eax,[org_origin]
+	add	eax,[image_base]
 	cmp	[number_of_sections],0
 	je	elf_exe_section_address_ok
 	shrd	edx,eax,12
@@ -2918,7 +2950,7 @@ elf_exe_section:
       close_elf_exe_section:
 	cmp	[number_of_sections],0
 	jne	finish_elf_exe_section
-	cmp	edi,[image_base]
+	cmp	edi,[symbols_stream]
 	jne	first_elf_exe_section_ok
 	push	edi
 	mov	edi,[code_start]
@@ -2958,7 +2990,7 @@ close_elf_exe:
 	shl	eax,5
 	add	eax,edx
 	add	eax,34h
-	cmp	eax,[image_base]
+	cmp	eax,[symbols_stream]
 	je	elf_exe_ok
 	or	[next_pass_needed],-1
       elf_exe_ok:
