@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.10
+; flat assembler  version 1.11
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -155,6 +155,10 @@ get_number:
 	sub	esi,2
 	mov	dword [ds:ebp],0
 	mov	dword [ds:ebp+4],0
+	inc	esi
+	cmp	word [eax],'0x'
+	je	get_hex_number
+	dec	esi
 	cmp	byte [esi+1],'h'
 	je	get_hex_number
 	cmp	byte [esi+1],'o'
@@ -164,8 +168,6 @@ get_number:
 	cmp	byte [esi+1],'d'
 	je	get_dec_number
 	inc	esi
-	cmp	word [eax],'0x'
-	je	get_hex_number
 	cmp	byte [eax],'0'
 	je	get_oct_number
       get_dec_number:

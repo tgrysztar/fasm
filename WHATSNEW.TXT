@@ -2,6 +2,13 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.11
+[25-06-2001]
+------------
+[+] allowed double quotes to define strings
+[-] really fixed constant definition bugs
+[+] some other small corrections
+
 version 1.10
 [22-03-2001]
 ------------

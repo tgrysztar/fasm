@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.10
+; flat assembler  version 1.11
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -183,7 +183,7 @@ assemble_line:
 	jne	.changed
 	jmp	assemble_line
       .changed:
-	cmp	byte [ebx+12],1
+	cmp	byte [ebx+13],1
 	je	assemble_line
 	mov	[next_pass_needed],1
 	jmp	assemble_line

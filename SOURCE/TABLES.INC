@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.10
+; flat assembler  version 1.11
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -1446,6 +1446,10 @@ instructions_10:
  dw cmp_ps_instruction-assembler,3
  db 'cmpunordss'
  dw cmp_ss_instruction-assembler,3
+ db 'loadall286'
+ dw simple_extended_instruction-assembler,5
+ db 'loadall386'
+ dw simple_extended_instruction-assembler,7
  db 'prefetcht0'
  dw prefetch_instruction-assembler,1
  db 'prefetcht1'

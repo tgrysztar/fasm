@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.10
+; flat assembler  version 1.11
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -15,6 +15,7 @@ preprocessor:
 	push	[memory_end]
 	mov	esi,[input_file]
 	mov	edi,[memory_start]
+	xor	bl,bl
 	call	preprocess_file
 	jc	main_file_not_found
 	mov	[code_start],edi
@@ -36,10 +37,10 @@ preprocess_file:
 	jz	file_name_end
 	cmp	edx,[files_list]
 	je	copy_file_name
-	cmp	al,27h
+	cmp	al,bl
 	jne	copy_file_name
 	lods	byte [esi]
-	cmp	al,27h
+	cmp	al,bl
 	je	copy_file_name
 	dec	esi
       file_name_end:
@@ -142,10 +143,13 @@ preprocess_file:
 	jz	line_done
 	cmp	al,27h
 	je	check_line_string
+	cmp	al,22h
+	je	check_line_string
 	cmp	al,'\'
 	je	concate
 	jmp	check_for_concate
       check_line_string:
+	mov	ah,al
 	mov	al,[esi-2]
 	mov	ebx,characters
 	xlatb
@@ -155,10 +159,10 @@ preprocess_file:
 	lods	byte [esi]
 	or	al,al
 	jz	line_done
-	cmp	al,27h
+	cmp	al,ah
 	jne	skip_line_string
 	lods	byte [esi]
-	cmp	al,27h
+	cmp	al,ah
 	je	skip_line_string
 	dec	esi
 	jmp	check_for_concate
@@ -320,7 +324,11 @@ include_file:
 	call	skip_spaces
 	lods	byte [esi]
 	cmp	al,27h
+	je	include_argument_ok
+	cmp	al,22h
 	jne	invalid_argument
+      include_argument_ok:
+	mov	bl,al
 	mov	edx,[current_line]
 	mov	al,':'
 	cmp	byte [edx+4],20h
@@ -336,10 +344,10 @@ include_file:
 	lods	byte [esi]
 	or	al,al
 	jz	missing_end_quote
-	cmp	al,27h
+	cmp	al,bl
 	jne	find_include_end
 	lods	byte [esi]
-	cmp	al,27h
+	cmp	al,bl
 	je	find_include_end
 	dec	esi
 	call	skip_spaces
@@ -367,6 +375,8 @@ define_macro:
 	call	skip_spaces
 	lods	byte [esi]
 	cmp	al,27h
+	je	invalid_name
+	cmp	al,22h
 	je	invalid_name
 	dec	esi
 	mov	edx,[current_line]
@@ -493,6 +503,8 @@ define_macro:
 	lods	byte [esi]
 	cmp	al,27h
 	je	invalid_name
+	cmp	al,22h
+	je	invalid_name
 	dec	esi
 	or	al,al
 	jz	find_next_macro_argument
@@ -567,9 +579,11 @@ define_macro:
       find_macro_end:
 	call	skip_spaces
 	lods	byte [esi]
+	mov	ah,al
 	cmp	al,27h
 	je	skip_string_in_macro
-	mov	ah,al
+	cmp	al,22h
+	je	skip_string_in_macro
 	mov	ebx,characters
 	xlatb
 	xchg	al,ah
@@ -580,8 +594,12 @@ define_macro:
 	lods	byte [esi]
 	or	al,al
 	jz	missing_end_quote
-	cmp	al,27h
+	cmp	al,ah
 	jne	skip_string_in_macro
+	lods	byte [esi]
+	cmp	al,ah
+	je	skip_string_in_macro
+	dec	esi
 	jmp	find_macro_end
       special_character_in_macro:
 	cmp	al,';'
@@ -604,7 +622,10 @@ define_macro:
 	cmp	al,'}'
 	je	macro_last_line
 	lods	byte [esi]
+	mov	ah,al
 	cmp	al,27h
+	je	skip_string_in_macro
+	cmp	al,22h
 	je	skip_string_in_macro
 	dec	esi
 	jmp	find_macro_end
@@ -690,6 +711,8 @@ purge_macro:
 	call	skip_spaces
 	lods	byte [esi]
 	cmp	al,27h
+	je	invalid_name
+	cmp	al,22h
 	je	invalid_name
 	dec	esi
 	mov	edx,[current_line]
@@ -838,7 +861,10 @@ use_macro:
 	mov	ebp,esi
       find_argument_value_end:
 	lods	byte [esi]
+	mov	ah,al
 	cmp	al,27h
+	je	skip_argument_string
+	cmp	al,22h
 	je	skip_argument_string
 	cmp	al,','
 	je	argument_value_end
@@ -870,8 +896,14 @@ use_macro:
 	jmp	argument_value_end
       skip_argument_string:
 	lods	byte [esi]
-	cmp	al,27h
+	or	al,al
+	jz	missing_end_quote
+	cmp	al,ah
 	jne	skip_argument_string
+	lods	byte [esi]
+	cmp	al,ah
+	je	skip_argument_string
+	dec	esi
 	jmp	find_argument_value_end
       argument_value_end:
 	dec	esi
@@ -1005,13 +1037,15 @@ use_macro:
 	lods	byte [esi]
 	stos	byte [edi]
 	mov	ah,al
+	cmp	al,27h
+	je	skip_string
+	cmp	al,22h
+	je	skip_string
 	mov	ebx,characters
 	xlatb
 	xchg	al,ah
 	or	ah,ah
 	jnz	special_character
-	cmp	al,27h
-	je	skip_string
 	dec	esi
 	dec	edi
 	cmp	al,'.'
@@ -1176,8 +1210,12 @@ use_macro:
 	stos	byte [edi]
 	or	al,al
 	jz	missing_end_quote
-	cmp	al,27h
+	cmp	al,ah
 	jne	skip_string
+	lods	byte [esi]
+	cmp	al,ah
+	je	skip_string
+	dec	esi
 	jmp	macro_process
       skip_comment:
 	lods	byte [esi]

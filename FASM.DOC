@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.10
+			flat assembler	version 1.11
 
 	 Copyright (c) 1999-2001, Tomasz Grysztar. All rights reserved.
 
@@ -484,3 +484,4 @@ Thanks to:
     Ken Martwick - for help in writing documentation
     Bartek Uliasz - for help at the beginning of fasm project
     Bill Isherwood - for all useful suggestions
+    Leonid Petroff - for bugs reporting and other important suggestions

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.10
+; flat assembler  version 1.11
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -65,6 +65,8 @@ parse_line:
 	jnz	convert_separator
 	cmp	al,27h
 	je	copy_string
+	cmp	al,22h
+	je	copy_string
 	mov	al,1Ah
 	xchg	al,[edi-1]
 	inc	edi
@@ -84,15 +86,18 @@ parse_line:
 	inc	edx
 	jmp	convert_symbol
       copy_string:
+	mov	ah,al
+	mov	byte [edi-1],27h
+      .copy:
 	lods	byte [esi]
 	stos	byte [edi]
 	or	al,al
 	jz	missing_end_quote
-	cmp	al,27h
-	jne	copy_string
+	cmp	al,ah
+	jne	.copy
 	lods	byte [esi]
-	cmp	al,27h
-	je	copy_string
+	cmp	al,ah
+	je	.copy
 	dec	esi
 	mov	byte [edi-1],1Ah
 	jmp	convert_line_data
@@ -270,6 +275,8 @@ parse_line:
 	mov	ecx,eax
 	cmp	byte [esi],27h
 	je	invalid_name
+	cmp	byte [esi],22h
+	je	invalid_name
 	rep	movs byte [edi],[esi]
 	pop	esi edi
 	jmp	instruction_start
@@ -304,6 +311,8 @@ parse_line:
       check_label_name:
 	mov	al,[esi]
 	cmp	al,27h
+	je	invalid_name
+	cmp	al,22h
 	je	invalid_name
 	cmp	al,30h
 	jb	name_first_char_ok
@@ -440,9 +449,11 @@ parse_line:
 	mov	ax,[instruction_type]
 	cmp	ax,300h
 	je	forced_string
-	cmp	ax,101h
-	je	forced_string
 	cmp	ax,112h
+	je	forced_string
+	cmp	ecx,1
+	jbe	ignore_string
+	cmp	ax,101h
 	je	forced_string
       ignore_string:
 	dec	esi
