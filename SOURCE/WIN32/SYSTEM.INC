@@ -41,6 +41,7 @@ init_memory:
 	push	buffer
 	call	[GlobalMemoryStatus]
 	mov	eax,dword [buffer+8]
+	shr	eax,1
     allocate_memory:
 	mov	edx,eax
 	shr	edx,3
@@ -417,7 +418,7 @@ assembler_error:
 	call	display_string
 	mov	esi,error_suffix
 	call	display_string
-	mov	al,1
+	mov	al,2
 	jmp	exit_program
 
 make_timestamp:

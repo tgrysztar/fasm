@@ -609,7 +609,7 @@ assembler_error:
 	int	21h
 	mov	dx,error_suffix
 	int	21h
-	mov	al,1
+	mov	al,2
 	jmp	exit_program
 
 make_timestamp:

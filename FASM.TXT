@@ -5,7 +5,7 @@
 			   €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €	€  €
 			   €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €	€  €
 
-			      flat assembler 1.46
+			      flat assembler 1.47
 			      Programmer's Manual
 
 
@@ -119,21 +119,21 @@ compilation summary. It includes the information of how many passes was done,
 how much time it took, and how many bytes were written into destination file.
 Here is an example of the compilation summary:
 
-flat assembler	version 1.46
+flat assembler	version 1.47
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, program will display an error
 message. For example, when compiler can't find the input file, it will display
 the following message:
 
-flat assembler	version 1.46
+flat assembler	version 1.47
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler	version 1.46
+flat assembler	version 1.47
 example.asm [3]:
 	mob	ax,1
 error: illegal instruction.
@@ -143,7 +143,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also number of erroneous line inside the
 macroinstruction is gived:
 
-flat assembler	version 1.46
+flat assembler	version 1.47
 example.asm [6] stoschar [2]:
 	stoschar 7
 error: illegal instruction.
@@ -374,11 +374,11 @@ of those names. The "rva" is specific to PE output format and performs the
 conversion of an address into the RVA.
   The numbers in the expression are by default treated as a decimal, binary
 numbers should have the "b" letter attached at the end, octal number should
-begin with "0" digit (like in C language) or end with "o" letter, hexadecimal
-numbers should begin with "0x" characters (like in C language) or with the "$"
-character (like in Pascal language) or they should end with "h" letter. Also
-quoted string, when encountered in expression, will be converted into number
-- the first character will become the least significant byte of number.
+end with "o" letter, hexadecimal numbers should begin with "0x" characters
+(like in C language) or with the "$" character (like in Pascal language) or
+they should end with "h" letter. Also quoted string, when encountered in
+expression, will be converted into number - the first character will become
+the least significant byte of number.
   The numerical expression used as an address value can also contain any of
 general registers used for addressing, they can be added and multiplied by
 appropriate values, as it is allowed for Intel Architecture instructions.
@@ -1405,9 +1405,9 @@ ST0 before computing the logarithm. "fprem" computes the remainder obtained
 from dividing the value in ST0 by the value in ST1, and stores the result
 in ST0. "fprem1" performs the same operation as "fprem", but it computes the
 remainder in the way specified by IEEE Standard 754. "fscale" truncates the
-value in ST1 and increases the exponent of ST0 by this value. "fxtract" 
-separates the value in ST0 into its exponent and significand, stores the 
-exponent in ST0 and pushes the significand onto the register stack. "fnop" 
+value in ST1 and increases the exponent of ST0 by this value. "fxtract"
+separates the value in ST0 into its exponent and significand, stores the
+exponent in ST0 and pushes the significand onto the register stack. "fnop"
 performs no operation. These instruction have no operands.
   "fxch" exchanges the contents of ST0 an another FPU register. The operand
 should be an FPU register, if no operand is specified, the contents of ST0 and
@@ -1489,11 +1489,12 @@ loads the FPU state from the specified memory location. All these instructions
 need an operand being a memory location.
   "finit" and "fninit" set the FPU operating environment into its default
 state. "finit" checks for pending unmasked FPU exception before proceeding,
-"fninit" does not. "fclex" clears the FPU exception flags in the FPU status
-word. "fclex" check for pending unmasked FPU exception before proceeding,
-"fnclex" does not. "wait" and "fwait" are synonyms for the same instruction,
-which causes the processor to check for pending unmasked FPU exceptions
-and handle them before proceeding. These instruction have no operands.
+"fninit" does not. "fclex" and "fnclex" clear the FPU exception flags in the
+FPU status word. "fclex" checks for pending unmasked FPU exception before
+proceeding, "fnclex" does not. "wait" and "fwait" are synonyms for the same
+instruction, which causes the processor to check for pending unmasked FPU
+exceptions and handle them before proceeding. These instruction have no
+operands.
   "ffree" sets the tag associated with specified FPU register to empty. The
 operand should be an FPU register.
   "fincstp" and "fdecstp" rotate the FPU stack by one by adding or
@@ -2050,6 +2051,10 @@ conditions were not met, and the additional condition is met. The optional
 "else" directive begins the block of instructions that will be assembled if
 all the conditions were not met. The "end if" directive ends the last block of
 instructions.
+  You should note that "if" directive is processed at assembly stage and
+therefore it doesn't affect any preprocessor directives, so if you put some
+symbolic constants or macroinstructions inside such block, they will get
+defined even when the condition is not met.
   The logical expression consist of logical values and logical operators. The
 logical operators are "~" for logical negation, "&" for logical and, "|" for
 logical or. The negation has the highest priority. Logical value can be a

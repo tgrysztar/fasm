@@ -859,9 +859,9 @@ pe_section:
 	or	ecx,ecx
 	jnz	data_already_defined
 	mov	dword [edx+78h+eax*8+4],-1
-	cmp	al,5
-	jne	get_section_flags
-	call	make_pe_fixups
+	push	ebx edx
+	call	generate_pe_data
+	pop	edx ebx
 	jmp	get_section_flags
       section_flag:
 	lods	byte [esi]
@@ -946,9 +946,7 @@ data_directive:
 	call	allocate_structure_data
 	mov	word [ebx],data_directive-assembler
 	mov	[ebx+2],al
-	cmp	al,5
-	jne	instruction_assembled
-	call	make_pe_fixups
+	call	generate_pe_data
 	jmp	instruction_assembled
       end_data:
 	cmp	[output_format],3
@@ -1060,8 +1058,12 @@ mark_pe_relocation:
 	mov	[free_additional_memory],ebx
 	pop	ebx eax
 	ret
+generate_pe_data:
+	cmp	al,5
+	je	make_pe_fixups
+	ret
 make_pe_fixups:
-	push	ebx edx esi
+	push	esi
 	mov	ecx,[number_of_relocations]
 	jecxz	fixups_done
 	mov	esi,[free_additional_memory]
@@ -1100,7 +1102,7 @@ make_pe_fixups:
 	add	esi,4
 	loop	make_fixups
       fixups_done:
-	pop	esi edx ebx
+	pop	esi
 	ret
 close_pe:
 	call	close_pe_section
@@ -1364,8 +1366,8 @@ coff_formatter:
 	add	ebx,10h
 	test	byte [eax+8],1
 	jz	find_references_to_default_section
-	mov	cl,[current_pass]
-	cmp	cl,[eax+16]
+	mov	cx,[current_pass]
+	cmp	cx,[eax+16]
 	jne	find_references_to_default_section
 	cmp	edx,[eax+20]
 	je	default_section_ok
@@ -1532,8 +1534,8 @@ coff_formatter:
 	mov	eax,[esi+8]
 	test	byte [eax+8],1
 	jz	undefined_symbol
-	mov	cl,[current_pass]
-	cmp	cl,[eax+16]
+	mov	cx,[current_pass]
+	cmp	cx,[eax+16]
 	jne	undefined_symbol
 	mov	cl,[eax+11]
 	or	cl,cl
@@ -1816,8 +1818,8 @@ elf_formatter:
 	mov	ebx,[esi+8]
 	test	byte [ebx+8],1
 	jz	undefined_symbol
-	mov	al,[current_pass]
-	cmp	al,[ebx+16]
+	mov	ax,[current_pass]
+	cmp	ax,[ebx+16]
 	jne	undefined_symbol
 	mov	al,[ebx+11]
 	or	al,al

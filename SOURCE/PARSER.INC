@@ -559,7 +559,7 @@ parse_line:
 
 get_operator:
 	cmp	byte [esi],1Ah
-	jne	simple_operator
+	jne	get_simple_operator
 	mov	edx,esi
 	push	ebp
 	inc	esi
@@ -586,20 +586,22 @@ get_operator:
 	jmp	check_operator
       no_operator:
 	mov	esi,edx
+	mov	ecx,ebp
 	pop	ebp
       no_simple_operator:
 	xor	al,al
 	ret
       operator_found:
 	lea	esi,[edx+2+ebp]
+	mov	ecx,ebp
 	pop	ebp
 	mov	al,[edi]
 	ret
-      simple_operator:
+      get_simple_operator:
 	mov	al,[esi]
 	cmp	al,22h
 	je	no_simple_operator
-      simple_check_operator:
+      simple_operator:
 	cmp	byte [edi],1
 	jb	no_simple_operator
 	ja	simple_next_operator
@@ -608,11 +610,12 @@ get_operator:
       simple_next_operator:
 	movzx	ecx,byte [edi]
 	lea	edi,[edi+1+ecx+1]
-	jmp	simple_check_operator
+	jmp	simple_operator
       simple_operator_found:
 	inc	esi
 	mov	al,[edi+2]
 	ret
+
 
 get_symbol:
 	mov	edx,esi
@@ -708,7 +711,13 @@ get_label_id:
 	je	anonymous_label
 	cmp	byte [esi],'.'
 	jne	standard_label
-	cmp	byte [esi+1],'.'
+	mov	al,[esi+1]
+	cmp	al,30h
+	jb	local_name
+	cmp	al,39h
+	jbe	invalid_name
+      local_name:
+	cmp	al,'.'
 	je	standard_label
 	cmp	[current_locals_prefix],0
 	je	standard_label
@@ -851,15 +860,28 @@ get_label_id:
 	mov	edi,data_directives
 	call	get_symbol
 	jnc	reserved_word
-	mov	edi,directive_operators
-	call	get_symbol
-	jnc	reserved_word
 	mov	edi,symbols
 	call	get_symbol
 	jnc	reserved_word
 	mov	edi,formatter_symbols
 	call	get_symbol
 	jnc	reserved_word
+	sub	esi,2
+	mov	edi,operators
+	call	get_operator
+	or	al,al
+	jnz	reserved_word
+	mov	edi,single_operand_operators
+	call	get_operator
+	or	al,al
+	jnz	reserved_word
+	mov	edi,directive_operators
+	call	get_operator
+	or	al,al
+	jnz	reserved_word
+	inc	esi
+	movzx	ecx,byte [esi]
+	inc	esi
       label_name_ok:
 	mov	eax,[labels_list]
 	sub	eax,8

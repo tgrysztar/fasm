@@ -17,7 +17,7 @@ assembler:
 	rep	stos dword [edi]
 	mov	[stub_size],eax
 	mov	[number_of_sections],eax
-	mov	[current_pass],al
+	mov	[current_pass],ax
 	mov	[times_working],al
       assembler_loop:
 	mov	eax,[labels_list]
@@ -66,24 +66,24 @@ assembler:
 	jae	symbols_checked
 	test	byte [eax+8],8
 	jz	symbol_defined_ok
-	mov	cl,[current_pass]
-	cmp	cl,[eax+18]
+	mov	cx,[current_pass]
+	cmp	cx,[eax+18]
 	jne	symbol_defined_ok
 	test	byte [eax+8],1
 	jz	symbol_defined_ok
-	sub	cl,[eax+16]
-	cmp	cl,1
+	sub	cx,[eax+16]
+	cmp	cx,1
 	jne	symbol_defined_ok
 	and	byte [eax+8],not 1
 	or	[next_pass_needed],-1
       symbol_defined_ok:
 	test	byte [eax+8],10h
 	jz	check_next_symbol
-	mov	cl,[current_pass]
+	mov	cx,[current_pass]
 	and	byte [eax+8],not 10h
 	test	byte [eax+8],20h
 	jnz	check_used_prediction
-	cmp	cl,[eax+18]
+	cmp	cx,[eax+18]
 	jne	check_next_symbol
 	test	byte [eax+8],8
 	jz	check_next_symbol
@@ -91,7 +91,7 @@ assembler:
       check_used_prediction:
 	test	byte [eax+8],8
 	jz	not_as_predicted
-	cmp	cl,[eax+18]
+	cmp	cx,[eax+18]
 	je	check_next_symbol
       not_as_predicted:
 	or	[next_pass_needed],-1
@@ -185,20 +185,21 @@ assemble_line:
 	setne	al
 	or	ah,al
       label_symbol_ok:
-	mov	al,[current_pass]
-	xchg	[ebx+16],al
+	mov	cx,[current_pass]
+	xchg	[ebx+16],cx
 	test	byte [ebx+8],1
 	jz	new_label
-	cmp	al,[ebx+16]
+	cmp	cx,[ebx+16]
 	je	symbol_already_defined
-	inc	al
-	sub	al,[ebx+16]
+	inc	cx
+	sub	cx,[ebx+16]
+	setnz	al
 	or	ah,al
 	jz	continue_line
 	test	byte [ebx+8],8
 	jz	continue_line
-	mov	al,[current_pass]
-	cmp	al,[ebx+18]
+	mov	cx,[current_pass]
+	cmp	cx,[ebx+18]
 	jne	continue_line
 	or	[next_pass_needed],-1
 	jmp	continue_line
@@ -219,8 +220,8 @@ assemble_line:
 	je	get_constant_value
 	test	dl,4
 	jnz	get_constant_value
-	mov	dh,[current_pass]
-	cmp	dh,[eax+16]
+	mov	cx,[current_pass]
+	cmp	cx,[eax+16]
 	je	get_constant_value
 	and	dl,not 1
 	mov	[eax+8],dl
@@ -269,27 +270,28 @@ assemble_line:
 	setne	al
 	or	ah,al
       constant_symbol_ok:
-	mov	al,[current_pass]
-	xchg	[ebx+16],al
+	mov	cx,[current_pass]
+	xchg	[ebx+16],cx
 	test	byte [ebx+8],1
 	jz	new_constant
-	cmp	al,[ebx+16]
+	cmp	cx,[ebx+16]
 	jne	redeclare_constant
 	test	byte [ebx+8],2
 	jz	symbol_already_defined
 	or	byte [ebx+8],4
 	jmp	continue_line
       redeclare_constant:
-	inc	al
-	sub	al,[ebx+16]
+	inc	cx
+	sub	cx,[ebx+16]
+	setnz	al
 	or	ah,al
 	jz	continue_line
 	test	byte [ebx+8],4
 	jnz	continue_line
 	test	byte [ebx+8],8
 	jz	continue_line
-	mov	al,[current_pass]
-	cmp	al,[ebx+18]
+	mov	cx,[current_pass]
+	cmp	cx,[ebx+18]
 	jne	continue_line
 	or	[next_pass_needed],-1
 	jmp	continue_line
@@ -521,20 +523,21 @@ label_directive:
 	setne	al
 	or	ah,al
       free_label_symbol_ok:
-	mov	al,[current_pass]
-	xchg	[ebx+16],al
+	mov	cx,[current_pass]
+	xchg	[ebx+16],cx
 	test	byte [ebx+8],1
 	jz	new_free_label
-	cmp	al,[ebx+16]
+	cmp	cx,[ebx+16]
 	je	symbol_already_defined
-	inc	al
-	sub	al,[ebx+16]
+	inc	cx
+	sub	cx,[ebx+16]
+	setnz	al
 	or	ah,al
 	jz	instruction_assembled
 	test	byte [ebx+8],8
 	jz	instruction_assembled
-	mov	al,[current_pass]
-	cmp	al,[ebx+18]
+	mov	cx,[current_pass]
+	cmp	cx,[ebx+18]
 	jne	instruction_assembled
 	or	[next_pass_needed],-1
 	jmp	instruction_assembled

@@ -356,7 +356,7 @@ assembler_error:
 	call	display_string
 	mov	esi,error_suffix
 	call	display_string
-	mov	al,1
+	mov	al,2
 	jmp	exit_program
 
 make_timestamp:

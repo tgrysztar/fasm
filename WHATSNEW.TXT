@@ -1,6 +1,14 @@
 
 Visit http://fasm.sourceforge.net/ for more information
 
+version 1.47
+[28-06-2003]
+------------
+[+] added some rare instructions
+[-] changed program exit codes
+[-] changed memory allocation for Win32 console version
+[-] more small fixes
+
 version 1.46
 [09-04-2003]
 ------------

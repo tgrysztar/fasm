@@ -183,8 +183,6 @@ get_number:
 	cmp	al,'O'
 	je	get_oct_number
 	inc	esi
-	cmp	byte [ebx],'0'
-	je	get_oct_number
       get_dec_number:
 	mov	ebx,esi
 	mov	esi,[number_start]
@@ -414,6 +412,7 @@ get_fp_value:
 	je	fp_last_character
 	cmp	al,'f'
 	je	fp_last_character
+      digit_expected:
 	cmp	al,'0'
 	jb	not_fp_value
 	cmp	al,'9'
@@ -423,7 +422,12 @@ get_fp_value:
 	or	ah,ah
 	jnz	not_fp_value
 	or	ah,1
-	jmp	fp_character_ok
+	lods	byte [esi]
+	loop	digit_expected
+      not_fp_value:
+	pop	esi edi
+	stc
+	ret
       fp_character_exp:
 	cmp	ah,1
 	ja	not_fp_value
@@ -616,10 +620,6 @@ get_fp_value:
       fp_ok:
 	pop	edi
 	clc
-	ret
-      not_fp_value:
-	pop	esi edi
-	stc
 	ret
       fp_mul:
 	or	ecx,ecx
@@ -922,14 +922,14 @@ calculate_expression:
 	cmp	eax,0Fh
 	je	reserved_word_used_as_symbol
 	mov	ebx,eax
-	mov	al,[current_pass]
-	mov	[ebx+18],al
+	mov	ax,[current_pass]
+	mov	[ebx+18],ax
 	or	byte [ebx+8],8
 	test	byte [ebx+8],1
 	jz	label_undefined
 	test	byte [ebx+8],4
 	jz	label_defined
-	cmp	al,[ebx+16]
+	cmp	ax,[ebx+16]
 	jne	label_undefined
       label_defined:
 	mov	al,[ebx+11]
@@ -2295,8 +2295,8 @@ get_logical_value:
 	je	reserved_word_used_as_symbol
 	test	byte [eax+8],1
 	jz	symbol_undefined
-	mov	bh,[current_pass]
-	cmp	bh,[eax+16]
+	mov	cx,[current_pass]
+	cmp	cx,[eax+16]
 	je	check_expression
       symbol_undefined:
 	xor	bl,bl
@@ -2315,10 +2315,10 @@ get_logical_value:
 	inc	esi
 	test	byte [eax+8],8
 	jz	not_used
-	mov	cl,[current_pass]
-	sub	cl,[eax+18]
+	mov	cx,[current_pass]
+	sub	cx,[eax+18]
 	jz	return_true
-	cmp	cl,1
+	cmp	cx,1
 	ja	not_used
 	or	byte [eax+8],10h+20h
 	jmp	return_true

@@ -3757,24 +3757,9 @@ jmp_instruction:
 	jmp	invalid_operand_size
       jmp_reg_32bit:
 	cmp	[jump_type],2
-	je	jmp_reg_far32bit
-	cmp	[jump_type],1
-	je	jmp_reg_near32bit
-	cmp	[code_type],16
-	je	jmp_reg_far32bit
-      jmp_reg_near32bit:
+	je	invalid_operand
 	call	operand_32bit_prefix
 	mov	al,[postbyte_register]
-	shl	al,3
-	or	bl,al
-	mov	ah,bl
-	mov	al,0FFh
-	stos	word [edi]
-	jmp	instruction_assembled
-      jmp_reg_far32bit:
-	call	operand_32bit_prefix
-	mov	al,[postbyte_register]
-	inc	al
 	shl	al,3
 	or	bl,al
 	mov	ah,bl
@@ -7337,8 +7322,12 @@ instructions_6:
  dw simple_fpu_instruction-assembler
  db 'frstor',4
  dw fnsave_instruction-assembler
+ db 'frstpm',0E5h
+ dw fninit_instruction-assembler
  db 'fscale',111101b
  dw simple_fpu_instruction-assembler
+ db 'fsetpm',0E4h
+ dw fninit_instruction-assembler
  db 'fstenv',6
  dw fstenv_instruction-assembler
  db 'fsubrp',4
@@ -7443,6 +7432,8 @@ instructions_6:
  dw simple_instruction_16bit-assembler
  db 'repeat',0
  dw repeat_directive-assembler
+ db 'setalc',0D6h
+ dw simple_instruction-assembler
  db 'setnae',92h
  dw set_instruction-assembler
  db 'setnbe',97h
@@ -7761,6 +7752,10 @@ instructions_10:
  dw cmp_sd_instruction-assembler
  db 'cmpunordss',3
  dw cmp_ss_instruction-assembler
+ db 'loadall286',5
+ dw simple_extended_instruction-assembler
+ db 'loadall386',7
+ dw simple_extended_instruction-assembler
  db 'maskmovdqu',0
  dw maskmovdqu_instruction-assembler
  db 'prefetcht0',1

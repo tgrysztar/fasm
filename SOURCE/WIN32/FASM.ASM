@@ -59,7 +59,7 @@ start:
 	call	formatter
 
 	movzx	eax,[current_pass]
-	inc	al
+	inc	eax
 	call	display_number
 	mov	esi,_passes_suffix
 	call	display_string
@@ -179,7 +179,7 @@ macro_status db ?
 parenthesis_stack db ?
 output_format db ?
 code_type db ?
-current_pass db ?
+current_pass dw ?
 next_pass_needed db ?
 reloc_labels db ?
 times_working db ?
