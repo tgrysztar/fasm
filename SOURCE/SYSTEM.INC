@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -296,6 +296,8 @@ read:
 	mov	dx,buffer
 	mov	ah,3Fh
 	int	21h
+	cmp	ax,cx
+	jne	.eof
 	mov	esi,buffer
 	mov	cx,[esp]
 	shr	cx,2
@@ -305,8 +307,13 @@ read:
 	rep	movs byte [edi],[esi]
 	or	ebp,ebp
 	jnz	.loop
+      .exit:
 	pop	ebp edi esi edx
 	ret
+      .eof:
+	pop	cx
+	stc
+	jmp	.exit
 close:
 	mov	ah,3Eh
 	int	21h
@@ -316,7 +323,9 @@ lseek:
 	mov	ecx,edx
 	shr	ecx,16
 	int	21h
+	pushf
 	shl	edx,16
+	popf
 	mov	dx,ax
 	mov	eax,edx
 	ret

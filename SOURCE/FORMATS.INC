@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -356,12 +356,13 @@ format_pe:
 	mov	[stack_commit],1000h
 	mov	[heap_reserve],10000h
 	mov	[heap_commit],0
-	mov	[number_of_sections],0
 	mov	[code_type],32
 	mov	[reloc_labels],1
+	mov	[entry_rva],1000h
+	mov	[number_of_sections],0
+	mov	[section_defined],0
 	mov	dword [section_name],'.fla'
 	mov	dword [section_name+4],'t'
-	mov	[entry_rva],1000h
 	mov	[section_rva],1000h
 	mov	[section_start],edi
 	mov	[section_flags],0E0000060h
@@ -386,22 +387,64 @@ format_pe:
 	jmp	pe_settings
       subsystem_setting:
 	mov	[subsystem_type],ax
+	cmp	byte [esi],'('
+	jne	pe_settings
+	inc	esi
+	cmp	byte [esi],'.'
+	jne	invalid_value
+	inc	esi
+	call	fp_to_version
+	add	esi,12
+	mov	[subsystem_version],eax
 	jmp	pe_settings
       machine_setting:
 	and	ax,3Fh
 	add	ax,149h
 	mov	[machine],ax
 	jmp	pe_settings
+      fp_to_version:
+	cmp	byte [esi+11],0
+	jne	invalid_value
+	cmp	byte [esi+10],2
+	ja	invalid_value
+	mov	dx,[esi+8]
+	cmp	dx,8000h
+	je	zero_version
+	mov	eax,[esi+4]
+	cmp	dx,7
+	jg	invalid_value
+	mov	cx,7
+	sub	cx,dx
+	mov	eax,[esi+4]
+	shr	eax,cl
+	mov	ebx,eax
+	shr	ebx,24
+	cmp	bl,100
+	jae	invalid_value
+	and	eax,0FFFFFFh
+	mov	ecx,100
+	mul	ecx
+	shrd	eax,edx,24
+	jnc	version_ok
+	inc	eax
+      version_ok:
+	shl	eax,16
+	mov	ax,bx
+	ret
+      zero_version:
+	xor	eax,eax
+	ret
 section_directive:
 	cmp	[output_format],3
 	jne	unexpected_instruction
 	cmp	edi,[code_start]
 	jne	prepare_section
-	cmp	[number_of_sections],0
+	cmp	[section_defined],0
 	je	new_section
       prepare_section:
 	call	close_section
       new_section:
+	mov	[section_defined],1
 	lods	byte [esi]
 	cmp	al,27h
 	jne	invalid_argument
@@ -422,6 +465,8 @@ section_directive:
 	mov	[section_start],edi
 	mov	[section_flags],0
 	movzx	ebx,[number_of_sections]
+	cmp	bx,(1000h-(40h+pe_stub_end-pe_stub)-(78h+16*8))/28h
+	je	unexpected_instruction
 	imul	ebx,28h
 	add	ebx,[additional_memory]
 	mov	eax,edi
@@ -627,21 +672,10 @@ mark_pe_relocation:
 	pop	ebx eax
 	ret
 make_pe_reloc:
-	cmp	[number_of_relocations],0
-	je	pe_reloc_ok
-	mov	dword [section_name],'.rel'
-	mov	dword [section_name+4],'oc'
-	mov	[section_start],edi
-	mov	[section_flags],50000040h
-	movzx	eax,[number_of_sections]
-	imul	eax,28h
-	add	eax,[additional_memory]
-	mov	[directories+14h],eax
-	mov	eax,edi
-	sub	eax,[section_rva]
-	mov	[org_start],eax
-	mov	esi,[additional_memory_end]
+	push	esi
 	mov	ecx,[number_of_relocations]
+	jecxz	fixups_done
+	mov	esi,[additional_memory_end]
 	lea	esi,[esi+ecx*4-4]
 	mov	edx,1000h
 	mov	ebp,edi
@@ -670,8 +704,30 @@ make_pe_reloc:
 	or	ax,3000h
 	stos	word [edi]
 	loop	make_fixups
+      fixups_done:
+	pop	esi
+	ret
+finish_pe:
+	call	close_section
+	cmp	[number_of_relocations],0
+	je	pe_reloc_ok
+	mov	dword [section_name],'.rel'
+	mov	dword [section_name+4],'oc'
+	mov	[section_start],edi
+	mov	[section_flags],42000040h
+	movzx	eax,[number_of_sections]
+	imul	eax,28h
+	add	eax,[additional_memory]
+	mov	[directories+14h],eax
+	mov	eax,edi
+	sub	eax,[section_rva]
+	mov	[org_start],eax
+	call	make_pe_reloc
 	call	close_section
       pe_reloc_ok:
+	mov	eax,edi
+	sub	eax,[code_start]
+	mov	[code_size],eax
 	ret
 
 write_pe_header:
@@ -707,19 +763,20 @@ write_pe_header:
 	mov	dword [edx+3Ch],200h	; file alignment
 	imul	ecx,28h
 	add	ecx,esi
+	add	ecx,[stub_size]
 	mov	[edx+54h],ecx		; size of headers
 	mov	ax,[subsystem_type]
 	mov	[edx+5Ch],ax		; subsystem type
 	movzx	ax,[number_of_dirs]
 	mov	[edx+74h],ax		; number of directories
-	mov	eax,[stub_size]
-	add	eax,ecx
-	mov	ecx,eax
+	mov	eax,ecx
+	dec	ecx
 	shr	ecx,9
 	inc	ecx
 	shl	ecx,9
 	sub	ecx,eax
 	mov	[file_alignment],ecx
+	add	[edx+54h],ecx		; align size of headers
 	add	eax,ecx
 	push	eax ebx
 	xor	ebx,ebx
@@ -850,6 +907,7 @@ create_pe_stub:
 stub_size dd ?
 number_of_dirs db ?
 number_of_sections db ?
+section_defined db ?
 section_name dq ?
 section_start dd ?
 section_rva dd ?

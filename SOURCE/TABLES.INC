@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -284,6 +284,7 @@ symbols:
  db 4,'data',19h,6
  db 2,'dh',10h,16h
  db 2,'di',10h,27h
+ db 11,'discardable',19h,25
  db 2,'dl',10h,12h
  db 3,'dr0',10h,80h
  db 3,'dr1',10h,81h
@@ -314,6 +315,7 @@ symbols:
  db 4,'i486',1Bh,44h
  db 4,'i586',1Bh,45h
  db 6,'import',1Ah,1
+ db 2,'in',13h,1
  db 3,'mm0',16h,0
  db 3,'mm1',16h,1
  db 3,'mm2',16h,2
@@ -398,6 +400,8 @@ instructions_2:
  dw data_qwords-assembler,108h
  db 'dt'
  dw data_tbyte-assembler,10Ah
+ db 'du'
+ dw data_words-assembler,112h
  db 'dw'
  dw data_words-assembler,102h
  db 'if'

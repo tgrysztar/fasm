@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -21,6 +21,9 @@ unexpected_end_of_file:
 file_not_found:
 	call	assembler_error
 	db	'file not found',0
+error_reading_file:
+	call	assembler_error
+	db	'error reading file',0
 invalid_macro_arguments:
 	call	assembler_error
 	db	'invalid macro arguments',0

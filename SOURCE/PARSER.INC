@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -287,6 +287,7 @@ parse_line:
 	inc	edi
 	stos	dword [edi]
 	pop	bx ax
+	and	al,0Fh
 	stos	byte [edi]
 	jmp	parse_instruction
       simple_label:
@@ -422,33 +423,39 @@ parse_line:
 	pop	edi
 	sub	esi,2
       string_argument:
-	cmp	[instruction_type],300h
-	je	forced_string
-	cmp	[instruction_type],101h
-	jne	no_string
-      forced_string:
-	mov	al,[esi]
-	cmp	al,27h
+	cmp	byte [esi],27h
 	jne	no_string
 	inc	esi
-	stos	byte [edi]
-	mov	ebx,edi
-	add	edi,4
-      convert_string:
+	mov	ebx,esi
+	xor	ecx,ecx
+      get_string_length:
 	lods	byte [esi]
-	cmp	al,1Ah
-	je	string_end
+	inc	ecx
 	or	al,al
 	jz	missing_end_quote
+	cmp	al,1Ah
+	jne	get_string_length
+	dec	ecx
+	mov	esi,ebx
+	mov	ax,[instruction_type]
+	cmp	ax,300h
+	je	forced_string
+	cmp	ax,101h
+	je	forced_string
+	cmp	ax,112h
+	je	forced_string
+      ignore_string:
+	dec	esi
+	jmp	no_string
+      forced_string:
+	mov	al,27h
 	stos	byte [edi]
-	jmp	convert_string
-      string_end:
+	mov	eax,ecx
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	inc	esi
 	xor	al,al
 	stos	byte [edi]
-	mov	ecx,edi
-	sub	ecx,ebx
-	sub	ecx,5
-	mov	[ebx],ecx
 	jmp	argument_parsed
       no_string:
 	cmp	byte [esi],'('
@@ -539,6 +546,8 @@ parse_line:
 	mov	al,'ò'
 	jmp	separator
       less:
+	cmp	word [edi-2],13h+1 shl 8
+	je	separator
 	cmp	byte [esi],'>'
 	je	not_equal
 	cmp	byte [esi],'='

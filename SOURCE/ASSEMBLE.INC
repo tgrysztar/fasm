@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -35,6 +35,7 @@ assembler:
 	jne	unexpected_end_of_file
 	cmp	[next_pass_needed],0
 	je	assemble_done
+      next_pass:
 	inc	[current_pass]
 	cmp	[current_pass],100
 	jae	code_cannot_be_generated
@@ -42,14 +43,10 @@ assembler:
       assemble_done:
 	mov	eax,[error_line]
 	or	eax,eax
-	jz	assemble_ok
-	mov	[current_line],eax
-	mov	eax,[error_home_line]
-	mov	[home_line],eax
-	jmp	near [error]
+	jnz	pass_error
       assemble_ok:
 	cmp	[output_format],3
-	je	assembled_pe
+	je	finish_pe
 	mov	eax,edi
 	sub	eax,[code_start]
 	mov	[real_code_size],eax
@@ -60,13 +57,11 @@ assembler:
 	sub	edi,[code_start]
 	mov	[code_size],edi
 	ret
-      assembled_pe:
-	call	close_section
-	call	make_pe_reloc
-	mov	eax,edi
-	sub	eax,[code_start]
-	mov	[code_size],eax
-	ret
+      pass_error:
+	mov	[current_line],eax
+	mov	eax,[error_home_line]
+	mov	[home_line],eax
+	jmp	near [error]
 
 assemble_line:
 	mov	eax,[labels_list]
@@ -134,6 +129,8 @@ assemble_line:
 	xchg	[ebx],eax
 	xor	edx,edx
 	xchg	[ebx+4],edx
+	cmp	[current_pass],0
+	je	assemble_line
 	cmp	eax,[ebx]
 	jne	.changed
 	or	edx,edx
@@ -165,23 +162,37 @@ assemble_line:
 	mov	cl,[current_pass]
 	cmp	byte [ebx+8],0
 	je	.new
-	cmp	byte [ebx+12],1
-	je	.redefine
 	cmp	cl,[ebx+9]
-	je	symbol_already_defined
+	jne	.redefine
+	cmp	byte [ebx+12],1
+	jne	symbol_already_defined
+	mov	byte [ebx+13],1
       .redefine:
 	mov	[ebx+9],cl
 	xchg	[ebx],eax
 	xchg	[ebx+4],edx
+	mov	cl,[value_type]
+	xchg	[ebx+11],cl
+	cmp	[current_pass],0
+	je	assemble_line
+	cmp	eax,[ebx]
+	jne	.changed
+	cmp	edx,[ebx+4]
+	jne	.changed
+	cmp	cl,[ebx+11]
+	jne	.changed
+	jmp	assemble_line
+      .changed:
+	mov	[next_pass_needed],1
 	jmp	assemble_line
       .new:
 	mov	byte [ebx+12],1
 	mov	byte [ebx+8],1
 	mov	word [ebx+9],cx
 	mov	[ebx],eax
-	mov	dword [ebx+4],edx
-	mov	al,[value_type]
-	mov	[ebx+11],al
+	mov	[ebx+4],edx
+	mov	cl,[value_type]
+	mov	[ebx+11],cl
 	jmp	assemble_line
       assemble_instruction:
 	mov	[operand_size],0
@@ -350,6 +361,8 @@ label_directive:
 	xchg	[ebx],eax
 	xor	edx,edx
 	xchg	[ebx+4],edx
+	cmp	[current_pass],0
+	je	instruction_assembled
 	cmp	eax,[ebx]
 	jne	.changed
 	or	edx,edx
@@ -370,27 +383,37 @@ label_directive:
 virtual_directive:
 	lods	byte [esi]
 	cmp	al,13h
-	jne	invalid_argument
+	jne	virtual_at_current
 	lods	byte [esi]
 	or	al,al
 	jnz	invalid_argument
-	cmp	[virtual_mode],0
-	jne	virtual_mode_org
-	mov	eax,[org_start]
-	mov	[stored_org],eax
-	mov	[stored_offset],edi
-	mov	al,[reloc_labels]
-	mov	[stored_reloc_labels],al
-      virtual_mode_org:
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_dword_value
+	mov	dl,[value_type]
+	jmp	set_virtual
+      virtual_at_current:
+	dec	esi
+	mov	eax,edi
+	sub	eax,[org_start]
+	xor	dl,dl
+	cmp	[reloc_labels],0
+	je	set_virtual
+	mov	dl,2
+      set_virtual:
+	cmp	[virtual_mode],0
+	jne	status_stored
+	mov	ebx,[org_start]
+	mov	[stored_org],ebx
+	mov	[stored_offset],edi
+	mov	bl,[reloc_labels]
+	mov	[stored_reloc_labels],bl
+      status_stored:
 	mov	[virtual_mode],1
 	mov	[reloc_labels],0
-	mov	dl,[value_type]
 	cmp	dl,1
 	je	invalid_use_of_symbol
 	cmp	dl,2
@@ -758,6 +781,8 @@ data_words:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_word
+	cmp	al,27h
+	je	word_string
 	cmp	al,'?'
 	jne	invalid_operand
 	mov	eax,edi
@@ -782,6 +807,16 @@ data_words:
 	cmp	al,','
 	jne	extra_characters_on_line
 	jmp	data_words
+      word_string:
+	lods	dword [esi]
+	mov	ecx,eax
+	xor	ah,ah
+      .copy:
+	lods	byte [esi]
+	stos	word [edi]
+	loop	.copy
+	inc	esi
+	jmp	word_ok
 data_dwords:
 	lods	byte [esi]
 	cmp	al,'('
@@ -941,10 +976,37 @@ data_file:
 	xor	edx,edx
 	call	lseek
 	push	eax
+	xor	edx,edx
+	cmp	byte [esi],':'
+	jne	position_ok
+	inc	esi
+	cmp	byte [esi],'('
+	jne	invalid_operand
+	inc	esi
+	cmp	byte [esi],'.'
+	je	invalid_value
+	push	ebx
+	call	get_dword_value
+	pop	ebx
+	mov	edx,eax
+	sub	[esp],edx
+      position_ok:
+	cmp	byte [esi],','
+	jne	size_ok
+	inc	esi
+	cmp	byte [esi],'('
+	jne	invalid_operand
+	inc	esi
+	cmp	byte [esi],'.'
+	je	invalid_value
+	push	ebx
+	call	get_dword_value
+	pop	ebx
+	mov	[esp],eax
+      size_ok:
 	cmp	[next_pass_needed],0
 	jne	file_reserve
 	xor	al,al
-	xor	edx,edx
 	call	lseek
 	pop	ecx
 	mov	edx,edi
@@ -953,6 +1015,7 @@ data_file:
 	cmp	edi,[labels_list]
 	jae	out_of_memory
 	call	read
+	jc	error_reading_file
 	call	close
       check_for_next_name:
 	lods	byte [esi]

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -139,7 +139,7 @@ get_number:
 	cmp	byte [esi],27h
 	je	get_text_number
 	cmp	byte [esi],1Ah
-	jne	invalid_number
+	jne	no_number
 	inc	esi
 	lods	byte [esi]
 	movzx	ecx,al
@@ -157,6 +157,8 @@ get_number:
 	mov	dword [ds:ebp+4],0
 	cmp	byte [esi+1],'h'
 	je	get_hex_number
+	cmp	byte [esi+1],'o'
+	je	get_oct_number
 	cmp	byte [esi+1],'b'
 	je	get_bin_number
 	cmp	byte [esi+1],'d'
@@ -164,6 +166,8 @@ get_number:
 	inc	esi
 	cmp	word [eax],'0x'
 	je	get_hex_number
+	cmp	byte [eax],'0'
+	je	get_oct_number
       get_dec_number:
 	xor	edx,edx
 	mov	ebx,1
@@ -172,9 +176,9 @@ get_number:
 	jb	number_ok
 	movzx	eax,byte [esi]
 	sub	al,30h
-	jc	no_number
+	jc	bad_number
 	cmp	al,9
-	ja	no_number
+	ja	bad_number
 	mov	ecx,eax
 	jecxz	next_dec_digit
       convert_dec_digit:
@@ -188,14 +192,15 @@ get_number:
 	mul	ebx
 	mov	ebx,eax
 	imul	ecx,10
-	jo	no_number
+	jo	bad_number
 	add	edx,ecx
 	jnc	get_dec_digit
-      no_number:
+      bad_number:
 	pop	eax
       invalid_number:
 	mov	esi,[number_start]
 	sub	esi,2
+      no_number:
 	stc
 	ret
       get_bin_number:
@@ -205,11 +210,11 @@ get_number:
 	jb	number_ok
 	movzx	eax,byte [esi]
 	cmp	bl,64
-	je	no_number
+	je	bad_number
 	sub	al,30h
-	jc	no_number
+	jc	bad_number
 	cmp	al,1
-	ja	no_number
+	ja	bad_number
 	xor	edx,edx
 	mov	cl,bl
 	dec	esi
@@ -233,19 +238,19 @@ get_number:
 	cmp	al,'x'
 	je	hex_number_ok
 	cmp	bl,64
-	je	no_number
+	je	bad_number
 	sub	al,30h
-	jc	no_number
+	jc	bad_number
 	cmp	al,9
 	jbe	hex_digit_ok
 	sub	al,7
-	jc	no_number
+	jc	bad_number
 	cmp	al,15
 	jbe	hex_digit_ok
 	sub	al,20h
-	jc	no_number
+	jc	bad_number
 	cmp	al,15
-	ja	no_number
+	ja	bad_number
       hex_digit_ok:
 	xor	edx,edx
 	mov	cl,bl
@@ -261,6 +266,33 @@ get_number:
 	shl	eax,cl
 	or	dword [ds:ebp+4],eax
 	jmp	get_hex_digit
+      get_oct_number:
+	xor	bl,bl
+      get_oct_digit:
+	cmp	esi,[number_start]
+	jb	number_ok
+	movzx	eax,byte [esi]
+	cmp	bl,64
+	jae	bad_number
+	sub	al,30h
+	jc	bad_number
+	cmp	al,7
+	ja	bad_number
+      oct_digit_ok:
+	xor	edx,edx
+	mov	cl,bl
+	dec	esi
+	add	bl,3
+	cmp	cl,32
+	jae	oct_digit_high
+	shl	eax,cl
+	or	dword [ds:ebp],eax
+	jmp	get_oct_digit
+      oct_digit_high:
+	sub	cl,32
+	shl	eax,cl
+	or	dword [ds:ebp+4],eax
+	jmp	get_oct_digit
       get_text_number:
 	inc	esi
 	xor	bl,bl
@@ -291,7 +323,7 @@ get_number:
       hex_number_ok:
 	dec	esi
 	cmp	esi,[number_start]
-	jne	no_number
+	jne	bad_number
       number_ok:
 	pop	esi
       number_done:
@@ -371,6 +403,7 @@ get_fp_value:
 	mov	[edi+4],edx
 	mov	[edi+12],edx
 	call	fp_optimize
+	mov	[fp_format],0
 	mov	al,[esi]
       fp_before_dot:
 	lods	byte [esi]
@@ -410,6 +443,11 @@ get_fp_value:
 	lods	byte [esi]
 	cmp	al,'E'
 	je	fp_exponent
+	inc	[fp_format]
+	cmp	[fp_format],80h
+	jne	fp_counter_ok
+	mov	[fp_format],7Fh
+      fp_counter_ok:
 	dec	esi
 	mov	edi,fp_value+16
 	push	ecx
@@ -435,6 +473,7 @@ get_fp_value:
 	loop	fp_after_dot
 	jmp	fp_done
       fp_exponent:
+	or	[fp_format],80h
 	xor	edx,edx
 	xor	ebp,ebp
 	dec	ecx
@@ -478,8 +517,10 @@ get_fp_value:
 	loop	fp_negative_power
       fp_done:
 	mov	edi,fp_value
+	mov	al,[fp_format]
+	mov	[edi+10],al
 	mov	al,[fp_sign]
-	mov	byte [edi+11],al
+	mov	[edi+11],al
 	test	byte [edi+15],80h
 	jz	fp_ok
 	add	dword [edi],1
@@ -778,11 +819,11 @@ calculate_expression:
 	mov	ebx,eax
 	cmp	byte [ebx+8],0
 	je	label_undefined
+	cmp	byte [ebx+13],0
+	je	label_defined
 	mov	al,[current_pass]
 	cmp	al,[ebx+9]
-	je	label_defined
-	cmp	byte [ebx+12],1
-	je	invalid_value
+	jne	label_undefined
       label_defined:
 	mov	al,[ebx+11]
 	cmp	[next_pass_needed],0
@@ -1747,8 +1788,12 @@ get_logical_value:
       find_equ_symbol:
 	cmp	byte [esi],17h
 	je	compare_symbols
+	cmp	word [esi],13h+1 shl 8
+	je	scan_symbols_list
 	call	check_character
 	jc	invalid_expression
+	cmp	al,','
+	je	invalid_expression
 	call	skip_symbol
 	jmp	find_equ_symbol
       compare_symbols:
@@ -1773,6 +1818,54 @@ get_logical_value:
 	call	check_character
 	jc	return_true
 	jmp	symbols_different
+      scan_symbols_list:
+	xor	bp,bp
+	add	esi,2
+	lods	byte [esi]
+	cmp	al,'<'
+	jne	invalid_expression
+	pop	ebx
+	mov	ecx,esi
+	sub	ecx,3
+	sub	ecx,ebx
+      compare_in_list:
+	mov	edx,esi
+	push	ecx edi
+	mov	edi,ebx
+	repe	cmps byte [esi],[edi]
+	pop	edi ecx
+	jne	not_equal_in_list
+	cmp	byte [esi],','
+	je	skip_rest_of_list
+	cmp	byte [esi],'>'
+	jne	not_equal_in_list
+      skip_rest_of_list:
+	call	check_character
+	jc	invalid_expression
+	cmp	al,'>'
+	je	list_return_true
+	call	skip_symbol
+	jmp	skip_rest_of_list
+      list_return_true:
+	inc	esi
+	jmp	return_true
+      not_equal_in_list:
+	mov	esi,edx
+      skip_list_item:
+	call	check_character
+	jc	invalid_expression
+	cmp	al,'>'
+	je	list_return_false
+	cmp	al,','
+	je	next_in_list
+	call	skip_symbol
+	jmp	skip_list_item
+      next_in_list:
+	inc	esi
+	jmp	compare_in_list
+      list_return_false:
+	inc	esi
+	jmp	return_false
       check_character:
 	mov	al,[esi]
 	or	al,al
@@ -1881,6 +1974,7 @@ get_logical_value:
 number_start dd ?
 fp_value rd 8
 fp_sign db ?
+fp_format db ?
 expression_stack dd ?
 value_size db ?
 forced_size db ?

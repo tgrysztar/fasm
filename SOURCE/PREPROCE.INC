@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -70,9 +70,10 @@ preprocess_file:
 	mov	eax,edx
 	stos	dword [edi]
 	mov	[additional_memory],edi
+	push	ebp
 	call	read
 	call	close
-	pop	edi
+	pop	ebp edi
 	movzx	ecx,[file_number]
 	inc	[file_number]
 	shl	ecx,20
@@ -434,7 +435,7 @@ define_macro:
 	xchg	al,[macro_struc]
 	and	byte [ebx],7Fh
 	or	al,al
-	jz	create_macro
+	jz	add_macro
 	or	byte [ebx],80h
 	jmp	add_macro
       create_macro:
@@ -561,6 +562,8 @@ define_macro:
       find_macro_end:
 	call	skip_spaces
 	lods	byte [esi]
+	cmp	al,27h
+	je	skip_string_in_macro
 	mov	ah,al
 	mov	ebx,characters
 	xlatb
@@ -574,10 +577,6 @@ define_macro:
 	jz	missing_end_quote
 	cmp	al,27h
 	jne	skip_string_in_macro
-	lods	byte [esi]
-	cmp	al,27h
-	je	skip_string_in_macro
-	dec	esi
 	jmp	find_macro_end
       special_character_in_macro:
 	cmp	al,';'
@@ -868,10 +867,6 @@ use_macro:
 	lods	byte [esi]
 	cmp	al,27h
 	jne	skip_argument_string
-	lods	byte [esi]
-	cmp	al,27h
-	je	skip_argument_string
-	dec	esi
 	jmp	find_argument_value_end
       argument_value_end:
 	dec	esi
@@ -1178,12 +1173,6 @@ use_macro:
 	jz	missing_end_quote
 	cmp	al,27h
 	jne	skip_string
-	lods	byte [esi]
-	stos	byte [edi]
-	cmp	al,27h
-	je	skip_string
-	dec	esi
-	dec	edi
 	jmp	macro_process
       skip_comment:
 	lods	byte [esi]

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -38,27 +38,33 @@ PAGE_GUARD	       =   100h
 PAGE_NOCACHE	       =   200h
 
 init_memory:
+	mov	eax,1000000h
+    allocate_memory:
+	mov	edx,eax
+	shr	edx,3
+	mov	ecx,eax
+	sub	ecx,edx
+	mov	[memory_end],ecx
+	mov	[additional_memory_end],edx
 	push	PAGE_READWRITE
 	push	MEM_COMMIT
-	push	800000h
+	push	eax
 	push	0
 	call	[VirtualAlloc]
 	or	eax,eax
-	jz	out_of_memory
+	jz	not_enough_memory
 	mov	[memory_start],eax
-	add	eax,800000h
+	add	eax,[memory_end]
 	mov	[memory_end],eax
-	push	PAGE_READWRITE
-	push	MEM_COMMIT
-	push	0C0000h
-	push	0
-	call	[VirtualAlloc]
-	or	eax,eax
-	jz	out_of_memory
 	mov	[additional_memory],eax
-	add	eax,0C0000h
-	mov	[additional_memory_end],eax
+	add	[additional_memory_end],eax
 	ret
+    not_enough_memory:
+	mov	eax,[additional_memory_end]
+	shl	eax,2
+	cmp	eax,4000h
+	jb	out_of_memory
+	jmp	allocate_memory
 
 exit_program:
 	movzx	eax,al
@@ -107,6 +113,7 @@ write:
 	jz	file_error
 	ret
 read:
+	mov	ebp,ecx
 	push	0
 	push	bytes_count
 	push	ecx
@@ -115,6 +122,8 @@ read:
 	call	[ReadFile]
 	or	eax,eax
 	jz	file_error
+	cmp	ebp,[bytes_count]
+	jne	file_error
 	ret
 close:
 	push	ebx

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.06
+; flat assembler  version 1.07
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 ;
@@ -181,7 +181,7 @@ include '..\tables.inc'
 
 _copyright db 'Copyright (c) 1999-2000, Tomasz Grysztar',0
 
-_logo db 'flat assembler  version 1.06',0Dh,0Ah,0
+_logo db 'flat assembler  version 1.07',0Dh,0Ah,0
 _usage db 'usage: fasm source output',0Dh,0Ah,0
 
 _passes_suffix db ' passes, ',0
@@ -206,10 +206,11 @@ written_size dd ?
 
 params rb 100h
 characters rb 100h
+buffer rb 100h
 
 stack 4000h
 
-section '.idata' import data readable
+section '.idata' import data readable writeable
 
   dd 0,0,0,rva kernel_name,rva kernel_table
   dd 0,0,0,0,0

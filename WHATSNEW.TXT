@@ -2,6 +2,17 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.07
+[07-10-2000]
+------------
+[-] PE header size bug fixed
+[+] octal constants now supported
+[+] subsystem version setting for PE
+[+] in - symbol comparing operator added
+[-] allowed virtual directive without any arguments
+[-] fixed macros redefinition
+[-] some minor fixes and improvements
+
 version 1.06
 [23-08-2000]
 ------------
