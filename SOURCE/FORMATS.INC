@@ -18,7 +18,6 @@ formatter:
 	jnz	copy_output_path
 	dec	edi
 	mov	eax,edi
-	dec	edi
       find_extension:
 	dec	eax
 	cmp	eax,[free_additional_memory]
@@ -154,6 +153,8 @@ formatter:
 	ret
 format_directive:
 	cmp	edi,[code_start]
+	jne	unexpected_instruction
+	cmp	[virtual_data],0
 	jne	unexpected_instruction
 	cmp	[output_format],0
 	jne	unexpected_instruction
@@ -1111,6 +1112,8 @@ data_directive:
 	call	allocate_structure_data
 	mov	word [ebx],data_directive-assembler
 	mov	[ebx+2],al
+	mov	edx,[current_line]
+	mov	[ebx+4],edx
 	call	generate_pe_data
 	jmp	instruction_assembled
       end_data:

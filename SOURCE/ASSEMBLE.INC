@@ -48,9 +48,14 @@ assembler:
       pass_loop:
 	call	assemble_line
 	jnc	pass_loop
-	mov	eax,[structures_buffer]
-	cmp	eax,[additional_memory_end]
-	jne	unexpected_end_of_file
+	mov	eax,[additional_memory_end]
+	cmp	eax,[structures_buffer]
+	je	pass_done
+	sub	eax,20h
+	mov	eax,[eax+4]
+	mov	[current_line],eax
+	jmp	missing_end_directive
+      pass_done:
 	call	close_pass
 	mov	eax,[labels_list]
       check_symbols:
@@ -849,18 +854,20 @@ virtual_directive:
 	neg	eax
 	add	eax,edi
 	xchg	[org_origin],eax
-	mov	[ebx+4],eax
-	mov	[ebx+8],edx
+	mov	[ebx+10h],eax
+	mov	[ebx+14h],edx
 	mov	al,[virtual_data]
 	mov	[ebx+2],al
 	mov	al,[reloc_labels]
 	mov	[ebx+3],al
 	mov	eax,edi
 	xchg	eax,[org_start]
-	mov	[ebx+0Ch],eax
+	mov	[ebx+18h],eax
 	xchg	ebp,[org_symbol]
-	mov	[ebx+10h],ebp
-	mov	[ebx+14h],edi
+	mov	[ebx+1Ch],ebp
+	mov	[ebx+8],edi
+	mov	eax,[current_line]
+	mov	[ebx+4],eax
 	or	[virtual_data],-1
 	mov	[reloc_labels],0
 	cmp	[value_type],0
@@ -871,7 +878,7 @@ virtual_directive:
 	jmp	instruction_assembled
       allocate_structure_data:
 	mov	ebx,[structures_buffer]
-	sub	ebx,18h
+	sub	ebx,20h
 	cmp	ebx,[free_additional_memory]
 	jb	out_of_memory
 	mov	[structures_buffer],ebx
@@ -896,7 +903,7 @@ virtual_directive:
 	cmp	word [ebx],repeat_directive-assembler
 	je	no_such_structure
       repeat_structure_ok:
-	add	ebx,18h
+	add	ebx,20h
 	jmp	scan_structures
       no_such_structure:
 	stc
@@ -908,21 +915,21 @@ virtual_directive:
 	mov	[virtual_data],al
 	mov	al,[ebx+3]
 	mov	[reloc_labels],al
-	mov	eax,[ebx+4]
-	mov	[org_origin],eax
-	mov	eax,[ebx+8]
-	mov	[org_registers],eax
-	mov	eax,[ebx+0Ch]
-	mov	[org_start],eax
 	mov	eax,[ebx+10h]
+	mov	[org_origin],eax
+	mov	eax,[ebx+14h]
+	mov	[org_registers],eax
+	mov	eax,[ebx+18h]
+	mov	[org_start],eax
+	mov	eax,[ebx+1Ch]
 	mov	[org_symbol],eax
-	mov	edi,[ebx+14h]
+	mov	edi,[ebx+8]
       remove_structure_data:
 	push	esi edi
 	mov	esi,[structures_buffer]
 	mov	ecx,ebx
 	sub	ecx,esi
-	lea	edi,[esi+18h]
+	lea	edi,[esi+20h]
 	mov	[structures_buffer],edi
 	shr	ecx,2
 	rep	movs dword [edi],[esi]
@@ -948,11 +955,13 @@ repeat_directive:
 	call	allocate_structure_data
 	mov	word [ebx],repeat_directive-assembler
 	xchg	eax,[counter_limit]
-	mov	[ebx+4],eax
+	mov	[ebx+10h],eax
 	mov	eax,1
 	xchg	eax,[counter]
-	mov	[ebx+8],eax
-	mov	[ebx+0Ch],esi
+	mov	[ebx+14h],eax
+	mov	[ebx+8],esi
+	mov	eax,[current_line]
+	mov	[ebx+4],eax
 	jmp	instruction_assembled
       end_repeat:
 	cmp	[times_working],0
@@ -963,13 +972,13 @@ repeat_directive:
 	inc	[counter]
 	cmp	[counter],eax
 	jbe	continue_repeating
-	mov	eax,[ebx+4]
+	mov	eax,[ebx+10h]
 	mov	[counter_limit],eax
-	mov	eax,[ebx+8]
+	mov	eax,[ebx+14h]
 	mov	[counter],eax
 	jmp	remove_structure_data
       continue_repeating:
-	mov	esi,[ebx+0Ch]
+	mov	esi,[ebx+8]
 	jmp	instruction_assembled
       negative_repeat:
 	cmp	[error_line],0
@@ -980,7 +989,7 @@ repeat_directive:
       zero_repeat:
 	mov	al,[esi]
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	missing_end_directive
 	cmp	al,0Fh
 	jne	extra_characters_on_line
 	call	find_end_repeat
@@ -991,10 +1000,14 @@ repeat_directive:
 	jne	unexpected_instruction
 	ret
       find_structure_end:
+	push	[error_line]
+	mov	eax,[current_line]
+	mov	[error_line],eax
+      find_end_directive:
 	call	skip_line
 	lods	byte [esi]
 	cmp	al,0Fh
-	jne	unexpected_end_of_file
+	jne	no_end_directive
 	lods	dword [esi]
 	mov	[current_line],eax
       skip_labels:
@@ -1004,10 +1017,10 @@ repeat_directive:
 	jmp	skip_labels
       labels_ok:
 	cmp	byte [esi],1
-	jne	find_structure_end
+	jne	find_end_directive
 	mov	ax,[esi+1]
 	cmp	ax,prefix_instruction-assembler
-	je	find_structure_end
+	je	find_end_directive
 	add	esi,4
 	cmp	ax,repeat_directive-assembler
 	je	skip_repeat
@@ -1016,20 +1029,37 @@ repeat_directive:
 	cmp	ax,else_directive-assembler
 	je	structure_end
 	cmp	ax,end_directive-assembler
-	jne	find_structure_end
+	jne	find_end_directive
 	cmp	byte [esi],1
-	jne	find_structure_end
+	jne	find_end_directive
 	mov	ax,[esi+1]
 	add	esi,4
 	cmp	ax,repeat_directive-assembler
 	je	structure_end
 	cmp	ax,if_directive-assembler
-	jne	find_structure_end
+	jne	find_end_directive
       structure_end:
+	pop	[error_line]
 	ret
+      no_end_directive:
+	mov	eax,[error_line]
+	mov	[current_line],eax
+	jmp	missing_end_directive
       skip_repeat:
 	call	find_end_repeat
-	jmp	find_structure_end
+	jmp	find_end_directive
+      skip_if:
+	call	find_else
+	jc	find_end_directive
+	cmp	byte [esi],1
+	jne	skip_after_else
+	cmp	word [esi+1],if_directive-assembler
+	jne	skip_after_else
+	add	esi,4
+	jmp	skip_if
+      skip_after_else:
+	call	find_end_if
+	jmp	find_end_directive
 if_directive:
 	cmp	[times_working],0
 	jne	unexpected_instruction
@@ -1037,7 +1067,7 @@ if_directive:
 	mov	dl,al
 	mov	al,[esi]
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	missing_end_directive
 	cmp	al,0Fh
 	jne	extra_characters_on_line
 	or	dl,dl
@@ -1052,19 +1082,21 @@ if_directive:
 	add	esi,4
 	jmp	if_directive
       if_true:
+	xor	al,al
+      make_if_structure:
 	call	allocate_structure_data
 	mov	word [ebx],if_directive-assembler
-	mov	byte [ebx+2],0
+	mov	byte [ebx+2],al
+	mov	eax,[current_line]
+	mov	[ebx+4],eax
 	jmp	instruction_assembled
       else_true:
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	missing_end_directive
 	cmp	al,0Fh
 	jne	extra_characters_on_line
-	call	allocate_structure_data
-	mov	word [ebx],if_directive-assembler
-	or	byte [ebx+2],-1
-	jmp	instruction_assembled
+	or	al,-1
+	jmp	make_if_structure
       else_directive:
 	cmp	[times_working],0
 	jne	unexpected_instruction
@@ -1085,7 +1117,7 @@ if_directive:
 	jmp	remove_structure_data
       skip_else:
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	missing_end_directive
 	cmp	al,0Fh
 	jne	extra_characters_on_line
 	call	find_end_if
@@ -1096,18 +1128,6 @@ if_directive:
 	call	find_structure_data
 	jc	unexpected_instruction
 	jmp	remove_structure_data
-      skip_if:
-	call	find_else
-	jc	find_structure_end
-	cmp	byte [esi],1
-	jne	skip_after_else
-	cmp	word [esi+1],if_directive-assembler
-	jne	skip_after_else
-	add	esi,4
-	jmp	skip_if
-      skip_after_else:
-	call	find_end_if
-	jmp	find_structure_end
       find_else:
 	call	find_structure_end
 	cmp	ax,else_directive-assembler

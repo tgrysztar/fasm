@@ -33,6 +33,9 @@ invalid_file_format:
 invalid_macro_arguments:
 	call	assembler_error
 	dm	"invalid macro arguments"
+incomplete_macro:
+	call	assembler_error
+	dm	"incomplete macro"
 unexpected_characters:
 	call	assembler_error
 	dm	"unexpected characters"
@@ -42,9 +45,6 @@ invalid_argument:
 illegal_instruction:
 	call	assembler_error
 	dm	"illegal instruction"
-unexpected_instruction:
-	call	assembler_error
-	dm	"unexpected instruction"
 invalid_operand:
 	call	assembler_error
 	dm	"invalid operand"
@@ -96,18 +96,24 @@ reserved_word_used_as_symbol:
 symbol_already_defined:
 	call	assembler_error
 	dm	"symbol already defined"
-setting_already_specified:
-	call	assembler_error
-	dm	"setting already specified"
-data_already_defined:
-	call	assembler_error
-	dm	"data already defined"
 missing_end_quote:
 	call	assembler_error
 	dm	"missing end quote"
+missing_end_directive:
+	call	assembler_error
+	dm	"missing end directive"
+unexpected_instruction:
+	call	assembler_error
+	dm	"unexpected instruction"
 extra_characters_on_line:
 	call	assembler_error
 	dm	"extra characters on line"
 section_not_aligned_enough:
 	call	assembler_error
 	dm	"section is not aligned enough for this operation"
+setting_already_specified:
+	call	assembler_error
+	dm	"setting already specified"
+data_already_defined:
+	call	assembler_error
+	dm	"data already defined"

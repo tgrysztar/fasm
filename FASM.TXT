@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.54
+                              flat assembler 1.55
                               Programmer's Manual
 
 
@@ -131,21 +131,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.54
+flat assembler  version 1.55
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.54
+flat assembler  version 1.55
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.54
+flat assembler  version 1.55
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -155,7 +155,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.54
+flat assembler  version 1.55
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -2313,6 +2313,15 @@ itself, which has the highest possible priority, so it allows redefinition of
 constants defined this way. But when such high priority constants are found
 inside the value following the "fix" directive, they are replaced with their
 values before assigning this value to the new constant.
+  The "fix" directive can be used for syntax adjustments related to directives
+of preprocessor, what cannot be done with "equ" directive. For example:
+
+    incl fix include
+
+defines a short name for "include" directive, while the similar definition done
+with "equ" directive wouldn't give such result, as standard symbolic constants
+are replaced with their values after searching the line for preprocessor
+directives.
 
 
 2.3.3  Macroinstructions
@@ -2579,6 +2588,74 @@ argument of this macro is some number, label, or variable, the string from
 that address is displayed, but when the argument is a quoted string, the
 created code will display that string followed by the carriage return and
 line feed.
+  It is also possible to put a declaration of macroinstruction inside another
+macroinstruction, so one macro can define another, but there is a problem
+with such definitions caused by fact, that "}" character cannot occur inside
+the macroinstruction, as it always means the end of definition. But it's easy
+to overcome this problem with use of the "fix" directive. Here is an example:
+
+    macro ext instr
+     {
+      macro instr op1,op2,op3
+       _%
+        if op3 eq
+          instr op1,op2
+        else
+          instr op1,op2
+          instr op2,op3
+        end if
+       %_
+     }
+
+    _% fix {
+    %_ fix }
+
+    ext add
+    ext sub
+
+The macro "ext" is defined correctly, but when it is used, the "_%" and "%_"
+are defined as high priority symbolic constants and are replaced with their
+values before doing anything else. So when the "ext add" is processed, the
+contents of macro becomes valid definition of a macroinstruction and this way
+the "add" macro becomes defined. In the same way "ext sub" defines the "sub"
+macro. The use of "_%" constant instead of "{" wasn't really necessary here,
+but is done this way to make the definition more clear. Note that the right
+order of definitions is crucial here.
+  If some directives specific to macroinstructions, like "local" or "common"
+are needed inside some macro embedded this way, they also have to be replaced
+with some symbols defined later as a high priority constants with the values
+being the intended directives. And when the "#" operator is needed in the
+embedded macro, the help comes from the fact that any sequence of "#" characters
+inside the macroinstruction is reduced to chain shorter by one character, and
+only if it was the single "#" character, the concatenation is performed. So
+to put the concatenation operator inside the embedded macro it is enough to
+write "##" there.
+  The above techniques can be even applied to create the new ways of defining
+macroinstructions. For example:
+
+    macro tmacro params
+     {
+      macro params {
+     }
+
+    MACRO fix tmacro
+    ENDM fix }
+
+defines an alternative syntax for defining macroinstructions, which looks like:
+
+    MACRO stoschar char
+        mov al,char
+        stosb
+    ENDM
+
+Note that symbol that has such customized definition must be defined with "fix"
+directive, because only the prioritized symbolic constants are processed before
+the preprocessor looks for the "}" character while defining the macro. This
+might be a problem if one needed to perform some additional tasks one the end
+of such definition, but there is one more feature which helps in such cases.
+Namely it is possible to put any directive, instruction or  macroinstruction
+just after the "}" character that ends the macroinstruction and it will be
+processed in the same way as if it was put in the next line.
 
 
 2.3.4  Structures
@@ -2591,8 +2668,8 @@ with dot in the contents of macroinstruction. The macroinstruction defined
 using the "struc" directive can have the same name as some other
 macroinstruction defined using the "macro" directive, structure
 macroinstruction won't prevent the standard macroinstruction being processed
-when there is no label before it and vice versa. All the rules concerning
-standard macroinstructions apply to structure macroinstructions.
+when there is no label before it and vice versa. All the rules and features
+concerning standard macroinstructions apply to structure macroinstructions.
   Here is the sample of structure macroinstruction:
 
     struc point x,y

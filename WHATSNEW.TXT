@@ -1,6 +1,13 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.55
+[12-09-2004]
+------------
+[+] support for multiple concatenation symbol added
+[+] updated documentation (sections concerning preprocessor directives)
+[+] some error messages improved
+
 version 1.54
 [04-08-2004]
 ------------

@@ -30,8 +30,10 @@ parser:
 	jb	parser_loop
 	xor	al,al
 	stos	byte [edi]
+	mov	eax,[error_line]
+	mov	[current_line],eax
 	cmp	[anonymous_forward],0
-	jne	unexpected_end_of_file
+	jne	invalid_value
 	mov	[code_start],edi
 	pop	[additional_memory_end]
 	ret
@@ -755,6 +757,8 @@ get_label_id:
 	mov	eax,[anonymous_forward]
 	or	eax,eax
 	jnz	anonymous_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
 	mov	eax,[labels_list]
 	sub	eax,8
 	mov	[labels_list],eax

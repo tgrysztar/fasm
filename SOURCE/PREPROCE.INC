@@ -26,8 +26,10 @@ preprocessor:
 	jc	main_file_not_found
 	mov	edi,[memory_start]
 	call	preprocess_file
+	mov	eax,[error_line]
+	mov	[current_line],eax
 	cmp	[macro_status],0
-	jne	unexpected_end_of_file
+	jne	incomplete_macro
 	mov	[source_start],edi
 	ret
 
@@ -764,6 +766,8 @@ process_concatenations:
 	lea	esi,[edi+4+eax]
 	jmp	before_concatenations
       concatenation:
+	cmp	byte [esi],'#'
+	je	reduce_concatenation_symbol
 	cmp	dl,1Ah
 	je	symbol_concatenation
 	cmp	dl,22h
@@ -772,6 +776,11 @@ process_concatenations:
 	cmp	esi,edi
 	je	before_concatenations
 	jmp	after_concatenation
+      reduce_concatenation_symbol:
+	movs	byte [edi],[esi]
+	cmp	byte [esi],'#'
+	je	reduce_concatenation_symbol
+	jmp	no_concatenation
       symbol_concatenation:
 	cmp	byte [esi],1Ah
 	jne	no_concatenation
@@ -904,6 +913,8 @@ define_macro:
 	and	al,0F0h
 	or	al,1
 	mov	[macro_status],al
+	mov	eax,[current_line]
+	mov	[error_line],eax
 	xor	bl,bl
 	lods	byte [esi]
 	or	al,al
