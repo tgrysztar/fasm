@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.13
+; flat assembler source
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 

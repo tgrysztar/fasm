@@ -2,12 +2,21 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.14
+[17-10-2001]
+------------
+[+] partial SSE2 instructions support
+[-] display directive revised
+[-] parsing instruction preceded by a colon fixed
+[-] eq operator for logical expressions
+
 version 1.13
-[23-08-2001]
+[27-08-2001]
 ------------
 [+] added display directive
 [+] added data directive for PE format
 [-] string and number parsing revised
+[-] far jumps processing revised
 [-] aligned assembler data for faster access
 [-] cmov register to register fixed
 [-] list of preprocessor directives fixed
@@ -32,7 +41,7 @@ version 1.11
 version 1.10
 [22-03-2001]
 ------------
-[+] SIMD instructions support
+[+] SSE instructions support
 [+] added some missed FPU instructions
 [-] fixed labels redefinition bug
 

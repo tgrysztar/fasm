@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.13
+; flat assembler source
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
@@ -162,14 +162,9 @@ segment_directive:
 	mov	[code_type],ah
 	jmp	instruction_assembled
 mz_entry:
-	call	get_operand_size
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
-	cmp	[operand_size],1
-	je	invalid_address
-	cmp	[operand_size],2
-	ja	invalid_address
 	call	get_word_value
 	cmp	[next_pass_needed],0
 	je	check_initial_cs
@@ -183,14 +178,9 @@ mz_entry:
 	lods	byte [esi]
 	cmp	al,':'
 	jne	invalid_argument
-	mov	[operand_size],0
-	call	get_operand_size
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
-	cmp	[operand_size],1
-	je	invalid_address
-	cmp	[operand_size],2
 	ja	invalid_address
 	call	get_word_value
 	cmp	[value_type],0
@@ -198,11 +188,6 @@ mz_entry:
 	mov	[initial_ip],ax
 	jmp	instruction_assembled
 mz_stack:
-	call	get_operand_size
-	cmp	[operand_size],1
-	je	invalid_value
-	cmp	[operand_size],2
-	ja	invalid_value
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
@@ -229,15 +214,9 @@ mz_stack:
 	lods	byte [esi]
 	cmp	al,':'
 	jne	invalid_argument
-	mov	[operand_size],0
-	call	get_operand_size
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
-	cmp	[operand_size],1
-	je	invalid_address
-	cmp	[operand_size],2
-	ja	invalid_address
 	call	get_word_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
@@ -456,8 +435,8 @@ section_directive:
       new_section:
 	mov	[section_defined],1
 	lods	word [esi]
-	cmp	al,'('
-	jne	invalid_operand
+	cmp	ax,'('
+	jne	invalid_argument
 	lea	edx,[esi+4]
 	mov	ecx,[esi]
 	lea	esi,[esi+4+ecx+1]

@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.13
+; flat assembler source
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
@@ -230,9 +230,12 @@ parse_line:
 	push	edi
 	mov	edi,symbols
 	call	get_symbol
-	jc	illegal_instruction
 	pop	edi
+	jc	unknown_instruction
 	stos	word [edi]
+	jmp	parse_arguments
+      unknown_instruction:
+	sub	esi,2
 	jmp	parse_arguments
       constant_label:
 	pop	ecx esi
@@ -370,9 +373,9 @@ parse_line:
 	stos	dword [edi]
       parse_arguments:
 	lods	byte [esi]
-	cmp	al,','
-	je	separator
 	cmp	al,':'
+	je	instruction_separator
+	cmp	al,','
 	je	separator
 	cmp	al,'='
 	je	separator
@@ -554,6 +557,9 @@ parse_line:
       separator:
 	stos	byte [edi]
 	jmp	argument_parsed
+      instruction_separator:
+	stos	byte [edi]
+	jmp	instruction_start
       greater:
 	cmp	byte [esi],'='
 	jne	separator

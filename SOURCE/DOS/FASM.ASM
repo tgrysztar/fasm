@@ -1,37 +1,7 @@
 
-; flat assembler  version 1.13
+; flat assembler source
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
-;
-; This programs is free for commercial and non-commercial use as long as
-; the following conditions are aheared to.
-;
-; Redistribution and use in source and binary forms, with or without
-; modification, are permitted provided that the following conditions are
-; met:
-;
-; 1. Redistributions of source code must retain the above copyright notice,
-;    this list of conditions and the following disclaimer.
-; 2. Redistributions in binary form must reproduce the above copyright
-;    notice, this list of conditions and the following disclaimer in the
-;    documentation and/or other materials provided with the distribution.
-;
-; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
-; TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-; PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR
-; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-; EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-; PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-; PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-; LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-; SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-;
-; The licence and distribution terms for any publically available
-; version or derivative of this code cannot be changed. i.e. this code
-; cannot simply be copied and put under another distribution licence
-; (including the GNU Public Licence).
 
 	org	100h
 
@@ -169,18 +139,19 @@ get_params:
 	ret
 
 include 'system.inc'
-include 'errors.inc'
 
-include 'expressi.inc'
-include 'preproce.inc'
-include 'parser.inc'
-include 'assemble.inc'
-include 'formats.inc'
-include 'tables.inc'
+include '..\version.inc'
+include '..\errors.inc'
+include '..\expressi.inc'
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\assemble.inc'
+include '..\formats.inc'
+include '..\tables.inc'
 
 _copyright db 'Copyright (c) 1999-2001, Tomasz Grysztar',24h
 
-_logo db 'flat assembler  version 1.13.6',0Dh,0Ah,24h
+_logo db 'flat assembler  version ',VERSION,0Dh,0Ah,24h
 _usage db 'usage: fasm source output',0Dh,0Ah,24h
 
 _passes_suffix db ' passes, ',24h
@@ -210,6 +181,8 @@ written_size dd ?
 params rb 100h
 characters rb 100h
 buffer rb 4000h
+
+rb 400h
 
 if $ > 10000h
   display 'warning: 64k limit exceeded.'

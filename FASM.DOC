@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.13
+			flat assembler	version 1.14
 
 	 Copyright (c) 1999-2001, Tomasz Grysztar. All rights reserved.
 
@@ -125,7 +125,7 @@ xword (128-bit), first letters are the short forms.
 	jmp  near byte beta	      ; short jump
 	jmp  near dword beta	      ; force dword size
 	jmp  10h:50h		      ; far jump
-	jmp  10h:dword 50000h	      ; 32-bit far jump
+	jmp  pword 10h:50000h	      ; 32-bit far jump
 	call far pword [1000h]	      ; 32-bit far call
 	call far dword [delta]	      ; 16-bit far call
 	call near dword [delta]       ; 32-bit near call
@@ -208,9 +208,10 @@ arguments). 'xlatb', 'movsb', etc. accept no arguments.
 The logical operators are: ~ (not), | (or), & (and). Logical values
 can be defined using comparing operators: = (equal), < (less), > (greater),
 <= (less or equal), >= (greater or equal), <> (not equal) for numbers;
-'equ' or 'in' for all other symbols. Word 'equ' is also used to define
-symbolic constants. When you want to use 'true' and 'false' values in logical
-expressions, define them using 'equ': 'true equ 0=0', 'false equ ~true'.
+'eq' or 'in' for all other symbols. Word 'equ' means the same as 'eq' in
+logical expressions, but is also used to define symbolic constants. When you
+want to use 'true' and 'false' values in logical expressions, define them
+using 'equ': 'true equ 0=0', 'false equ ~true'.
 
 2.1.4  Defining constants
 
@@ -296,7 +297,7 @@ macro - defines macroinstructions, arguments are macro name and names
 	macro align value { rb (value-1) - ($ + value-1) mod value }
 
 	Macroinstructions may have empty arguments; to check if argument
-	is empty use something like 'if <argument> equ <>'.
+	is empty use something like 'if <argument> eq <>'.
 	If a macro is defined that uses an instruction with the same name
 	inside the macro definition, the previous meaning of this name is
 	used; useful redefinition of macros can be done in that way, for
@@ -313,7 +314,7 @@ macro - defines macroinstructions, arguments are macro name and names
 	 }
 	macro mov arg1,arg2,arg3
 	 {
-	  if <arg3> equ <>
+	  if <arg3> eq <>
 	     mov   arg1,arg2  ; here previous macro will be used
 	  else
 	     mov   arg1,arg2
@@ -376,7 +377,7 @@ struc - this is the variant of macro directive used to create data
 
 	To handle cases, when one or more of macro params are empty (for
 	example just: 'mypix pixel'), you can write something like
-	'.x dw x+0', or use 'if <x> equ <>'.
+	'.x dw x+0', or use 'if <x> eq <>'.
 
 local - used inside macro definitions, defines local symbols, which
 	will have unique names in every macro call; arguments are local

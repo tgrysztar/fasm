@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.13
+; flat assembler source
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
@@ -109,7 +109,7 @@ convert_number:
 	call	convert_expression
 	lods	byte [esi]
 	cmp	al,')'
-	jne	invalid_value
+	jne	invalid_expression
 	ret
       symbol_value:
 	lods	byte [esi]
@@ -766,7 +766,7 @@ calculate_expression:
 	cmp	al,91h
 	je	calculate_div
 	or	dx,dx
-	jnz	invalid_value
+	jnz	invalid_expression
 	cmp	al,0A0h
 	je	calculate_mod
 	cmp	al,0B0h
@@ -779,7 +779,7 @@ calculate_expression:
 	je	calculate_shl
 	cmp	al,0C1h
 	je	calculate_shr
-	jmp	invalid_value
+	jmp	invalid_expression
       expression_calculated:
 	sub	edi,20h
 	ret
@@ -974,7 +974,7 @@ calculate_expression:
 	ret
       create_in_second_slot:
 	cmp	byte [esi+25],0
-	jne	invalid_value
+	jne	invalid_expression
 	mov	[esi+25],cl
 	mov	eax,[ebx]
 	mov	[esi+16],eax
@@ -1226,7 +1226,7 @@ calculate_expression:
 	jmp	calculate_expression
       calculate_not:
 	cmp	word [edi+24],0
-	jne	invalid_value
+	jne	invalid_expression
 	cmp	byte [edi+26],0
 	jne	invalid_use_of_symbol
 	cmp	[value_size],1
@@ -1275,7 +1275,7 @@ calculate_expression:
 	jmp	calculate_expression
       calculate_neg:
 	cmp	word [edi+24],0
-	jne	invalid_value
+	jne	invalid_expression
 	cmp	byte [edi+26],0
 	jne	invalid_use_of_symbol
 	mov	eax,[edi]
@@ -1288,7 +1288,7 @@ calculate_expression:
 	jmp	calculate_expression
       calculate_rva:
 	cmp	word [edi+24],0
-	jne	invalid_value
+	jne	invalid_expression
 	mov	al,[edi+26]
 	cmp	al,2
 	je	rva_ok

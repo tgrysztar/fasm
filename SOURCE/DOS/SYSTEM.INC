@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.13
+; flat assembler source
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
@@ -25,17 +25,26 @@ init_flatrm:
 	mov	[program_base],eax
 	mov	ax,350Dh
 	int	21h
-	mov	word [int_13],bx
-	mov	word [int_13+2],es
+	mov	word [irq_5],bx
+	mov	word [irq_5+2],es
 	push	cs
 	pop	es
 	mov	ax,250Dh
-	mov	dx,exception
+	mov	dx,int_13
 	int	21h
 	ret
 
-exception:
+int_13:
 	push	eax
+	mov	al,00001011b		; OCW3 - read IRQ in-service register
+	out	20h,al
+	in	al,20h
+	test	al,00100000b		; is IRQ 5 in service?
+	jz	exception
+	pop	eax
+	jmp	dword 0:0
+	label	irq_5 dword at $-4
+    exception:
 	push	ds es fs gs
 	cli				; disable interrupts
 	xor	eax,eax 		; calculate linear address of GDT
@@ -69,8 +78,6 @@ GDTR dw 2*8-1				; limit of GDT
 
 GDT rw 4				; null descriptor
     dw 0FFFFh,0,9200h,8Fh		; 32-bit data descriptor
-
-int_13 dd ?
 
 use32 equ use16
 
@@ -230,8 +237,8 @@ exit_program:
 	pop	ax
       .exit:
 	mov	ax,250Dh
-	mov	dx,word [int_13]
-	mov	ds,word [int_13+2]
+	mov	dx,word [irq_5]
+	mov	ds,word [irq_5+2]
 	int	21h
 	mov	ah,4Ch
 	int	21h
@@ -346,3 +353,125 @@ lseek:
 	mov	dx,ax
 	mov	eax,edx
 	ret
+
+display_asciiz:
+	lods	byte [esi]
+	or	al,al
+	jz	asciiz_end
+	mov	dl,al
+	mov	ah,2
+	int	21h
+	jmp	display_asciiz
+      asciiz_end:
+	ret
+display_block:
+	lods	byte [esi]
+	mov	dl,al
+	mov	ah,2
+	int	21h
+	loop	display_block
+	ret
+display_number:
+	mov	ecx,1000000000
+	xor	edx,edx
+	xor	bl,bl
+      display_loop:
+	div	ecx
+	push	edx
+	cmp	ecx,1
+	je	display_digit
+	or	bl,bl
+	jnz	display_digit
+	or	al,al
+	jz	digit_ok
+	not	bl
+      display_digit:
+	mov	dl,al
+	add	dl,30h
+	mov	ah,2
+	int	21h
+      digit_ok:
+	mov	eax,ecx
+	xor	edx,edx
+	mov	ecx,10
+	div	ecx
+	mov	ecx,eax
+	pop	eax
+	or	ecx,ecx
+	jnz	display_loop
+	ret
+
+fatal_error:
+	mov	dx,error_prefix
+	mov	ah,9
+	int	21h
+	pop	dx
+	int	21h
+	mov	dx,error_suffix
+	int	21h
+	mov	al,0FFh
+	jmp	exit_program
+assembler_error:
+	mov	edx,[home_line]
+	mov	ebp,[edx]
+	call	display_line_number
+	mov	edx,[current_line]
+	cmp	edx,[home_line]
+	je	line_number_ok
+	mov	ebp,[edx]
+	mov	dl,20h
+	mov	ah,2
+	int	21h
+	call	display_line_number
+      line_number_ok:
+	mov	dx,line_number_end
+	mov	ah,9
+	int	21h
+	mov	esi,[home_line]
+	add	esi,5
+	call	display_asciiz
+	mov	ah,9
+	mov	dx,cr_lf
+	int	21h
+	mov	dx,error_prefix
+	int	21h
+	pop	dx
+	int	21h
+	mov	dx,error_suffix
+	int	21h
+	mov	al,2
+	jmp	exit_program
+      display_line_number:
+	mov	ecx,ebp
+	shr	ecx,20
+	dec	ecx
+	mov	esi,[files_list]
+	inc	esi
+      get_error_file:
+	jecxz	error_file_found
+      skip_file_name:
+	lods	byte [esi]
+	or	al,al
+	jnz	skip_file_name
+	add	esi,5
+	loop	get_error_file
+      error_file_found:
+	call	display_asciiz
+	mov	ah,9
+	mov	dx,line_number_start
+	int	21h
+	mov	eax,ebp
+	and	eax,0FFFFFh
+	call	display_number
+	mov	dl,']'
+	mov	ah,2
+	int	21h
+	ret
+
+error_prefix db 'error: ',24h
+error_suffix db '.'
+cr_lf db 0Dh,0Ah,24h
+line_number_start db ' [',24h
+line_number_end db ':',0Dh,0Ah,24h
+
+macro dm string { db string,24h }
