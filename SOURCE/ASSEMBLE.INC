@@ -3178,6 +3178,7 @@ bound_instruction:
 	cmp	al,','
 	jne	invalid_operand
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address
@@ -4852,10 +4853,10 @@ bswap_instruction:
 	jne	invalid_operand
 	lods	byte [esi]
 	call	convert_register
-	mov	ah,al
-	add	ah,0C8h
 	cmp	ah,4
 	jne	invalid_operand_size
+	mov	ah,al
+	add	ah,0C8h
 	call	operand_32bit_prefix
 	mov	al,0Fh
 	stos	word [edi]

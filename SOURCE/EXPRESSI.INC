@@ -6,24 +6,6 @@
 convert_expression:
 	push	ebp
 	mov	ebp,esp
-	push	edi
-	mov	edi,operators
-	call	get_operator
-	pop	edi
-	or	al,al
-	jz	expression_loop
-	push	ebp
-	cmp	al,80h
-	je	init_positive
-	cmp	al,81h
-	je	init_negative
-	jmp	invalid_expression
-      init_positive:
-	xor	al,al
-	jmp	expression_number
-      init_negative:
-	mov	al,0D1h
-	jmp	expression_number
       expression_loop:
 	push	ebp edi
 	mov	edi,single_operand_operators

@@ -253,6 +253,8 @@ operators:
  db 0
 
 single_operand_operators:
+ db 1,'+',0
+ db 1,'-',0D1h
  db 3,'not',0D0h
  db 3,'rva',0E0h
  db 0
