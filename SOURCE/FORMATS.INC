@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.0
+; flat assembler  version 1.01
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -80,10 +80,15 @@ write_mz_header:
 	mov	eax,[code_size]
 	add	eax,ecx
 	mov	esi,eax
-	and	eax,111111111b
-	mov	[edx+2],ax		; number of bytes in last page
 	shr	esi,9
+	and	eax,111111111b
 	inc	si
+	or	ax,ax
+	jnz	mz_size_ok
+	mov	ax,512
+	dec	si
+      mz_size_ok:
+	mov	[edx+2],ax		; number of bytes in last page
 	mov	[edx+4],si		; number of pages
 	mov	eax,[real_code_size]
 	dec	eax
