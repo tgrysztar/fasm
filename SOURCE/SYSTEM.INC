@@ -1,31 +1,48 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 init_flatrm:
-	push	sp			; store stack frame
-	pop	ax
-	cmp	ax,sp			; compare stack frame values
-	jne	processor_error 	; if not equal, CPU is 8086-80186
-	smsw	ax
-	test	al,1			; processor is in protected mode?
-	jnz	pm_error		; if yes, generate error
-	pushf
-	pop	ax
-	or	ah,0F0h 		; try to set high 4 bits of FLAGS
+	mov	ax,7202h
 	push	ax
 	popf
 	pushf
-	pop	ax
-	test	ah,0F0h
-	jz	processor_error 	; if bits not set, CPU is 80286
+	pop	bx
+	cmp	ax,bx
+	je	processor_ok
+	call	fatal_error
+	db	'required 80386 or better',24h
+    processor_ok:
+	smsw	ax
+	test	al,1
+	jz	mode_ok
+	call	fatal_error
+	db	'processor is in protected mode',24h
+    mode_ok:
+	mov	eax,cs
+	shl	eax,4
+	mov	[program_base],eax
+	mov	ax,350Dh
+	int	21h
+	mov	word [int_13],bx
+	mov	word [int_13+2],es
+	push	cs
+	pop	es
+	mov	ax,250Dh
+	mov	dx,exception
+	int	21h
+	ret
+
+exception:
+	push	eax
+	push	ds es fs gs
+	cli				; disable interrupts
 	xor	eax,eax 		; calculate linear address of GDT
 	mov	ax,cs
 	shl	eax,4
 	add	eax,GDT
 	mov	dword [cs:GDTR+2],eax
-	cli				; disable interrupts
 	lgdt	pword [cs:GDTR] 	; load GDT register
 	mov	eax,cr0 		; switch to protected mode
 	or	al,1
@@ -42,22 +59,18 @@ init_flatrm:
 	mov	cr0,eax
 	jmp	pm_end
     pm_end:
-	xor	eax,eax
-	mov	ax,cs			; restore visible part of registers
-	mov	ds,ax
-	mov	es,ax
-	mov	fs,ax
-	mov	gs,ax
-	shl	eax,4
-	mov	[program_base],eax	; linear address of program segment
-	sti
-	ret
+	sti				; enable interrupts
+	pop	gs fs es ds
+	pop	eax
+	iret
 
 GDTR dw 2*8-1				; limit of GDT
      dd ?				; linear address of GDT
 
 GDT rw 4				; null descriptor
     dw 0FFFFh,0,9200h,8Fh		; 32-bit data descriptor
+
+int_13 dd ?
 
 use32 equ use16
 
@@ -216,6 +229,10 @@ exit_program:
 	call	far dword [xms_call]
 	pop	ax
       .exit:
+	mov	ax,250Dh
+	mov	dx,word [int_13]
+	mov	ds,word [int_13+2]
+	int	21h
 	mov	ah,4Ch
 	int	21h
 

@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 formatter:
@@ -370,6 +370,14 @@ format_pe:
 	sub	eax,[section_rva]
 	sub	eax,[image_base]
 	mov	[org_start],eax
+	push	edi
+	mov	edi,directories
+	movzx	ecx,[number_of_dirs]
+	shl	ecx,1
+	xor	eax,eax
+	rep	stos dword [edi]
+	pop	edi
+	mov	[current_data],-1
       pe_settings:
 	cmp	byte [esi],1Bh
 	jne	instruction_assembled
@@ -447,9 +455,9 @@ section_directive:
 	call	close_section
       new_section:
 	mov	[section_defined],1
-	lods	byte [esi]
-	cmp	al,27h
-	jne	invalid_argument
+	lods	word [esi]
+	cmp	al,'('
+	jne	invalid_operand
 	lea	edx,[esi+4]
 	mov	ecx,[esi]
 	lea	esi,[esi+4+ecx+1]
@@ -488,7 +496,11 @@ section_directive:
       set_directory:
 	lods	byte [esi]
 	movzx	eax,al
-	mov	[directories+eax*4],ebx
+	mov	[directories+eax*8],ebx
+	mov	[directories+eax*8+4],-1
+	cmp	al,5
+	jne	get_section_flags
+	call	make_pe_fixups
 	jmp	get_section_flags
       section_code_type:
 	lods	byte [esi]
@@ -560,6 +572,50 @@ section_directive:
 	stos	dword [edi]
 	pop	edi
 	ret
+      pe_data_definition:
+	cmp	[output_format],3
+	jne	unexpected_instruction
+	lods	byte [esi]
+	cmp	al,6
+	jne	illegal_instruction
+	lods	byte [esi]
+	cmp	al,1Ah
+	je	predefined_data_type
+	cmp	al,'('
+	jne	invalid_argument
+	call	get_byte_value
+	cmp	al,[number_of_dirs]
+	jb	data_type_ok
+	jmp	invalid_value
+      predefined_data_type:
+	lods	byte [esi]
+	movzx	eax,al
+      data_type_ok:
+	mov	ebx,edi
+	sub	ebx,[section_start]
+	add	ebx,[section_rva]
+	mov	[directories+eax*8],ebx
+	mov	[current_data],al
+	cmp	al,5
+	jne	instruction_assembled
+	call	make_pe_fixups
+	jmp	instruction_assembled
+      pe_data_end:
+	cmp	[output_format],3
+	jne	unexpected_instruction
+	lods	byte [esi]
+	cmp	al,6
+	jne	illegal_instruction
+	movzx	eax,[current_data]
+	cmp	al,-1
+	je	unexpected_instruction
+	mov	ebx,edi
+	sub	ebx,[section_start]
+	add	ebx,[section_rva]
+	sub	ebx,[directories+eax*8]
+	mov	[directories+eax*8+4],ebx
+	mov	[current_data],-1
+	jmp	instruction_assembled
 pe_entry:
 	call	get_operand_size
 	lods	byte [esi]
@@ -667,13 +723,14 @@ mark_pe_relocation:
 	jbe	out_of_memory
 	mov	[additional_memory_end],ebx
 	inc	[number_of_relocations]
+	jz	invalid_use_of_symbol
 	mov	eax,edi
 	sub	eax,[section_start]
 	add	eax,[section_rva]
 	mov	[ebx],eax
 	pop	ebx eax
 	ret
-make_pe_reloc:
+make_pe_fixups:
 	push	esi
 	mov	ecx,[number_of_relocations]
 	jecxz	fixups_done
@@ -707,12 +764,15 @@ make_pe_reloc:
 	stos	word [edi]
 	loop	make_fixups
       fixups_done:
+	mov	[number_of_relocations],-1
 	pop	esi
 	ret
 finish_pe:
+	cmp	[current_data],-1
+	jne	unexpected_end_of_file
 	call	close_section
 	cmp	[number_of_relocations],0
-	je	pe_reloc_ok
+	jle	pe_reloc_ok
 	mov	dword [section_name],'.rel'
 	mov	dword [section_name+4],'oc'
 	mov	[section_start],edi
@@ -720,11 +780,12 @@ finish_pe:
 	movzx	eax,[number_of_sections]
 	imul	eax,28h
 	add	eax,[additional_memory]
-	mov	[directories+14h],eax
+	mov	[directories+5*8],eax
+	mov	[directories+5*8+4],-1
 	mov	eax,edi
 	sub	eax,[section_rva]
 	mov	[org_start],eax
-	call	make_pe_reloc
+	call	make_pe_fixups
 	call	close_section
       pe_reloc_ok:
 	mov	eax,edi
@@ -783,9 +844,16 @@ write_pe_header:
 	push	eax ebx
 	xor	ebx,ebx
       process_dirs:
-	mov	eax,[directories+ebx*4]
+	mov	eax,[directories+ebx*8]
 	or	eax,eax
 	jz	dir_ok
+	mov	ecx,[directories+ebx*8+4]
+	cmp	ecx,-1
+	je	section_dir
+	mov	[edx+78h+ebx*8],eax	; directory rva
+	mov	[edx+7Ch+ebx*8],ecx	; directory size
+	jmp	dir_ok
+      section_dir:
 	mov	ecx,[eax+18h]
 	mov	eax,[eax+0Ch]
 	mov	[edx+78h+ebx*8],eax	; directory rva
@@ -906,16 +974,19 @@ create_pe_stub:
     pe_stub_end:
 	use32
 
+align 4
+
 stub_size dd ?
 number_of_dirs db ?
 number_of_sections db ?
+current_data db ?
 section_defined db ?
 section_name dq ?
 section_start dd ?
 section_rva dd ?
 section_flags dd ?
 sections_list dd ?
-directories rd 16
+directories rd 32
 entry_rva dd ?
 image_base dd ?
 stack_reserve dd ?

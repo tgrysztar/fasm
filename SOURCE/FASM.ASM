@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 ;
 ; This programs is free for commercial and non-commercial use as long as
@@ -34,6 +34,8 @@
 ; (including the GNU Public Licence).
 
 	org	100h
+
+	macro	align value { rb (value-1) - ($ + value-1) mod value }
 
 start:
 
@@ -176,14 +178,16 @@ include 'assemble.inc'
 include 'formats.inc'
 include 'tables.inc'
 
-_copyright db 'Copyright (c) 1999-2000, Tomasz Grysztar',24h
+_copyright db 'Copyright (c) 1999-2001, Tomasz Grysztar',24h
 
-_logo db 'flat assembler  version 1.11',0Dh,0Ah,24h
+_logo db 'flat assembler  version 1.13.6',0Dh,0Ah,24h
 _usage db 'usage: fasm source output',0Dh,0Ah,24h
 
 _passes_suffix db ' passes, ',24h
 _seconds_suffix db ' seconds, ',24h
 _bytes_suffix db ' bytes.',0Dh,0Ah,24h
+
+align 4
 
 program_base dd ?
 
@@ -206,3 +210,7 @@ written_size dd ?
 params rb 100h
 characters rb 100h
 buffer rb 4000h
+
+if $ > 10000h
+  display 'warning: 64k limit exceeded.'
+end if

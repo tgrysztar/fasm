@@ -9,7 +9,7 @@
 		       ÛÛ   Û	   ÛÛ Ü     ŞÛ ŞÛ  Û  İ
 		     ßßßßßß  ßßßßß ßß  ßßßßßß	ß  ß  ß
 
-			flat assembler	version 1.11
+			flat assembler	version 1.13
 
 	 Copyright (c) 1999-2001, Tomasz Grysztar. All rights reserved.
 
@@ -40,7 +40,8 @@ Table of Contents
     2.2  Directives
 	 2.2.1	Preprocessor directives
 	 2.2.2	Code and format settings
-	 2.2.3	Other directives
+	 2.2.3	Label and constant definitions
+	 2.2.4	Other directives
 
 ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
@@ -206,10 +207,10 @@ arguments). 'xlatb', 'movsb', etc. accept no arguments.
     See 'macros' examples in Section 2.2.1 for usage examples.
 The logical operators are: ~ (not), | (or), & (and). Logical values
 can be defined using comparing operators: = (equal), < (less), > (greater),
-<= (less or equal), >= (greater or equal) for numbers; 'equ' or 'in' for all
-other symbols. Word 'equ' is also used to define symbolic constants.
-When you want to use 'true' and 'false' values in logical expressions,
-define them using 'equ': 'true equ 0=0', 'false equ ~true'.
+<= (less or equal), >= (greater or equal), <> (not equal) for numbers;
+'equ' or 'in' for all other symbols. Word 'equ' is also used to define
+symbolic constants. When you want to use 'true' and 'false' values in logical
+expressions, define them using 'equ': 'true equ 0=0', 'false equ ~true'.
 
 2.1.4  Defining constants
 
@@ -230,6 +231,9 @@ to a specific value, the forms are:
 	str001	  db	'test.bin',0	      ; character string
 	argv:	  times 10 dd 0 	      ; ten 32-bit double words
 	picture   file	'star.gif'	      ; whole file contents
+
+    When loading data with 'file' instruction, after file name can follow
+position in file preceded by colon, then comma and count of bytes to load.
 
     Other forms available are:
 
@@ -381,11 +385,9 @@ local - used inside macro definitions, defines local symbols, which
 purge - argument is one or more macro names, separated with commas; this
 	directive will remove last definition of specified macro; for example
 	when you've redefined some macro, you can get previous definition
-	back using purge (it's different than TASM in this respect; there
-	purge eliminates all macros of that name). If the macro has not been
-	defined, you won't get any error (exactly like in TASM).
-	When you need do totally undefine some non-preprocessor symbol
-	(defined with equ, or labels), use this clever macro:
+	back using purge. If the macro has not been defined, you won't get
+	any error. When you need do totally undefine some non-preprocessor
+	symbol (defined with equ, or labels), use this clever macro:
 
 	macro undefine symbol
 	 {
@@ -417,9 +419,6 @@ format - set output file format, can be set binary, MZ or PE; binary
 	 'i486' or 'i586' to specify target machine type; 'DLL' to create
 	 dynamic link library.
 
-label - define label, needed argument is a name of label, optional
-	arguments are size of labeled data and 'at <address>' phrase.
-
 segment - define segment at current position (only in MZ format),
 	  code will be aligned to paragraph. In segment definition, after
 	  segment name, 'use16' or 'use32' is allowed.
@@ -427,7 +426,7 @@ segment - define segment at current position (only in MZ format),
 section - define section at current position (only in PE format), code will
 	  be aligned to page (4096 bytes). First argument is a string
 	  containing section name, optional next arguments are section type
-	  (code, data, udata, import, export, resource), and section
+	  (code, data, udata, export, import, resource), and section
 	  attributes (readable, writeable, executable, shareable,
 	  discardable).
 
@@ -448,7 +447,21 @@ heap - define 'heap' size in paragraphs (only in MZ and PE formats). In MZ
        argument is a 32-bit value, defining heap reserve; second argument is
        allowed to define heap commit.
 
-2.2.3  Other directives
+data - begin PE format specific data definition. Argument is a number of PE
+       data directory, or a predefined data type (export, import, resource).
+       Data definition should be ended with 'end data' directive.
+
+2.2.3  Label and constant definitions
+
+label - define label, needed argument is a name of label, optional
+	arguments are size of labeled data and 'at <address>' phrase.
+
+load - define constant equal to binary value loaded from file; arguments are
+       constant name, optionally constant size (when no size is specified,
+       constant will be one byte), then 'from <file>' phrase, after file
+       name position in file preceded by a colon can follow.
+
+2.2.4  Other directives
 
 times - repeat instruction n times; arguments are number of repeats and
 	instruction to repeat (optionally character ':' can be used to
@@ -460,6 +473,9 @@ times - repeat instruction n times; arguments are number of repeats and
 repeat - larger version of times directive, repeat has one argument -
 	 number of repeats, instructions to repeat are expected in next
 	 lines, ended with 'end repeat' directive.
+
+display - display text at the assembly time; arguments are strings or byte
+	  values to be displayed.
 
 virtual - creates virtual code or data at specified address; this data
 	  won't be included in output file, but labels defined there can
@@ -474,8 +490,7 @@ if - used to assemble some part of codes, when specified conditions are
      assemble when this expression value is true, then 'end if' directive,
      or 'else', or 'else if' and next logical expression.
 
-end - used to end structures defined with some other directives,
-      correct forms are 'end repeat', 'end virtual' and 'end if'.
+end - used to end structures defined with some other directives.
 
 ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 

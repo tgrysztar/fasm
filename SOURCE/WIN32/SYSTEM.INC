@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 CREATE_NEW	       =   1
@@ -137,7 +137,7 @@ lseek:
 	push	ebx
 	call	[SetFilePointer]
 	ret
-display:
+display_string:
 	push	STD_OUTPUT_HANDLE
 	call	[GetStdHandle]
 	mov	ebx,eax
@@ -152,6 +152,16 @@ display:
 	push	ecx
 	push	edx
 	push	ebx
+	call	[WriteFile]
+	ret
+display_block:
+	push	STD_OUTPUT_HANDLE
+	call	[GetStdHandle]
+	push	0
+	push	bytes_count
+	push	ecx
+	push	esi
+	push	eax
 	call	[WriteFile]
 	ret
 display_character:

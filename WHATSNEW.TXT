@@ -2,6 +2,26 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.13
+[23-08-2001]
+------------
+[+] added display directive
+[+] added data directive for PE format
+[-] string and number parsing revised
+[-] aligned assembler data for faster access
+[-] cmov register to register fixed
+[-] list of preprocessor directives fixed
+[-] expression calculator bugs fixed
+[-] more little bugs fixed
+
+version 1.12
+[30-06-2001]
+------------
+[+] better Win32 examples
+[+] added load directive
+[+] improved locals counter
+[-] some small bugs fixed
+
 version 1.11
 [25-06-2001]
 ------------

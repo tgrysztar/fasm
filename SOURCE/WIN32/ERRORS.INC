@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 out_of_memory:
@@ -99,11 +99,11 @@ missing_end_quote:
 
 fatal_error:
 	mov	edx,error_prefix
-	call	display
+	call	display_string
 	pop	edx
-	call	display
+	call	display_string
 	mov	edx,error_suffix
-	call	display
+	call	display_string
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
@@ -119,18 +119,18 @@ assembler_error:
 	call	display_line_number
       line_number_ok:
 	mov	edx,line_number_end
-	call	display
+	call	display_string
 	mov	edx,[home_line]
 	add	edx,5
-	call	display
+	call	display_string
 	mov	edx,cr_lf
-	call	display
+	call	display_string
 	mov	edx,error_prefix
-	call	display
+	call	display_string
 	pop	edx
-	call	display
+	call	display_string
 	mov	edx,error_suffix
-	call	display
+	call	display_string
 	mov	al,2
 	jmp	exit_program
       display_line_number:
@@ -149,9 +149,9 @@ assembler_error:
 	loop	get_error_file
       error_file_found:
 	mov	edx,esi
-	call	display
+	call	display_string
 	mov	edx,line_number_start
-	call	display
+	call	display_string
 	mov	eax,ebp
 	and	eax,0FFFFFh
 	call	display_number

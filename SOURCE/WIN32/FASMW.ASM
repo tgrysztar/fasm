@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 ;
 ; This programs is free for commercial and non-commercial use as long as
@@ -35,10 +35,12 @@
 
 	format	PE console
 
+	macro	align value { rb (value-1) - (rva $ + value-1) mod value }
+
 start:
 
 	mov	edx,_logo
-	call	display
+	call	display_string
 
 	call	get_params
 	cmp	[params],0
@@ -80,7 +82,7 @@ start:
 	inc	al
 	call	display_number
 	mov	edx,_passes_suffix
-	call	display
+	call	display_string
 	call	[GetTickCount]
 	sub	eax,[start_time]
 	xor	edx,edx
@@ -98,18 +100,18 @@ start:
 	pop	eax
 	call	display_number
 	mov	edx,_seconds_suffix
-	call	display
+	call	display_string
       display_bytes_count:
 	mov	eax,[written_size]
 	call	display_number
 	mov	edx,_bytes_suffix
-	call	display
+	call	display_string
 	xor	al,al
 	jmp	exit_program
 
 information:
 	mov	edx,_usage
-	call	display
+	call	display_string
 	mov	al,1
 	jmp	exit_program
 
@@ -179,14 +181,16 @@ include '..\assemble.inc'
 include '..\formats.inc'
 include '..\tables.inc'
 
-_copyright db 'Copyright (c) 1999-2000, Tomasz Grysztar',0
+_copyright db 'Copyright (c) 1999-2001, Tomasz Grysztar',0
 
-_logo db 'flat assembler  version 1.11',0Dh,0Ah,0
+_logo db 'flat assembler  version 1.13.6',0Dh,0Ah,0
 _usage db 'usage: fasmw source output',0Dh,0Ah,0
 
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0Dh,0Ah,0
+
+align 4
 
 additional_memory dd ?
 additional_memory_end dd ?

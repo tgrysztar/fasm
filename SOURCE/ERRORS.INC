@@ -1,14 +1,8 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
-processor_error:
-	call	fatal_error
-	db	'required 80386 or better',24h
-pm_error:
-	call	fatal_error
-	db	'processor is in protected mode',24h
 out_of_memory:
 	call	fatal_error
 	db	'out of memory',24h
@@ -178,6 +172,13 @@ display_asciiz:
 	int	21h
 	jmp	display_asciiz
       asciiz_end:
+	ret
+display_block:
+	lods	byte [esi]
+	mov	dl,al
+	mov	ah,2
+	int	21h
+	loop	display_block
 	ret
 display_number:
 	mov	ecx,1000000000

@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 preprocessor:
@@ -12,17 +12,16 @@ preprocessor:
 	mov	[names_list],eax
 	mov	[file_number],1
 	mov	[macro_defined],0
-	push	[memory_end]
 	mov	esi,[input_file]
 	mov	edi,[memory_start]
 	xor	bl,bl
 	call	preprocess_file
 	jc	main_file_not_found
 	mov	[code_start],edi
-	pop	[memory_end]
 	ret
 
 preprocess_file:
+	push	[memory_end]
 	push	edi
 	mov	edi,[additional_memory]
 	mov	edx,edi
@@ -93,10 +92,11 @@ preprocess_file:
 	cmp	esi,ebp
 	jb	preprocess_source
       file_end:
+	pop	[memory_end]
 	clc
 	ret
       no_source_file:
-	add	esp,4
+	add	esp,8
 	stc
 	ret
       convert_line:
@@ -147,7 +147,11 @@ preprocess_file:
 	je	check_line_string
 	cmp	al,'\'
 	je	concate
-	jmp	check_for_concate
+	cmp	al,3Bh
+	jne	check_for_concate
+      line_done:
+	pop	esi
+	ret
       check_line_string:
 	mov	ah,al
 	mov	al,[esi-2]
@@ -173,9 +177,6 @@ preprocess_file:
 	cmp	esi,ebp
 	jae	unexpected_end_of_file
 	jmp	copy_line
-      line_done:
-	pop	esi
-	ret
       skip_spaces:
 	lods	byte [esi]
 	cmp	al,20h
@@ -213,6 +214,10 @@ preprocess_instruction:
 	or	al,al
 	jz	instruction_preprocessed
 	cmp	al,';'
+	je	instruction_preprocessed
+	cmp	al,27h
+	je	instruction_preprocessed
+	cmp	al,22h
 	je	instruction_preprocessed
 	dec	esi
 	mov	edx,esi
@@ -298,6 +303,10 @@ preprocess_instruction:
 	or	al,al
 	jz	instruction_preprocessed
 	cmp	al,';'
+	je	instruction_preprocessed
+	cmp	al,27h
+	je	instruction_preprocessed
+	cmp	al,22h
 	je	instruction_preprocessed
 	dec	esi
 	mov	edx,esi
@@ -1193,6 +1202,8 @@ use_macro:
 	jz	macro_directive_end
 	cmp	al,';'
 	je	macro_directive_comment
+	cmp	al,'}'
+	je	check_for_end
 	jmp	invalid_argument
       macro_directive_comment:
 	lods	byte [esi]
@@ -1317,32 +1328,43 @@ use_macro:
 	pop	[multi_macro_current]
 	ret
       increase_counter:
-	inc	byte [ebx+3]
-	cmp	byte [ebx+3],'9'
-	jbe	counter_ok
-	mov	byte [ebx+3],'0'
-	inc	byte [ebx+2]
-	cmp	byte [ebx+2],'9'
-	jbe	counter_ok
-	mov	byte [ebx+2],'0'
-	inc	byte [ebx+1]
-	cmp	byte [ebx+1],'9'
-	jbe	counter_ok
-	mov	byte [ebx+1],'0'
-	inc	byte [ebx]
+	mov	ecx,3
+      counter_loop:
+	call	increase_digit
+	jnc	counter_ok
+	jecxz	counter_ok
+	mov	byte [ebx+ecx],'0'
+	dec	ecx
+	jmp	counter_loop
       counter_ok:
 	ret
+      increase_digit:
+	inc	byte [ebx+ecx]
+	cmp	byte [ebx+ecx],':'
+	jb	digit_increased
+	je	letter_digit
+	cmp	byte [ebx+ecx],'F'
+	jbe	digit_increased
+	stc
+	ret
+      letter_digit:
+	mov	byte [ebx+ecx],'A'
+      digit_increased:
+	clc
+	ret
 
-file_number dw ?
+align 4
+
 files_list dd ?
 names_list dd ?
+file_number dw ?
 macro_defined db ?
 macro_directive_allowed db ?
 macro_redefined dd ?
 macro_instructions dd ?
-macro_struc db ?
-macro_struc_name dd ?
+macro_struc db ?,?
 macro_struc_name_size dw ?
+macro_struc_name dd ?
 multi_macro_current dw ?
 multi_macro_count dw ?
 multi_macro_arguments dd ?

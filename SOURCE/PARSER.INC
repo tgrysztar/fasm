@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 parser:
@@ -37,6 +37,8 @@ parser:
 parse_line:
 	mov	al,80h
 	mov	ah,[line_type]
+	cmp	ah,'{'
+	je	ignore_line
 	cmp	ah,20h
 	je	line_start
 	cmp	ah,';'
@@ -183,8 +185,6 @@ parse_line:
 	push	esi
 	mov	esi,[additional_memory]
 	mov	[parenthesis_stack],0
-	cmp	[line_type],'{'
-	je	skip_line_data
       instruction_start:
 	push	edi
 	cmp	byte [esi],1Ah
@@ -351,6 +351,8 @@ parse_line:
 	mov	[instruction_type],ax
 	cmp	bx,label_directive-assembler
 	je	parse_label_instruction
+	cmp	bx,load_directive-assembler
+	je	parse_label_instruction
 	cmp	bx,segment_directive-assembler
 	jne	parse_arguments
       parse_label_instruction:
@@ -393,10 +395,8 @@ parse_line:
 	cmp	al,']'
 	je	separator
 	dec	esi
-	cmp	al,27h
-	je	string_argument
 	cmp	al,1Ah
-	jne	no_string
+	jne	expression_argument
 	push	edi
 	mov	edx,esi
 	inc	esi
@@ -423,19 +423,19 @@ parse_line:
 	call	get_operator
 	pop	ecx esi
 	or	al,al
-	jnz	expression_argument
+	jnz	not_instruction
 	call	get_instruction
-	jc	expression_argument
+	jc	not_instruction
 	pop	edi
 	jmp	parse_instruction
-      expression_argument:
+      not_instruction:
 	pop	edi
 	sub	esi,2
-      string_argument:
+      expression_argument:
 	cmp	byte [esi],27h
-	jne	no_string
-	inc	esi
+	jne	not_string
 	mov	ebx,esi
+	inc	esi
 	xor	ecx,ecx
       get_string_length:
 	lods	byte [esi]
@@ -445,22 +445,26 @@ parse_line:
 	cmp	al,1Ah
 	jne	get_string_length
 	dec	ecx
-	mov	esi,ebx
-	mov	ax,[instruction_type]
-	cmp	ax,300h
-	je	forced_string
-	cmp	ax,112h
-	je	forced_string
-	cmp	ecx,1
-	jbe	ignore_string
-	cmp	ax,101h
-	je	forced_string
-      ignore_string:
-	dec	esi
-	jmp	no_string
-      forced_string:
-	mov	al,27h
+	xchg	esi,ebx
+	cmp	ecx,8
+	ja	forced_string
+	push	ebx ecx esi edi
+	mov	al,'('
 	stos	byte [edi]
+	call	convert_expression
+	mov	al,')'
+	stos	byte [edi]
+	pop	eax edx ecx ebx
+	cmp	esi,ebx
+	je	string_argument
+	jmp	expression_parsed
+      string_argument:
+	mov	edi,eax
+	mov	esi,edx
+      forced_string:
+	inc	esi
+	mov	ax,'('
+	stos	word [edi]
 	mov	eax,ecx
 	stos	dword [edi]
 	rep	movs byte [edi],[esi]
@@ -468,7 +472,7 @@ parse_line:
 	xor	al,al
 	stos	byte [edi]
 	jmp	argument_parsed
-      no_string:
+      not_string:
 	cmp	byte [esi],'('
 	jne	parse_expression
 	push	esi edi
@@ -610,9 +614,16 @@ parse_line:
 	jne	invalid_expression
 	pop	esi
 	ret
+      ignore_line:
+	lods	byte [esi]
+	or	al,al
+	jnz	ignore_line
+	ret
 
+align 4
+
+current_locals_prefix dd ?
+instruction_type dw ?
 line_type db ?
 symbol_counter db ?
-instruction_type dw ?
-current_locals_prefix dd ?
 parenthesis_stack db ?

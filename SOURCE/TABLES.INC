@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 get_operator:
@@ -213,6 +213,8 @@ get_label_id:
 	jbe	out_of_memory
 	ret
 
+align 4
+
 labels_list dd ?
 last_label_id dd ?
 label_name dd ?
@@ -309,6 +311,8 @@ symbols:
  db 10,'executable',19h,29
  db 6,'export',1Ah,0
  db 3,'far',12h,2
+ db 6,'fixups',1Ah,5
+ db 4,'from',13h,2
  db 2,'fs',10h,65h
  db 5,'fword',11h,6
  db 2,'gs',10h,66h
@@ -376,10 +380,10 @@ preprocessor_directives:
  dw include_file-preprocessor
  db 5,'macro'
  dw define_macro-preprocessor
- db 5,'struc'
- dw define_struc-preprocessor
  db 5,'purge'
  dw purge_macro-preprocessor
+ db 5,'struc'
+ dw define_struc-preprocessor
  db 0
 
 macro_directives:
@@ -659,7 +663,7 @@ instructions_4:
  db 'fild'
  dw fild_instruction-assembler,0
  db 'file'
- dw data_file-assembler,101h
+ dw data_file-assembler,111h
  db 'fist'
  dw fild_instruction-assembler,2
  db 'fld1'
@@ -722,6 +726,8 @@ instructions_4:
  dw pm_word_instruction-assembler,2
  db 'lmsw'
  dw pm_word_instruction-assembler,16h
+ db 'load'
+ dw load_directive-assembler,0
  db 'lock'
  dw prefix_instruction-assembler,0F0h
  db 'lods'
@@ -1304,6 +1310,8 @@ instructions_7:
  dw cmp_ss_instruction-assembler,5
  db 'cmpxchg'
  dw basic_486_instruction-assembler,0B0h
+ db 'display'
+ dw display_directive-assembler,0
  db 'fcmovnb'
  dw fucomi_instruction-assembler,0C0h
  db 'fcmovne'
@@ -1371,7 +1379,7 @@ instructions_7:
  db 'psubusw'
  dw mmx_instruction-assembler,0D9h
  db 'section'
- dw section_directive-assembler,300h
+ dw section_directive-assembler,0
  db 'segment'
  dw segment_directive-assembler,0
  db 'stmxcsr'

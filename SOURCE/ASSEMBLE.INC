@@ -1,6 +1,6 @@
 
-; flat assembler  version 1.11
-; Copyright (c) 1999-2000, Tomasz Grysztar
+; flat assembler  version 1.13
+; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
 assembler:
@@ -77,14 +77,18 @@ assemble_line:
 	je	define_label
 	cmp	al,3
 	je	define_constant
+	cmp	al,10h
+	je	instruction
 	cmp	al,80h
 	je	new_line
 	cmp	al,81h
 	je	new_home_line
 	cmp	al,18h
 	je	code_type_definition
-	cmp	al,10h
-	jne	illegal_instruction
+	cmp	al,19h
+	je	pe_data_definition
+	jmp	illegal_instruction
+      instruction:
 	lods	byte [esi]
 	mov	ah,al
 	shr	ah,4
@@ -159,6 +163,7 @@ assemble_line:
 	pop	bx
 	mov	ch,bl
 	pop	ebx
+      make_constant:
 	mov	cl,[current_pass]
 	cmp	byte [ebx+8],0
 	je	.new
@@ -240,8 +245,6 @@ skip_symbol:
 	je	.instruction
 	cmp	al,20h
 	jb	.symbol
-	cmp	al,27h
-	je	.string
 	cmp	al,'('
 	je	.expression
 	cmp	al,'['
@@ -256,11 +259,6 @@ skip_symbol:
       .symbol:
 	inc	esi
 	jmp	.end
-      .string:
-	lods	dword [esi]
-	add	esi,eax
-	inc	esi
-	jmp	.end
       .address:
 	mov	al,[esi]
 	and	al,11110000b
@@ -272,12 +270,16 @@ skip_symbol:
 	jmp	.address
       .expression:
 	lods	byte [esi]
+	or	al,al
+	jz	.string
 	cmp	al,'.'
 	je	.fp
 	cmp	al,')'
 	je	.end
 	cmp	al,']'
 	je	.end
+	cmp	al,0Fh
+	je	.expression
 	cmp	al,10h
 	je	.register
 	cmp	al,11h
@@ -294,6 +296,11 @@ skip_symbol:
 	jmp	.expression
       .fp:
 	add	esi,12
+	jmp	.end
+      .string:
+	lods	dword [esi]
+	add	esi,eax
+	inc	esi
 	jmp	.end
       .line_end:
 	dec	esi
@@ -381,6 +388,120 @@ label_directive:
 	mov	byte [ebx+10],ch
 	mov	[ebx],eax
 	mov	dword [ebx+4],0
+	jmp	instruction_assembled
+load_directive:
+	lods	byte [esi]
+	cmp	al,4
+	jne	invalid_argument
+	lods	dword [esi]
+	push	eax
+	call	get_operand_size
+	cmp	[operand_size],0
+	jne	load_size_ok
+	mov	[operand_size],1
+      load_size_ok:
+	cmp	[operand_size],8
+	ja	invalid_value
+	lods	word [esi]
+	cmp	ax,0213h
+	jne	invalid_argument
+	lods	word [esi]
+	cmp	al,'('
+	jne	invalid_operand
+	lea	edx,[esi+4]
+	mov	eax,[esi]
+	lea	esi,[esi+4+eax+1]
+	call	open
+	jc	file_not_found
+	mov	al,2
+	xor	edx,edx
+	call	lseek
+	xor	edx,edx
+	cmp	byte [esi],':'
+	jne	load_position_ok
+	inc	esi
+	cmp	byte [esi],'('
+	jne	invalid_operand
+	inc	esi
+	cmp	byte [esi],'.'
+	je	invalid_value
+	push	ebx
+	call	get_dword_value
+	pop	ebx
+	mov	edx,eax
+      load_position_ok:
+	xor	al,al
+	call	lseek
+	mov	dword [value],0
+	mov	dword [value+4],0
+	movzx	ecx,[operand_size]
+	mov	edx,value
+	call	read
+	jc	error_reading_file
+	call	close
+	mov	eax,dword [value]
+	mov	edx,dword [value+4]
+	pop	ebx
+	xor	ch,ch
+	mov	[value_type],0
+	jmp	make_constant
+display_directive:
+	cmp	byte [esi],0FFh
+	je	already_displayed
+	push	esi edi
+      prepare_display:
+	lods	byte [esi]
+	cmp	al,'('
+	jne	invalid_argument
+	cmp	byte [esi],0
+	jne	display_byte
+	inc	esi
+	lods	dword [esi]
+	mov	ecx,eax
+	rep	movs byte [edi],[esi]
+	inc	esi
+	jmp	display_next
+      display_byte:
+	call	get_byte_value
+	stos	byte [edi]
+      display_next:
+	cmp	edi,[labels_list]
+	jae	out_of_memory
+	lods	byte [esi]
+	or	al,al
+	jz	do_display
+	cmp	al,80h
+	je	do_display
+	cmp	al,81h
+	je	do_display
+	cmp	al,','
+	jne	extra_characters_on_line
+	jmp	prepare_display
+      do_display:
+	dec	esi
+	mov	ax,0A0Dh
+	stos	word [edi]
+	mov	ebp,edi
+	pop	edi ebx
+	cmp	[next_pass_needed],0
+	jne	instruction_assembled
+	push	esi edi
+	mov	ecx,esi
+	sub	ecx,ebx
+	mov	esi,edi
+	mov	edi,ebx
+	mov	al,0FFh
+	rep	stos byte [edi]
+	mov	ecx,ebp
+	sub	ecx,esi
+	call	display_block
+	pop	edi esi
+	jmp	instruction_assembled
+      already_displayed:
+	lods	byte [esi]
+	cmp	al,0FFh
+	je	already_displayed
+	dec	esi
 	jmp	instruction_assembled
 virtual_directive:
 	lods	byte [esi]
@@ -549,6 +670,8 @@ repeat_directive:
 	jmp	find_end_repeat
 end_directive:
 	lods	byte [esi]
+	cmp	al,19h
+	je	pe_data_end
 	cmp	al,1
 	jne	invalid_argument
 	lods	dword [esi]
@@ -734,8 +857,6 @@ data_bytes:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_byte
-	cmp	al,27h
-	je	get_string
 	cmp	al,'?'
 	jne	invalid_operand
 	mov	eax,edi
@@ -744,6 +865,8 @@ data_bytes:
 	call	undefined_data
 	jmp	byte_ok
       get_byte:
+	cmp	byte [esi],0
+	je	get_string
 	call	get_byte_value
 	stos	byte [edi]
       byte_ok:
@@ -763,6 +886,7 @@ data_bytes:
 	dec	esi
 	jmp	instruction_assembled
       get_string:
+	inc	esi
 	lods	dword [esi]
 	mov	ecx,eax
 	rep	movs byte [edi],[esi]
@@ -780,11 +904,11 @@ data_bytes:
 	mov	[undefined_data_end],edi
 	ret
 data_words:
+	mov	[base_code],al
+      get_words_data:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_word
-	cmp	al,27h
-	je	word_string
 	cmp	al,'?'
 	jne	invalid_operand
 	mov	eax,edi
@@ -793,6 +917,11 @@ data_words:
 	call	undefined_data
 	jmp	word_ok
       get_word:
+	cmp	[base_code],2
+	je	word_data_value
+	cmp	byte [esi],0
+	je	word_string
+      word_data_value:
 	call	get_word_value
 	call	mark_relocation
 	stos	word [edi]
@@ -808,15 +937,18 @@ data_words:
 	je	data_end
 	cmp	al,','
 	jne	extra_characters_on_line
-	jmp	data_words
+	jmp	get_words_data
       word_string:
+	inc	esi
 	lods	dword [esi]
 	mov	ecx,eax
+	jecxz	word_string_ok
 	xor	ah,ah
       .copy:
 	lods	byte [esi]
 	stos	word [edi]
 	loop	.copy
+      word_string_ok:
 	inc	esi
 	jmp	word_ok
 data_dwords:
@@ -966,8 +1098,8 @@ data_tbyte:
 	jne	extra_characters_on_line
 	jmp	data_tbyte
 data_file:
-	lods	byte [esi]
-	cmp	al,27h
+	lods	word [esi]
+	cmp	al,'('
 	jne	invalid_operand
 	lea	edx,[esi+4]
 	mov	eax,[esi]
@@ -1001,9 +1133,9 @@ data_file:
 	inc	esi
 	cmp	byte [esi],'.'
 	je	invalid_value
-	push	ebx
+	push	ebx edx
 	call	get_dword_value
-	pop	ebx
+	pop	edx ebx
 	mov	[esp],eax
       size_ok:
 	cmp	[next_pass_needed],0
@@ -1042,6 +1174,8 @@ reserve_bytes:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+	cmp	eax,0
+	jl	reserve_negative
 	mov	ecx,eax
 	mov	edx,ecx
 	add	edx,edi
@@ -1060,6 +1194,15 @@ reserve_bytes:
 	pop	eax
 	call	undefined_data
 	jmp	instruction_assembled
+      reserve_negative:
+	cmp	[error_line],0
+	jne	instruction_assembled
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	eax,[home_line]
+	mov	[error_home_line],eax
+	mov	[error],invalid_value
+	jmp	instruction_assembled
 reserve_words:
 	lods	byte [esi]
 	cmp	al,'('
@@ -1069,6 +1212,8 @@ reserve_words:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+	cmp	eax,0
+	jl	reserve_negative
 	mov	ecx,eax
 	mov	edx,ecx
 	shl	edx,1
@@ -1095,6 +1240,8 @@ reserve_dwords:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+	cmp	eax,0
+	jl	reserve_negative
 	mov	ecx,eax
 	mov	edx,ecx
 	shl	edx,1
@@ -1123,6 +1270,8 @@ reserve_pwords:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+	cmp	eax,0
+	jl	reserve_negative
 	mov	ecx,eax
 	shl	ecx,1
 	jc	out_of_memory
@@ -1152,6 +1301,8 @@ reserve_qwords:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+	cmp	eax,0
+	jl	reserve_negative
 	mov	ecx,eax
 	shl	ecx,1
 	jc	out_of_memory
@@ -1182,6 +1333,8 @@ reserve_tbyte:
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
+	cmp	eax,0
+	jl	reserve_negative
 	mov	ecx,eax
 	shl	ecx,2
 	jc	out_of_memory
@@ -1688,6 +1841,8 @@ mov_instruction:
 	jnz	mov_mem_address32_al
 	or	ch,ch
 	jnz	invalid_address_size
+	cmp	[code_type],32
+	je	mov_mem_address32_al
 	cmp	edx,10000h
 	jb	mov_mem_address16_al
       mov_mem_address32_al:
@@ -1725,6 +1880,8 @@ mov_instruction:
 	jnz	mov_mem_address32_ax
 	or	ch,ch
 	jnz	invalid_address_size
+	cmp	[code_type],32
+	je	mov_mem_address32_ax
 	cmp	edx,10000h
 	jb	mov_mem_address16_ax
       mov_mem_address32_ax:
@@ -2164,8 +2321,8 @@ cmov_instruction:
       cmov_reg_reg:
 	lods	byte [esi]
 	call	convert_register
-	shl	al,3
 	mov	bl,[postbyte_register]
+	shl	bl,3
 	or	bl,al
 	or	bl,11000000b
 	mov	al,[operand_size]
@@ -6903,6 +7060,8 @@ store_instruction:
       instruction_prefix_ok:
 	ret
 
+align 4
+
 output_format db ?
 code_type db ?
 current_pass db ?
@@ -6914,18 +7073,19 @@ undefined_data_start dd ?
 undefined_data_end dd ?
 virtual_mode db ?
 reloc_labels db ?
+stored_reloc_labels db ?
+else_flag db ?
 stored_org dd ?
 stored_offset dd ?
-stored_reloc_labels db ?
 counter dd ?
 counter_limit dd ?
 repeat_stack dw ?
 if_stack dw ?
-else_flag db ?
 error_line dd ?
 error_home_line dd ?
 error dd ?
 
+value dq ?
 base_code db ?
 extended_code db ?
 postbyte_register db ?
@@ -6935,4 +7095,3 @@ imm_sized db ?
 jump_type db ?
 mmx_size db ?
 nextbyte db ?
-value dq ?
