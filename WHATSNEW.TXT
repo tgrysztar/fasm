@@ -1,9 +1,17 @@
 
-Visit http://fasm.metro-nt.pl/ for more examples and documentation
-Questions or comments please send to fasm@metro-nt.pl
+Visit http://fasm.sourceforge.net for more information
+
+version 1.41
+[14-11-2002]
+------------
+[+] new documentation
+[+] added AMD 3DNow! instructions
+[+] added missing syntax options for some FPU and MMX instructions
+[+] added defined and used operators
+[-] parser algorithms corrected
 
 version 1.40
-[04-08-2002]
+[28-08-2002]
 ------------
 [+] added restore directive
 [+] concatenations processed before symbolic constants now

@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 CREATE_NEW	       =   1
@@ -350,6 +350,7 @@ assembler_error:
 	call	display_string
 	mov	esi,error_suffix
 	call	display_string
+	mov	al,1
 	jmp	exit_program
 
 make_timestamp:

@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 convert_expression:
@@ -11,11 +11,22 @@ convert_expression:
 	mov	edi,single_operand_operators
 	call	get_operator
 	pop	edi
-      expression_number:
 	push	eax
-	cmp	byte [esi],0
-	je	invalid_expression
+	mov	al,[esi]
+	cmp	al,1Ah
+	je	expression_number
+	cmp	al,22h
+	je	expression_number
+	cmp	al,'('
+	je	expression_number
+	mov	al,11h
+	stos	byte [edi]
+	or	eax,-1
+	stos	dword [edi]
+	jmp	expression_number_ok
+      expression_number:
 	call	convert_number
+      expression_number_ok:
 	pop	eax
 	or	al,al
 	jz	expression_operator
@@ -103,14 +114,19 @@ convert_number:
 	mov	edi,address_registers
 	call	get_symbol
 	jnc	register_value
-	mov	edi,symbols
+	mov	edi,directive_operators
 	call	get_symbol
-	jnc	invalid_value
 	pop	edi esi ecx
+	jnc	broken_value
 	call	get_label_id
+      store_label_value:
 	mov	byte [edi-1],11h
 	stos	dword [edi]
 	ret
+      broken_value:
+	sub	esi,2
+	or	eax,-1
+	jmp	store_label_value
       register_value:
 	pop	edi
 	add	esp,8
@@ -175,15 +191,25 @@ get_number:
       get_dec_digit:
 	cmp	esi,ebx
 	ja	number_ok
-	mov	eax,10
-	mul	dword [edi]
+	xor	edx,edx
+	mov	eax,[edi]
+	shld	edx,eax,2
+	shl	eax,2
+	add	eax,[edi]
+	adc	edx,0
+	shld	edx,eax,1
+	shl	eax,1
 	mov	[edi],eax
-	mov	ecx,edx
-	mov	eax,10
-	mul	dword [edi+4]
-	or	edx,edx
-	jnz	dec_out_of_range
-	add	eax,ecx
+	mov	eax,[edi+4]
+	shl	eax,1
+	jc	dec_out_of_range
+	shl	eax,1
+	jc	dec_out_of_range
+	add	eax,[edi+4]
+	jc	dec_out_of_range
+	shl	eax,1
+	jc	dec_out_of_range
+	add	eax,edx
 	jc	dec_out_of_range
 	mov	[edi+4],eax
 	movzx	eax,byte [esi]
@@ -373,6 +399,8 @@ get_fp_value:
       fp_value_start:
 	lods	byte [esi]
 	movzx	ecx,al
+	cmp	cl,1
+	jbe	not_fp_value
 	xor	ah,ah
       check_fp_value:
 	lods	byte [esi]
@@ -877,12 +905,18 @@ calculate_expression:
 	jz	current_offset_label
 	cmp	eax,1
 	je	counter_label
+	cmp	eax,-1
+	je	invalid_expression
+	cmp	eax,0Fh
+	je	reserved_word_used_as_symbol
 	mov	ebx,eax
+	mov	al,[current_pass]
+	mov	[ebx+16],al
+	or	byte [ebx+8],8
 	test	byte [ebx+8],1
 	jz	label_undefined
 	test	byte [ebx+8],4
 	jz	label_defined
-	mov	al,[current_pass]
 	cmp	al,[ebx+9]
 	jne	label_undefined
       label_defined:
@@ -1417,18 +1451,24 @@ calculate_expression:
 	add	edi,14h
 	jmp	calculation_loop
       calculate_rva:
+	cmp	[selected_format],3
+	je	rva_available
+	cmp	[current_pass],0
+	jne	invalid_use_of_symbol
+	xor	eax,eax
+	jmp	rva_base_ok
+      rva_available:
 	cmp	[next_pass_needed],0
 	jne	rva_ok
 	cmp	word [edi+8],0
 	jne	invalid_expression
-	cmp	[output_format],3
-	jne	invalid_use_of_symbol
 	cmp	byte [edi+12],2
 	jne	invalid_use_of_symbol
       rva_ok:
 	mov	byte [edi+12],0
 	mov	eax,[header_data]
 	mov	eax,[eax+34h]
+      rva_base_ok:
 	sub	[edi],eax
 	sbb	dword [edi+4],0
 	add	edi,14h
@@ -1537,10 +1577,10 @@ calculate_expression:
 	jae	value_out_of_range
 	shl	ebx,23
 	or	eax,ebx
+      fp_dword_store:
 	mov	bl,[esi+11]
 	shl	ebx,31
 	or	eax,ebx
-      fp_dword_store:
 	mov	[edi],eax
 	xor	eax,eax
 	mov	[edi+4],eax
@@ -1574,10 +1614,10 @@ calculate_expression:
 	jae	value_out_of_range
 	shl	ebx,20
 	or	edx,ebx
+      fp_qword_store:
 	mov	bl,[esi+11]
 	shl	ebx,31
 	or	edx,ebx
-      fp_qword_store:
 	mov	[edi],eax
 	mov	[edi+4],edx
 	add	esi,12
@@ -1922,16 +1962,23 @@ calculate_logical_expression:
 
 get_logical_value:
 	xor	al,al
+      check_for_negation:
 	cmp	byte [esi],'~'
 	jne	negation_ok
 	inc	esi
-	or	al,-1
+	xor	al,-1
+	jmp	check_for_negation
       negation_ok:
 	push	eax
-	cmp	byte [esi],'{'
+	mov	al,[esi]
+	cmp	al,'{'
 	je	logical_expression
+	cmp	al,88h
+	je	check_for_defined
+	cmp	al,89h
+	je	check_for_used
 	push	esi
-	cmp	byte [esi],11h
+	cmp	al,11h
 	jne	check_for_values
 	add	esi,2
       check_for_values:
@@ -2012,8 +2059,11 @@ get_logical_value:
 	cmp	byte [esi],'>'
 	jne	not_equal_in_list
       skip_rest_of_list:
-	call	check_character
-	jc	invalid_expression
+	mov	al,[esi]
+	or	al,al
+	jz	invalid_expression
+	cmp	al,0Fh
+	je	invalid_expression
 	cmp	al,'>'
 	je	list_return_true
 	call	skip_symbol
@@ -2024,8 +2074,11 @@ get_logical_value:
       not_equal_in_list:
 	mov	esi,edx
       skip_list_item:
-	call	check_character
-	jc	invalid_expression
+	mov	al,[esi]
+	or	al,al
+	jz	invalid_expression
+	cmp	al,0Fh
+	je	invalid_expression
 	cmp	al,'>'
 	je	list_return_false
 	cmp	al,','
@@ -2130,6 +2183,54 @@ get_logical_value:
 	jne	invalid_expression
 	or	eax,edx
 	jnz	return_true
+	jmp	return_false
+      check_for_defined:
+	lods	word [esi]
+	cmp	ah,2
+	jne	invalid_expression
+	lods	dword [esi]
+	cmp	eax,10h
+	jb	return_true
+	inc	esi
+	test	byte [eax+8],1
+	jnz	symbol_defined
+	cmp	[current_pass],0
+	jne	return_false
+	or	[next_pass_needed],-1
+	jmp	return_false
+      symbol_defined:
+	mov	bl,[current_pass]
+	cmp	bl,[eax+9]
+	jne	return_false
+	jmp	return_true
+      check_for_used:
+	lods	word [esi]
+	cmp	ah,2
+	jne	invalid_expression
+	lods	dword [esi]
+	cmp	eax,0Fh
+	jb	invalid_use_of_symbol
+	je	reserved_word_used_as_symbol
+	inc	esi
+	test	byte [eax+8],8
+	jz	never_used
+	mov	cl,[current_pass]
+	sub	cl,[eax+16]
+	cmp	cl,1
+	jb	return_true
+	ja	not_used
+	mov	cl,[current_pass]
+	mov	[eax+18],cl
+	mov	byte [eax+19],1
+	jmp	return_true
+      never_used:
+	cmp	[current_pass],0
+	jne	not_used
+	or	[next_pass_needed],-1
+      not_used:
+	mov	cl,[current_pass]
+	mov	[eax+18],cl
+	mov	byte [eax+19],2
       return_false:
 	xor	al,al
 	jmp	logical_value_ok

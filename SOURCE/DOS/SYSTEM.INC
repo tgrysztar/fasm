@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 init_flatrm:
@@ -269,7 +269,7 @@ open:
 	or	al,al
 	jnz	copy_path
 	sub	di,buffer
-	cmp	di,4000h
+	cmp	di,1000h
 	ja	out_of_memory
 	mov	dx,buffer
 	ret
@@ -347,10 +347,10 @@ write:
 	mov	ebp,ecx
 	mov	esi,edx
       .loop:
-	mov	ecx,4000h
-	sub	ebp,4000h
+	mov	ecx,1000h
+	sub	ebp,1000h
 	jnc	.write
-	add	ebp,4000h
+	add	ebp,1000h
 	mov	cx,bp
 	xor	ebp,ebp
       .write:
@@ -374,10 +374,10 @@ read:
 	mov	ebp,ecx
 	mov	edi,edx
       .loop:
-	mov	ecx,4000h
-	sub	ebp,4000h
+	mov	ecx,1000h
+	sub	ebp,1000h
 	jnc	.read
-	add	ebp,4000h
+	add	ebp,1000h
 	mov	cx,bp
 	xor	ebp,ebp
       .read:
@@ -573,6 +573,7 @@ assembler_error:
 	int	21h
 	mov	dx,error_suffix
 	int	21h
+	mov	al,1
 	jmp	exit_program
 
 make_timestamp:

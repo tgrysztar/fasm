@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 out_of_memory:
@@ -9,15 +9,15 @@ out_of_memory:
 main_file_not_found:
 	call	fatal_error
 	dm	"source file not found"
-write_failed:
-	call	fatal_error
-	dm	"write failed"
 code_cannot_be_generated:
 	call	fatal_error
 	dm	"code cannot be generated"
 unexpected_end_of_file:
 	call	fatal_error
 	dm	"unexpected end of file"
+write_failed:
+	call	fatal_error
+	dm	"write failed"
 file_not_found:
 	call	assembler_error
 	dm	"file not found"

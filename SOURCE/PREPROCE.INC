@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -11,8 +11,8 @@ preprocessor:
 	mov	[macros_list],eax
 	mov	eax,[additional_memory_end]
 	mov	[labels_list],eax
-	mov	[display_buffer],0
 	mov	[macro_status],0
+	mov	[display_buffer],0
 	mov	edx,[input_file]
 	mov	edi,[memory_start]
 	call	preprocess_file
@@ -130,7 +130,7 @@ convert_line:
 	cmp	al,3Bh
 	je	ignore_comment
 	cmp	al,5Ch
-	je	concate_lines
+	je	concatenation_character
 	stos	byte [edi]
 	jmp	convert_line_data
       control_character:
@@ -184,43 +184,45 @@ convert_line:
 	sub	eax,ebx
 	mov	[ebx-4],eax
 	jmp	convert_line_data
-      concate_lines:
+      concatenation_character:
+	mov	byte [edi],0
+      concatenate_lines:
 	lods	byte [esi]
 	cmp	al,20h
-	je	concate_lines
+	je	concatenate_lines
 	cmp	al,9
-	je	concate_lines
+	je	concatenate_lines
 	cmp	al,1Ah
 	je	unexpected_end_of_file
 	cmp	al,0Ah
-	je	concate_lf
+	je	concatenate_lf
 	cmp	al,0Dh
-	je	concate_cr
+	je	concatenate_cr
 	cmp	al,3Bh
 	jne	extra_characters_on_line
-      find_concated_line:
+      find_concatenated_line:
 	lods	byte [esi]
 	cmp	al,0Ah
-	je	concate_lf
+	je	concatenate_lf
 	cmp	al,0Dh
-	je	concate_cr
+	je	concatenate_cr
 	or	al,al
-	jz	concate_ok
+	jz	concatenate_ok
 	cmp	al,1Ah
-	jne	find_concated_line
+	jne	find_concatenated_line
 	jmp	unexpected_end_of_file
-      concate_lf:
+      concatenate_lf:
 	lods	byte [esi]
 	cmp	al,0Dh
-	je	concate_ok
+	je	concatenate_ok
 	dec	esi
-	jmp	concate_ok
-      concate_cr:
+	jmp	concatenate_ok
+      concatenate_cr:
 	lods	byte [esi]
 	cmp	al,0Ah
-	je	concate_ok
+	je	concatenate_ok
 	dec	esi
-      concate_ok:
+      concatenate_ok:
 	inc	dword [esp]
 	jmp	convert_line_data
       ignore_comment:
@@ -263,6 +265,8 @@ preprocess_line:
 	inc	esi
 	cmp	al,1Ah
 	jne	not_preprocessor_symbol
+	cmp	cl,4
+	jb	not_preprocessor_directive
 	push	edi
 	mov	edi,preprocessor_directives
 	call	get_symbol
@@ -295,8 +299,9 @@ preprocess_line:
 	mov	ah,1
 	call	get_macro
 	jc	not_preprocessor_symbol
-	mov	byte [edx-2],':'
-	mov	al,3Bh
+	mov	al,3Ah
+	mov	[edx-2],al
+	inc	al
 	xchg	al,[edx-1]
 	dec	al
 	mov	[edx],al
@@ -386,16 +391,7 @@ process_symbolic_constants:
 	mov	ecx,[edx+8]
 	mov	edx,[edx+12]
 	xchg	esi,edx
-	xor	eax,eax
-	shr	ecx,1
-	rcl	al,1
-	shr	ecx,1
-	rcl	ah,1
-	rep	movs dword [edi],[esi]
-	mov	cl,ah
-	rep	movs word [edi],[esi]
-	mov	cl,al
-	rep	movs byte [edi],[esi]
+	call	move_data
 	mov	esi,edx
       process_after_replaced:
 	lods	byte [esi]
@@ -409,6 +405,9 @@ process_symbolic_constants:
 	mov	ecx,edi
 	sub	ecx,esi
 	mov	edi,ebp
+	call	move_data
+	ret
+      move_data:
 	xor	eax,eax
 	shr	ecx,1
 	rcl	al,1
@@ -641,6 +640,11 @@ define_macro:
 	cmp	al,'{'
 	jne	unexpected_characters
       found_macro_block:
+	mov	ebx,[additional_memory]
+	sub	ebx,8
+	mov	eax,[ebx+4]
+	mov	ebx,[current_line]
+	mov	dword [eax-6],ebx
 	mov	[macro_status],2
       skip_macro_block:
 	lods	byte [esi]
@@ -725,6 +729,8 @@ use_macro:
 	jz	argument_value_end
 	cmp	al,','
 	je	argument_value_end
+	cmp	al,'#'
+	je	invalid_macro_arguments
 	cmp	al,22h
 	je	argument_string
 	cmp	al,1Ah
@@ -1042,6 +1048,49 @@ use_macro:
 	mov	[macro_status],al
 	pop	[counter_limit] [counter]
 	pop	[macro_block_line_number] [macro_block] [macro_constants]
+	mov	esi,[struc_name]
+	or	esi,esi
+	jz	line_preprocessed
+	movzx	ecx,byte [esi-1]
+	call	find_symbolic_constant
+	jc	line_preprocessed
+	mov	ecx,[edx+8]
+	mov	ebx,[struc_name]
+	movzx	eax,byte [ebx-1]
+	lea	esi,[ebx+eax]
+	add	eax,2
+	sub	ecx,eax
+	jz	replace_struc_name
+	ja	move_struc_up
+	mov	eax,ecx
+	neg	eax
+	mov	ecx,edi
+	sub	ecx,esi
+	mov	edi,esi
+	sub	edi,eax
+	call	move_data
+	jmp	replace_struc_name
+      move_struc_up:
+	mov	eax,ecx
+	mov	ecx,edi
+	sub	ecx,esi
+	mov	esi,edi
+	add	edi,eax
+	mov	ebx,edi
+	dec	edi
+	dec	esi
+	std
+	rep	movs byte [edi],[esi]
+	cld
+	mov	edi,ebx
+      replace_struc_name:
+	push	edi
+	mov	edi,[struc_name]
+	sub	edi,2
+	mov	ecx,[edx+8]
+	mov	esi,[edx+12]
+	call	move_data
+	pop	edi
 	jmp	line_preprocessed
 
 increase_counter:
@@ -1058,12 +1107,36 @@ increase_counter:
 	cmp	byte [eax+ecx],':'
 	jb	digit_increased
 	je	letter_digit
-	cmp	byte [eax+ecx],'f'
+	cmp	byte [eax+ecx],'F'
 	jbe	digit_increased
 	stc
 	ret
       letter_digit:
-	mov	byte [eax+ecx],'a'
+	mov	byte [eax+ecx],'A'
       digit_increased:
 	clc
 	ret
+
+preprocessor_directives:
+ db 7,'include'
+ dw include_file-preprocessor
+ db 5,'macro'
+ dw define_macro-preprocessor
+ db 5,'purge'
+ dw purge_macro-preprocessor
+ db 7,'restore'
+ dw restore_symbolic_constant-preprocessor
+ db 5,'struc'
+ dw define_struc-preprocessor
+ db 0
+
+macro_directives:
+ db 6,'common'
+ dw common_block-preprocessor
+ db 7,'forward'
+ dw forward_block-preprocessor
+ db 5,'local'
+ dw local_symbols-preprocessor
+ db 7,'reverse'
+ dw reverse_block-preprocessor
+ db 0

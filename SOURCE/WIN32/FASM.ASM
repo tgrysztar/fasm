@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	PE console on '..\dos\fasm.com'
@@ -44,11 +44,10 @@ start:
 	mov	edi,characters
 	mov	esi,symbol_characters+1
 	movzx	ecx,byte [esi-1]
-	xor	ebx,ebx
+	xor	eax,eax
       convert_table:
 	lodsb
-	mov	bl,al
-	mov	byte [edi+ebx],0
+	mov	byte [edi+eax],0
 	loop	convert_table
 
 	call	[GetTickCount]
@@ -174,9 +173,9 @@ include '..\preproce.inc'
 include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
-include '..\tables.inc'
+include '..\x86.inc'
 
-_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0
+_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0Dh,0Ah,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,0
 _usage db 'usage: fasm source output',0Dh,0Ah,0
@@ -185,7 +184,7 @@ _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0Dh,0Ah,0
 
-_counter db 4,'0000'
+_counter db 8,'00000000'
 
 align 4
 
@@ -198,6 +197,7 @@ output_file dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
+real_code_start dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
@@ -245,6 +245,7 @@ image_base dd ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?
+selected_format db ?
 code_type db ?
 current_pass db ?
 next_pass_needed db ?
@@ -270,11 +271,10 @@ mmx_prefix db ?
 nextbyte db ?
 
 characters rb 100h
-converted rb 100h
 params rb 1000h
 buffer rb 4000h
 
-stack 4000h
+stack 4000h,4000h
 
 section '.idata' import data readable writeable
 

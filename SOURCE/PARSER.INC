@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 parser:
@@ -132,7 +132,9 @@ parse_line:
 	ret
       anonymous_label_name:
 	cmp	byte [esi-1],'@'
-	jne	reserved_word_used_as_symbol
+	je	anonymous_label_name_ok
+	mov	eax,0Fh
+      anonymous_label_name_ok:
 	ret
       local_label_name:
 	call	get_label_id
@@ -145,25 +147,11 @@ parse_line:
 	movzx	ecx,byte [esi]
 	inc	esi
 	jmp	get_main_instruction
-      parse_public_directive:
-	cmp	byte [esi],1Ah
-	jne	invalid_argument
-	push	esi
-	movzx	ecx,byte [esi+1]
-	add	esi,2
-	mov	ax,'('
-	stos	word [edi]
-	mov	eax,ecx
-	stos	dword [edi]
-	rep	movs byte [edi],[esi]
-	xor	al,al
-	stos	byte [edi]
-	pop	esi
       parse_label_directive:
+	cmp	byte [esi],1Ah
+	jne	argument_parsed
 	push	edi
-	lods	byte [esi]
-	cmp	al,1Ah
-	jne	invalid_argument
+	inc	esi
 	movzx	ecx,byte [esi]
 	lods	byte [esi]
 	pop	edi
@@ -173,7 +161,7 @@ parse_line:
 	stos	dword [edi]
 	xor	al,al
 	stos	byte [edi]
-	jmp	parse_arguments
+	jmp	argument_parsed
       parse_instruction:
 	pop	edi
 	mov	dl,al
@@ -193,9 +181,9 @@ parse_line:
 	je	parse_label_directive
 	cmp	bx,segment_directive-assembler
 	je	parse_label_directive
-	cmp	bx,public_directive-assembler
-	je	parse_public_directive
 	cmp	bx,extrn_directive-assembler
+	je	parse_public_directive
+	cmp	bx,public_directive-assembler
 	je	parse_public_directive
       parse_arguments:
 	lods	byte [esi]
@@ -223,6 +211,12 @@ parse_line:
 	je	address_argument
 	cmp	al,']'
 	je	separator
+	cmp	al,'{'
+	je	unallowed_character
+	cmp	al,'}'
+	je	unallowed_character
+	cmp	al,'#'
+	je	unallowed_character
 	dec	esi
 	cmp	al,1Ah
 	jne	expression_argument
@@ -258,6 +252,39 @@ parse_line:
 	stos	byte [edi]
 	cmp	al,80h
 	je	forced_expression
+	cmp	al,88h
+	je	parse_label_operator
+	cmp	al,89h
+	je	parse_label_operator
+	jmp	argument_parsed
+      parse_public_directive:
+	cmp	byte [esi],1Ah
+	jne	invalid_argument
+	push	esi
+	movzx	ecx,byte [esi+1]
+	add	esi,2
+	mov	ax,'('
+	stos	word [edi]
+	mov	eax,ecx
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	xor	al,al
+	stos	byte [edi]
+	pop	esi
+      parse_label_operator:
+	cmp	byte [esi],1Ah
+	jne	argument_parsed
+	push	edi
+	inc	esi
+	movzx	ecx,byte [esi]
+	lods	byte [esi]
+	pop	edi
+	mov	al,2
+	stos	byte [edi]
+	call	get_label_id
+	stos	dword [edi]
+	xor	al,al
+	stos	byte [edi]
 	jmp	argument_parsed
       ptr_argument:
 	call	parse_address
@@ -284,8 +311,6 @@ parse_line:
 	cmp	byte [esi],22h
 	jne	not_string
 	mov	eax,[esi+1]
-	cmp	eax,8
-	ja	string_argument
 	lea	ebx,[esi+5+eax]
 	push	ebx ecx esi edi
 	mov	al,'('
@@ -316,7 +341,7 @@ parse_line:
 	rep	movs dword [edi],[esi]
 	xor	al,al
 	stos	byte [edi]
-	jmp	argument_parsed
+	jmp	expression_parsed
       not_string:
 	cmp	byte [esi],'('
 	jne	parse_expression
@@ -340,14 +365,18 @@ parse_line:
 	mov	eax,[fp_value+8]
 	stos	dword [edi]
 	jmp	expression_parsed
-      forced_expression:
-	mov	al,'('
-	stos	byte [edi]
       expression:
 	call	convert_expression
 	mov	al,')'
 	stos	byte [edi]
 	jmp	expression_parsed
+      forced_expression:
+	mov	al,'('
+	stos	byte [edi]
+	call	convert_expression
+	mov	al,')'
+	stos	byte [edi]
+	jmp	argument_parsed
       address_argument:
 	call	parse_address
 	lods	byte [esi]
@@ -399,6 +428,9 @@ parse_line:
       no_size_prefix:
 	pop	esi
 	jmp	convert_expression
+      unallowed_character:
+	mov	al,0FFh
+	jmp	separator
       close_expression:
 	mov	al,'}'
       separator:
@@ -472,3 +504,365 @@ parse_line:
 	cmp	[parenthesis_stack],0
 	jne	invalid_expression
 	ret
+
+get_operator:
+	cmp	byte [esi],1Ah
+	jne	simple_operator
+	mov	edx,esi
+	push	ebp
+	inc	esi
+	lods	byte [esi]
+	movzx	ebp,al
+	push	edi
+	mov	ecx,ebp
+	call	lower_case
+	pop	edi
+      check_operator:
+	mov	esi,buffer
+	movzx	ecx,byte [edi]
+	jecxz	no_operator
+	inc	edi
+	mov	ebx,edi
+	add	ebx,ecx
+	cmp	ecx,ebp
+	jne	next_operator
+	repe	cmps byte [esi],[edi]
+	je	operator_found
+      next_operator:
+	mov	edi,ebx
+	inc	edi
+	jmp	check_operator
+      no_operator:
+	mov	esi,edx
+	pop	ebp
+      no_simple_operator:
+	xor	al,al
+	ret
+      operator_found:
+	lea	esi,[edx+2+ebp]
+	pop	ebp
+	mov	al,[edi]
+	ret
+      simple_operator:
+	mov	al,[esi]
+      simple_check_operator:
+	cmp	byte [edi],1
+	jb	no_simple_operator
+	ja	simple_next_operator
+	cmp	al,[edi+1]
+	je	simple_operator_found
+      simple_next_operator:
+	movzx	ecx,byte [edi]
+	lea	edi,[edi+1+ecx+1]
+	jmp	simple_check_operator
+      simple_operator_found:
+	inc	esi
+	mov	al,[edi+2]
+	ret
+
+get_symbol:
+	mov	edx,esi
+	mov	ebp,ecx
+	push	edi
+	call	lower_case
+	pop	edi
+      scan_symbols:
+	mov	esi,buffer
+	movzx	eax,byte [edi]
+	or	al,al
+	jz	no_symbol
+	mov	ecx,ebp
+	inc	edi
+	mov	ebx,edi
+	add	ebx,eax
+	mov	ah,[esi]
+	cmp	ah,[edi]
+	jb	no_symbol
+	ja	next_symbol
+	cmp	cl,al
+	jne	next_symbol
+	repe	cmps byte [esi],[edi]
+	jb	no_symbol
+	je	symbol_ok
+      next_symbol:
+	mov	edi,ebx
+	add	edi,2
+	jmp	scan_symbols
+      no_symbol:
+	mov	esi,edx
+	mov	ecx,ebp
+	stc
+	ret
+      symbol_ok:
+	lea	esi,[edx+ebp]
+	mov	ax,[ebx]
+	clc
+	ret
+
+get_instruction:
+	mov	edx,esi
+	mov	ebp,ecx
+	call	lower_case
+	mov	ecx,ebp
+	cmp	ecx,11
+	ja	no_instruction
+	sub	cl,2
+	jc	no_instruction
+	movzx	edi,word [instructions+ecx*2]
+	add	edi,instructions
+      scan_instructions:
+	mov	esi,buffer
+	mov	al,[edi]
+	or	al,al
+	jz	no_instruction
+	mov	ecx,ebp
+	mov	ebx,edi
+	add	ebx,ecx
+	repe	cmps byte [esi],[edi]
+	jb	no_instruction
+	je	instruction_ok
+      next_instruction:
+	mov	edi,ebx
+	add	edi,3
+	jmp	scan_instructions
+      no_instruction:
+	mov	esi,edx
+	mov	ecx,ebp
+	stc
+	ret
+      lower_case:
+	mov	edi,buffer
+	mov	ebx,characters
+      convert_case:
+	lods	byte [esi]
+	xlat	byte [ebx]
+	stos	byte [edi]
+	loop	convert_case
+      case_ok:
+	ret
+      instruction_ok:
+	lea	esi,[edx+ebp]
+	mov	al,[ebx]
+	mov	bx,[ebx+1]
+	clc
+	ret
+
+get_label_id:
+	cmp	ecx,100h
+	jae	name_too_long
+	cmp	byte [esi],'@'
+	je	anonymous_label
+	cmp	byte [esi],'.'
+	jne	standard_label
+	cmp	byte [esi+1],'.'
+	je	standard_label
+	cmp	[current_locals_prefix],0
+	je	standard_label
+	push	edi
+	push	ecx esi
+	mov	edi,[additional_memory]
+	xor	al,al
+	stos	byte [edi]
+	mov	esi,[current_locals_prefix]
+	mov	ebx,edi
+	lods	byte [esi]
+	movzx	ecx,al
+	lea	ebp,[edi+ecx]
+	cmp	ebp,[additional_memory_end]
+	jae	out_of_memory
+	rep	movs byte [edi],[esi]
+	pop	esi ecx
+	add	al,cl
+	jc	name_too_long
+	lea	ebp,[edi+ecx]
+	cmp	ebp,[additional_memory_end]
+	jae	out_of_memory
+	rep	movs byte [edi],[esi]
+	mov	[additional_memory],edi
+	pop	edi
+	push	esi
+	movzx	ecx,al
+	mov	esi,ebx
+	call	get_label_id
+	pop	esi
+	ret
+      anonymous_label:
+	cmp	ecx,2
+	jne	standard_label
+	mov	al,[esi+1]
+	mov	ebx,characters
+	xlat	byte [ebx]
+	cmp	al,'@'
+	je	new_anonymous
+	cmp	al,'b'
+	je	anonymous_back
+	cmp	al,'r'
+	je	anonymous_back
+	cmp	al,'f'
+	jne	standard_label
+	add	esi,2
+	mov	eax,[anonymous_forward]
+	or	eax,eax
+	jnz	anonymous_ok
+	mov	eax,[labels_list]
+	sub	eax,20
+	mov	[labels_list],eax
+	cmp	eax,edi
+	jbe	out_of_memory
+	mov	dword [eax],0
+	mov	[eax+4],eax
+	mov	[anonymous_forward],eax
+      anonymous_ok:
+	ret
+      anonymous_back:
+	add	esi,2
+	mov	eax,[anonymous_reverse]
+	or	eax,eax
+	jz	invalid_value
+	ret
+      new_anonymous:
+	add	esi,2
+	mov	eax,[anonymous_forward]
+	or	eax,eax
+	jnz	new_anonymous_ok
+	mov	eax,[labels_list]
+	sub	eax,20
+	mov	[labels_list],eax
+	cmp	eax,edi
+	jbe	out_of_memory
+	mov	dword [eax],0
+	mov	[eax+4],eax
+      new_anonymous_ok:
+	mov	[anonymous_reverse],eax
+	mov	[anonymous_forward],0
+	ret
+      standard_label:
+	cmp	ecx,1
+	jne	find_label
+	lods	byte [esi]
+	cmp	al,'$'
+	je	get_current_offset_id
+	cmp	al,'%'
+	je	get_counter_id
+	dec	esi
+	jmp	find_label
+      get_current_offset_id:
+	xor	eax,eax
+	ret
+      get_counter_id:
+	mov	eax,1
+	ret
+      find_label:
+	xor	ebx,ebx
+	xor	eax,eax
+	xor	ebp,ebp
+      hash_label:
+	movzx	eax,byte [esi+ebx]
+	add	ebp,eax
+	inc	bl
+	cmp	bl,cl
+	jb	hash_label
+	shl	ebx,20
+	or	ebp,ebx
+	mov	[label_hash],ebp
+	push	edi
+	push	esi
+	mov	ebx,esi
+	mov	edx,ecx
+	mov	eax,[labels_list]
+      check_label:
+	mov	esi,ebx
+	mov	ecx,edx
+	cmp	eax,[memory_end]
+	je	add_label
+	cmp	ebp,[eax]
+	jne	next_label
+	mov	edi,[eax+4]
+	repe	cmps byte [esi],[edi]
+	je	label_found
+      next_label:
+	add	eax,20
+	jmp	check_label
+      label_found:
+	add	esp,4
+	pop	edi
+	ret
+      add_label:
+	pop	esi
+	cmp	byte [esi-1],0
+	je	label_name_ok
+	mov	al,[esi]
+	cmp	al,30h
+	jb	name_first_char_ok
+	cmp	al,39h
+	jbe	invalid_name
+      name_first_char_ok:
+	cmp	ecx,1
+	jne	check_for_reserved_word
+	cmp	al,'$'
+	je	reserved_word
+      check_for_reserved_word:
+	call	get_instruction
+	jnc	reserved_word
+	mov	edi,data_directives
+	call	get_symbol
+	jnc	reserved_word
+	mov	edi,directive_operators
+	call	get_symbol
+	jnc	reserved_word
+	mov	edi,symbols
+	call	get_symbol
+	jnc	reserved_word
+	mov	edi,formatter_symbols
+	call	get_symbol
+	jnc	reserved_word
+      label_name_ok:
+	mov	eax,[labels_list]
+	sub	eax,20
+	mov	[labels_list],eax
+	mov	[eax+4],esi
+	add	esi,ecx
+	mov	edx,[label_hash]
+	mov	[eax],edx
+	pop	edi
+	cmp	eax,edi
+	jbe	out_of_memory
+	ret
+      reserved_word:
+	mov	eax,0Fh
+	pop	edi
+	ret
+
+symbol_characters db 26
+ db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#'
+
+operators:
+ db 1,'+',80h
+ db 1,'-',81h
+ db 1,'*',90h
+ db 1,'/',91h
+ db 3,'mod',0A0h
+ db 3,'and',0B0h
+ db 2,'or',0B1h
+ db 3,'xor',0B2h
+ db 3,'shl',0C0h
+ db 3,'shr',0C1h
+ db 0
+
+single_operand_operators:
+ db 1,'+',0
+ db 1,'-',0D1h
+ db 3,'not',0D0h
+ db 3,'rva',0E0h
+ db 0
+
+directive_operators:
+ db 2,'at',80h
+ db 7,'defined',88h
+ db 2,'eq',81h
+ db 4,'from',82h
+ db 2,'in',83h
+ db 2,'on',84h
+ db 3,'ptr',85h
+ db 4,'used',89h
+ db 0

@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 00003
@@ -87,7 +87,7 @@ open:
 	stos	byte [edi]
 	or	al,al
 	jnz	copy_path
-	cmp	edi,buffer+4000h
+	cmp	edi,buffer+1000h
 	ja	out_of_memory
 	ret
       convert_backslash:
@@ -359,6 +359,7 @@ assembler_error:
 	call	display_string
 	mov	esi,error_suffix
 	call	display_string
+	mov	al,1
 	jmp	exit_program
 
 make_timestamp:

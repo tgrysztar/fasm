@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 	program_base = 0x8048000
@@ -11,7 +11,7 @@
 	macro	align value { rb (value-1) - ($ + value-1) mod value }
 
 file_header:
-	db	0x7F,'ELF',1,1,1
+	db	0x7F,'ELF',1,1,1,3
 	rb	file_header+0x10-$
 	dw	2,3
 	dd	1,start
@@ -52,11 +52,10 @@ start:
 	mov	edi,characters
 	mov	esi,symbol_characters+1
 	movzx	ecx,byte [esi-1]
-	xor	ebx,ebx
+	xor	eax,eax
       convert_table:
 	lodsb
-	mov	bl,al
-	mov	byte [edi+ebx],0
+	mov	byte [edi+eax],0
 	loop	convert_table
 
 	mov	eax,78
@@ -136,9 +135,9 @@ include '..\preproce.inc'
 include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
-include '..\tables.inc'
+include '..\x86.inc'
 
-_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0
+_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0xA,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0xA,0
 _usage db 'usage: fasm source output',0xA,0
@@ -147,7 +146,7 @@ _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0xA,0
 
-_counter db 4,'0000'
+_counter db 8,'00000000'
 
 bss:
 
@@ -163,6 +162,7 @@ environment dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
+real_code_start dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
@@ -210,6 +210,7 @@ image_base dd ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?
+selected_format db ?
 code_type db ?
 current_pass db ?
 next_pass_needed db ?
@@ -235,7 +236,6 @@ mmx_prefix db ?
 nextbyte db ?
 
 characters rb 100h
-converted rb 100h
-buffer rb 4000h
+buffer rb 1000h
 
 program_end:

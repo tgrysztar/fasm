@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 formatter:
@@ -31,7 +31,7 @@ formatter:
 	call	close
 	ret
 format_directive:
-	cmp	edi,[code_start]
+	cmp	edi,[real_code_start]
 	jne	unexpected_instruction
 	cmp	[output_format],0
 	jne	unexpected_instruction
@@ -42,6 +42,11 @@ format_directive:
 	test	al,0F0h
 	jnz	complex_format
       select_format:
+	cmp	[current_pass],0
+	je	format_ok
+	cmp	al,[selected_format]
+	jne	unexpected_instruction
+      format_ok:
 	mov	[output_format],al
 	cmp	al,2
 	je	format_mz
@@ -163,8 +168,9 @@ segment_directive:
 	cmp	al,2
 	jne	invalid_argument
 	lods	dword [esi]
-	cmp	eax,10h
+	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
+	je	reserved_word_used_as_symbol
 	inc	esi
 	mov	ebx,eax
 	mov	eax,edi
@@ -187,10 +193,11 @@ segment_directive:
 	cmp	eax,10000h
 	jae	value_out_of_range
 	mov	cl,[current_pass]
-	cmp	byte [ebx+8],0
-	je	new_segment
+	test	byte [ebx+8],1
+	jz	new_segment
 	cmp	cl,[ebx+9]
 	je	symbol_already_defined
+	mov	[ebx+9],cl
 	xchg	[ebx],eax
 	xor	edx,edx
 	xchg	[ebx+4],edx
@@ -203,7 +210,7 @@ segment_directive:
 	or	[next_pass_needed],-1
 	jmp	segment_ok
       new_segment:
-	mov	byte [ebx+8],1
+	or	byte [ebx+8],1
 	mov	[ebx+9],cl
 	mov	byte [ebx+10],0
 	mov	byte [ebx+11],1
@@ -358,7 +365,7 @@ write_mz_header:
 	sub	eax,esi
 	mov	[edx+0Ah],ax		; minimum memory in addition to code
 	add	[edx+0Ch],ax		; maximum memory in addition to code
-	setalc
+	salc
 	mov	ah,al
 	or	[edx+0Ch],ax
 	mov	word [edx+18h],1Ch	; offset of relocation table
@@ -604,17 +611,15 @@ format_pe:
 	inc	esi
       pe_settings_ok:
 	cmp	[current_pass],0
-	je	make_pe_stub
-	add	edi,[stub_size]
-	jmp	pe_stub_ok
-      make_pe_stub:
+	jne	pe_stub_ok
 	call	make_stub
+	mov	[real_code_start],edi
       pe_stub_ok:
-	mov	[header_data],edi
-	mov	edx,edi
 	mov	eax,edi
 	sub	eax,[code_start]
 	mov	[stub_size],eax
+	mov	[header_data],edi
+	mov	edx,edi
 	imul	ecx,[number_of_sections],28h
 	add	ecx,18h+0E0h
 	add	ecx,eax
@@ -1141,8 +1146,9 @@ public_directive:
 	cmp	al,2
 	jne	invalid_argument
 	lods	dword [esi]
-	cmp	eax,10h
+	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
+	je	reserved_word_used_as_symbol
 	inc	esi
 	mov	[ebx+8],eax
 	mov	eax,[current_line]
@@ -1168,8 +1174,9 @@ extrn_directive:
 	cmp	al,2
 	jne	invalid_argument
 	lods	dword [esi]
-	cmp	eax,10h
+	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
+	je	reserved_word_used_as_symbol
 	inc	esi
 	mov	ebx,eax
 	xor	ah,ah
@@ -1553,3 +1560,26 @@ coff_formatter:
 	rep	movs byte [edi],[esi]
 	pop	esi
 	ret
+
+formatter_symbols:
+ db 6,'binary',18h,1
+ db 4,'code',19h,5
+ db 4,'coff',18h,4
+ db 7,'console',1Bh,3
+ db 4,'data',19h,6
+ db 11,'discardable',19h,25
+ db 3,'dll',1Bh,80h
+ db 10,'executable',19h,29
+ db 6,'export',1Ah,0
+ db 6,'fixups',1Ah,5
+ db 3,'gui',1Bh,2
+ db 6,'import',1Ah,1
+ db 2,'ms',18h,41h
+ db 2,'mz',18h,2
+ db 6,'native',1Bh,1
+ db 2,'pe',18h,3
+ db 8,'readable',19h,30
+ db 8,'resource',1Ah,2
+ db 9,'shareable',19h,28
+ db 9,'writeable',19h,31
+ db 0

@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2002, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar.
 ; All rights reserved.
 
 	org	100h
@@ -158,9 +158,9 @@ include '..\preproce.inc'
 include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
-include '..\tables.inc'
+include '..\x86.inc'
 
-_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',24h
+_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0Dh,0Ah,24h
 
 _logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,24h
 _usage db 'usage: fasm source output',0Dh,0Ah,24h
@@ -169,7 +169,7 @@ _passes_suffix db ' passes, ',24h
 _seconds_suffix db ' seconds, ',24h
 _bytes_suffix db ' bytes.',0Dh,0Ah,24h
 
-_counter db 4,'0000'
+_counter db 8,'00000000'
 
 align 4
 
@@ -183,6 +183,7 @@ output_file dd ?
 source_start dd ?
 code_start dd ?
 code_size dd ?
+real_code_start dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
@@ -230,6 +231,7 @@ image_base dd ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?
+selected_format db ?
 code_type db ?
 current_pass db ?
 next_pass_needed db ?
@@ -255,9 +257,8 @@ mmx_prefix db ?
 nextbyte db ?
 
 characters rb 100h
-converted rb 100h
 params rb 100h
-buffer rb 4000h
+buffer rb 1000h
 
 rb 400h
 if $ > 10000h
