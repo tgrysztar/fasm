@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2001, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar
 ; All rights reserved.
 
 parser:

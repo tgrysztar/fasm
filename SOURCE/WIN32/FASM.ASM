@@ -1,9 +1,9 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2001, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar
 ; All rights reserved.
 
-	format	PE console on 'dos\fasm.com'
+	format	PE console on '..\dos\fasm.com'
 
 	macro	align value { rb (value-1) - (rva $ + value-1) mod value }
 
@@ -162,14 +162,14 @@ get_params:
 
 include 'system.inc'
 
-include 'version.inc'
-include 'errors.inc'
-include 'expressi.inc'
-include 'preproce.inc'
-include 'parser.inc'
-include 'assemble.inc'
-include 'formats.inc'
-include 'tables.inc'
+include '..\version.inc'
+include '..\errors.inc'
+include '..\expressi.inc'
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\assemble.inc'
+include '..\formats.inc'
+include '..\tables.inc'
 
 _copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0
 

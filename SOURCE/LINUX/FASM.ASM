@@ -3,60 +3,71 @@
 ; Copyright (c) 1999-2002, Tomasz Grysztar
 ; All rights reserved.
 
-	org	100h
+	program_base = 0x700000
+
+	org	program_base
+	use32
 
 	macro	align value { rb (value-1) - ($ + value-1) mod value }
 
+file_header:
+	db	0x7F,'ELF',1,1,1
+	rb	file_header+0x10-$
+	dw	2,3
+	dd	1,start
+	dd	program_header-file_header,0,0
+	dw	program_header-file_header,0x20,1,0,0,0
+
+program_header:
+	dd	1,0,program_base,0
+	dd	bss-program_base,program_end-program_base,7,0x1000
+
 start:
 
-	mov	ah,4Ah
-	mov	bx,1010h
-	int	21h
-	mov	dx,_logo
-	mov	ah,9
-	int	21h
+	mov	esi,_logo
+	call	display_string
 
-	cld
+	pop	eax
+	cmp	eax,3
+	jne	information
+	pop	eax
+	pop	[input_file]
+	pop	[output_file]
 
-	call	init_flatrm
 	call	init_memory
 
-	call	get_params
-	cmp	[params],0
-	je	information
-	lea	eax,[params+1]
-	mov	[input_file],eax
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	je	information
-	inc	eax
-	mov	[output_file],eax
-
-	mov	di,characters
-	mov	cx,100h
+	mov	edi,characters
+	mov	ecx,100h
 	xor	al,al
       make_characters_table:
 	stosb
 	inc	al
 	loop	make_characters_table
-	mov	si,characters+'a'
-	mov	di,characters+'A'
-	mov	cx,26
+	mov	esi,characters+'a'
+	mov	edi,characters+'A'
+	mov	ecx,26
 	rep	movsb
-	mov	di,characters
-	mov	si,symbol_characters+1
-	movzx	cx,byte [si-1]
-	xor	bx,bx
+	mov	edi,characters
+	mov	esi,symbol_characters+1
+	movzx	ecx,byte [esi-1]
+	xor	ebx,ebx
       convert_table:
 	lodsb
 	mov	bl,al
-	mov	byte [di+bx],0
+	mov	byte [edi+ebx],0
 	loop	convert_table
 
-	mov	ebx,46Ch
-	sub	ebx,[program_base]
-	mov	eax,[ebx]
+	mov	eax,78
+	mov	ebx,buffer
+	xor	ecx,ecx
+	int	0x80
+	mov	eax,dword [buffer]
+	mov	ecx,1000
+	mul	ecx
+	mov	ebx,eax
+	mov	eax,dword [buffer+4]
+	div	ecx
+	add	eax,ebx
 	mov	[start_time],eax
 
 	call	preprocessor
@@ -66,16 +77,25 @@ start:
 	movzx	eax,[current_pass]
 	inc	al
 	call	display_number
-	mov	ah,9
-	mov	dx,_passes_suffix
-	int	21h
-	mov	ebx,46Ch
-	sub	ebx,[program_base]
-	mov	eax,[ebx]
+	mov	esi,_passes_suffix
+	call	display_string
+	mov	eax,78
+	mov	ebx,buffer
+	xor	ecx,ecx
+	int	0x80
+	mov	eax,dword [buffer]
+	mov	ecx,1000
+	mul	ecx
+	mov	ebx,eax
+	mov	eax,dword [buffer+4]
+	div	ecx
+	add	eax,ebx
 	sub	eax,[start_time]
+	jnc	time_ok
+	add	eax,3600000
+      time_ok:
+	xor	edx,edx
 	mov	ebx,100
-	mul	ebx
-	mov	ebx,182
 	div	ebx
 	or	eax,eax
 	jz	display_bytes_count
@@ -84,65 +104,25 @@ start:
 	div	ebx
 	push	edx
 	call	display_number
-	mov	ah,2
 	mov	dl,'.'
-	int	21h
+	call	display_character
 	pop	eax
 	call	display_number
-	mov	ah,9
-	mov	dx,_seconds_suffix
-	int	21h
+	mov	esi,_seconds_suffix
+	call	display_string
       display_bytes_count:
 	mov	eax,[written_size]
 	call	display_number
-	mov	ah,9
-	mov	dx,_bytes_suffix
-	int	21h
+	mov	esi,_bytes_suffix
+	call	display_string
 	xor	al,al
 	jmp	exit_program
 
 information:
-	mov	dx,_usage
-	mov	ah,9
-	int	21h
+	mov	esi,_usage
+	call	display_string
 	mov	al,1
 	jmp	exit_program
-
-get_params:
-	mov	si,81h
-	mov	di,params
-    find_param:
-	lodsb
-	cmp	al,20h
-	je	find_param
-	cmp	al,0Dh
-	je	all_params
-	or	al,al
-	jz	all_params
-	inc	di
-	mov	bx,di
-    copy_param:
-	stosb
-	lodsb
-	cmp	al,20h
-	je	param_end
-	cmp	al,0Dh
-	je	param_end
-	or	al,al
-	jz	param_end
-	jmp	copy_param
-    param_end:
-	dec	si
-	xor	al,al
-	stosb
-	mov	ax,di
-	sub	ax,bx
-	mov	[bx-1],al
-	jmp	find_param
-    all_params:
-	xor	al,al
-	stosb
-	ret
 
 include 'system.inc'
 
@@ -155,20 +135,21 @@ include '..\assemble.inc'
 include '..\formats.inc'
 include '..\tables.inc'
 
-_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',24h
+_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0
 
-_logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,24h
-_usage db 'usage: fasm source output',0Dh,0Ah,24h
+_logo db 'flat assembler  version ',VERSION_STRING,0xA,0
+_usage db 'usage: fasm source output',0xA,0
 
-_passes_suffix db ' passes, ',24h
-_seconds_suffix db ' seconds, ',24h
-_bytes_suffix db ' bytes.',0Dh,0Ah,24h
+_passes_suffix db ' passes, ',0
+_seconds_suffix db ' seconds, ',0
+_bytes_suffix db ' bytes.',0xA,0
 
 _counter db 4,'0000'
 
+bss:
+
 align 4
 
-program_base dd ?
 memory_start dd ?
 memory_end dd ?
 additional_memory dd ?
@@ -245,10 +226,6 @@ nextbyte db ?
 
 characters rb 100h
 converted rb 100h
-params rb 100h
-buffer rb 4000h
+buffer rb 100h
 
-rb 400h
-if $ > 10000h
-  display 'warning: 64k limit exceeded.'
-end if
+program_end:

@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.36
+			flat assembler	version 1.37
 
 	 Copyright (c) 1999-2002, Tomasz Grysztar. All rights reserved.
 
@@ -71,7 +71,8 @@ reccommended for best performance.
 software.  Note that fasm will not run if the CPU is in protected or
 V86 modes, since flat real mode cannot be entered in that case.  But
 it will still run under Win32, because version for that system is attached
-to fasm executable.
+to fasm executable. There exists also version for Linux, distributed in
+a separate package.
 
 1.4  Output formats
 

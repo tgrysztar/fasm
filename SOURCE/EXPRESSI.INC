@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2001, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar
 ; All rights reserved.
 
 convert_expression:
@@ -1374,6 +1374,8 @@ calculate_expression:
       calculate_rva:
 	cmp	word [edi+8],0
 	jne	invalid_expression
+	cmp	[output_format],3
+	jne	invalid_use_of_symbol
 	mov	al,[edi+12]
 	cmp	al,2
 	je	rva_ok

@@ -1,6 +1,6 @@
 
 ; flat assembler source
-; Copyright (c) 1999-2001, Tomasz Grysztar
+; Copyright (c) 1999-2002, Tomasz Grysztar
 ; All rights reserved.
 
 assembler:
@@ -540,33 +540,15 @@ flush_display_buffer:
 	mov	esi,[labels_list]
 	cmp	esi,eax
 	je	display_done
-	mov	word [value],0
       display_messages:
 	sub	esi,4
 	mov	ecx,[esi]
-	mov	ax,word [value]
-	jecxz	last_bytes_ok
-	mov	al,ah
-	mov	ah,[esi-1]
-	cmp	ecx,1
-	je	last_bytes_ok
-	mov	al,[esi-2]
-      last_bytes_ok:
-	mov	word [value],ax
 	sub	esi,ecx
 	push	esi
 	call	display_block
 	pop	esi
 	cmp	esi,[display_buffer]
 	jne	display_messages
-	mov	ax,0A0Dh
-	cmp	word [value],ax
-	je	display_ok
-	mov	esi,value
-	mov	[esi],ax
-	mov	ecx,2
-	call	display_block
-      display_ok:
 	mov	eax,[labels_list]
 	mov	[display_buffer],eax
       display_done:
