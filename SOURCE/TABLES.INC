@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.05
+; flat assembler  version 1.06
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -363,6 +363,8 @@ preprocessor_directives:
  dw include_file-preprocessor
  db 5,'macro'
  dw define_macro-preprocessor
+ db 5,'struc'
+ dw define_struc-preprocessor
  db 5,'purge'
  dw purge_macro-preprocessor
  db 0

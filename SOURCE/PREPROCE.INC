@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.05
+; flat assembler  version 1.06
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -247,9 +247,19 @@ preprocess_instruction:
 	je	.skip_file
 	movzx	ecx,byte [edi]
 	inc	edi
+	and	cl,7Fh
 	mov	ebx,edi
 	add	ebx,ecx
 	add	ebx,5
+	test	byte [edi-1],80h
+	jnz	.struc
+	cmp	[macro_struc_name],0
+	jne	.skip_macro
+	jmp	.compare
+      .struc:
+	cmp	[macro_struc_name],0
+	je	.skip_macro
+      .compare:
 	cmp	ecx,ebp
 	jne	.skip_macro
 	mov	edx,esi
@@ -347,7 +357,12 @@ include_file:
 	add	esp,4
 	pop	esi ecx
 	ret
+define_struc:
+	mov	[macro_struc],1
+	jmp	macro_definition
 define_macro:
+	mov	[macro_struc],0
+      macro_definition:
 	call	skip_spaces
 	lods	byte [esi]
 	cmp	al,27h
@@ -379,9 +394,20 @@ define_macro:
 	je	.skip_file
 	movzx	ecx,byte [edi]
 	inc	edi
+	and	cl,7Fh
 	mov	ebx,edi
 	add	ebx,ecx
 	add	ebx,5
+	test	byte [edi-1],80h
+	jnz	.struc
+	cmp	[macro_struc],0
+	jne	.skip_macro
+	jmp	.compare
+      .struc:
+	and	cl,7Fh
+	cmp	[macro_struc],0
+	je	.skip_macro
+      .compare:
 	cmp	ecx,ebp
 	jne	.skip_macro
 	mov	edx,esi
@@ -403,6 +429,13 @@ define_macro:
 	mov	ebp,esi
 	xchg	ebp,[edi+1]
 	mov	esi,edx
+	mov	al,[ebx]
+	shr	al,7
+	xchg	al,[macro_struc]
+	and	byte [ebx],7Fh
+	or	al,al
+	jz	create_macro
+	or	byte [ebx],80h
 	jmp	add_macro
       create_macro:
 	xor	ebp,ebp
@@ -429,8 +462,12 @@ define_macro:
 	mov	edi,edx
 	sub	edx,[additional_memory]
 	dec	edx
-	cmp	edx,100h
+	cmp	edx,80h
 	jae	name_too_long
+	cmp	[macro_struc],0
+	je	macro_name_length_ok
+	or	dl,80h
+      macro_name_length_ok:
 	mov	[ebx],dl
 	lea	ebx,[edi+5]
 	mov	[additional_memory],ebx
@@ -1270,6 +1307,7 @@ names_list dd ?
 macro_defined db ?
 macro_directive_allowed db ?
 macro_instructions dd ?
+macro_struc db ?
 macro_struc_name dd ?
 macro_struc_name_size dw ?
 multi_macro_current dw ?

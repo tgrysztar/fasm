@@ -2,13 +2,20 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.06
+[23-08-2000]
+------------
+[+] struc directive instead of labeled macros
+
 version 1.05
+[16-08-2000]
 ------------
 [-] fixed some bugs with PE format
 [+] numeric constants redefinition allowed
 [+] labeled macroinstructions
 
 version 1.04
+[10-08-2000]
 ------------
 [+] PE output format support
 [+] Win32 version of fasm executable
@@ -18,19 +25,23 @@ version 1.04
 [-] many other fixes and improvements
 
 version 1.03
+[19-07-2000]
 ------------
 [-] more bugs fixed
 [+] allowed empty labels to separate local symbols
 
 version 1.02
+[06-07-2000]
 ------------
 [-] minor bugs fixed
 [+] some documentation changes
 
 version 1.01
+[01-07-2000]
 ------------
 [-] fixed bug in MZ header generator
 
 version 1.00
+[19-06-2000]
 ------------
 [+] first serious release
