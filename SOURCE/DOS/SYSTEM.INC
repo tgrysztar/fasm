@@ -23,6 +23,7 @@ init_flatrm:
 	mov	eax,cs
 	shl	eax,4
 	mov	[program_base],eax
+	movzx	esp,sp
 	mov	ax,350Dh
 	int	21h
 	mov	word [irq_5],bx
@@ -304,9 +305,6 @@ open:
 	stos	byte [di]
 	or	al,al
 	jnz	copy_path
-	sub	di,buffer
-	cmp	di,1000h
-	ja	out_of_memory
 	mov	dx,buffer
 	ret
       environment_variable:
@@ -702,7 +700,6 @@ make_timestamp:
 	ret
 
 character db ?,0
-bytes_count dd ?
 
 error_prefix db 'error: ',24h
 error_suffix db '.'

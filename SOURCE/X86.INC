@@ -6005,7 +6005,7 @@ store_mmx_prefix:
       mmx_prefix_ok:
 	ret
 store_mmx_instruction:
-	call	store_segment_prefix
+	call	store_segment_prefix_if_necessary
 	call	store_mmx_prefix
 	jmp	store_instruction_main
 store_instruction:

@@ -1,5 +1,11 @@
 
-Visit http://fasm.sourceforge.net/ for more information
+Visit http://flatassembler.net/ for more information
+
+version 1.48
+[24-07-2003]
+------------
+[+] added fix directive
+[-] fixed small bug with symbolic constants
 
 version 1.47
 [28-06-2003]

@@ -137,6 +137,9 @@ assemble_line:
       new_line:
 	lods	dword [esi]
 	mov	[current_line],eax
+	test	byte [eax+7],80h
+	jnz	continue_line
+	mov	[eax+12],edi
       continue_line:
 	cmp	byte [esi],0Fh
 	je	line_assembled

@@ -3,29 +3,29 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-O_ACCMODE  = 00003
-O_RDONLY   = 00000
-O_WRONLY   = 00001
-O_RDWR	   = 00002
-O_CREAT    = 00100
-O_EXCL	   = 00200
-O_NOCTTY   = 00400
-O_TRUNC    = 01000
-O_APPEND   = 02000
-O_NONBLOCK = 04000
+O_ACCMODE  = 0003o
+O_RDONLY   = 0000o
+O_WRONLY   = 0001o
+O_RDWR	   = 0002o
+O_CREAT    = 0100o
+O_EXCL	   = 0200o
+O_NOCTTY   = 0400o
+O_TRUNC    = 1000o
+O_APPEND   = 2000o
+O_NONBLOCK = 4000o
 
-S_ISUID    = 04000
-S_ISGID    = 02000
-S_ISVTX    = 01000
-S_IRUSR    = 00400
-S_IWUSR    = 00200
-S_IXUSR    = 00100
-S_IRGRP    = 00040
-S_IWGRP    = 00020
-S_IXGRP    = 00010
-S_IROTH    = 00004
-S_IWOTH    = 00002
-S_IXOTH    = 00001
+S_ISUID    = 4000o
+S_ISGID    = 2000o
+S_ISVTX    = 1000o
+S_IRUSR    = 0400o
+S_IWUSR    = 0200o
+S_IXUSR    = 0100o
+S_IRGRP    = 0040o
+S_IWGRP    = 0020o
+S_IXGRP    = 0010o
+S_IROTH    = 0004o
+S_IWOTH    = 0002o
+S_IXOTH    = 0001o
 
 init_memory:
 	xor	ebx,ebx

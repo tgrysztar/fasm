@@ -43,6 +43,7 @@ start:
 	lodsb
 	mov	byte [edi+eax],0
 	loop	convert_table
+	mov	[display_buffer],0
 
 	mov	eax,78
 	mov	ebx,buffer
@@ -154,11 +155,15 @@ written_size dd ?
 current_line dd ?
 macros_list dd ?
 macro_constants dd ?
+macro_line dd ?
 macro_block dd ?
+macro_block_line dd ?
 macro_block_line_number dd ?
 macro_embed_level dd ?
 struc_name dd ?
 current_locals_prefix dd ?
+fix_constants_count dd ?
+equ_constants_count dd ?
 anonymous_reverse dd ?
 anonymous_forward dd ?
 labels_list dd ?

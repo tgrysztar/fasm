@@ -22,7 +22,7 @@ parser:
 	stos	byte [edi]
 	mov	eax,esi
 	stos	dword [edi]
-	add	esi,12
+	add	esi,16
 	call	parse_line
 	cmp	esi,[code_start]
 	jb	parser_loop
@@ -545,6 +545,8 @@ parse_line:
 	jz	line_parsed
 	cmp	al,1Ah
 	je	skip_preprocessed_symbol
+	cmp	al,3Bh
+	je	skip_preprocessed_symbol
 	cmp	al,22h
 	je	skip_preprocessed_string
 	jmp	skip_next
@@ -816,19 +818,19 @@ get_label_id:
 	ret
       find_label:
 	xor	ebx,ebx
-	xor	eax,eax
 	xor	ebp,ebp
       hash_label:
-	movzx	eax,byte [esi+ebx]
 	rol	ebp,12
-	mov	edx,ebp
+	mov	eax,ebp
 	shr	ebp,8
-	and	edx,1111b
-	or	ebp,edx
+	and	eax,1111b
+	or	ebp,eax
+	movzx	eax,byte [esi+ebx]
 	add	ebp,eax
 	inc	bl
 	cmp	bl,cl
 	jb	hash_label
+	and	ebp,0FFFFFFh
 	shl	ebx,24
 	or	ebp,ebx
 	mov	[label_hash],ebp
