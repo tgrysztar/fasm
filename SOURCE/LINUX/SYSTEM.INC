@@ -74,6 +74,7 @@ get_params:
 	mov	[input_file],0
 	mov	[output_file],0
 	mov	[memory_setting],0
+	mov	[passes_limit],100
 	mov	ecx,[ebx]
 	add	ebx,8
 	dec	ecx
@@ -99,12 +100,14 @@ get_params:
 	je	memory_option
 	cmp	al,'M'
 	je	memory_option
+	cmp	al,'p'
+	je	passes_option
+	cmp	al,'P'
+	je	passes_option
       bad_params:
 	stc
 	ret
       memory_option:
-	xor	eax,eax
-	mov	edx,eax
 	cmp	byte [esi],0
 	jne	get_memory_setting
 	dec	ecx
@@ -112,32 +115,61 @@ get_params:
 	add	ebx,4
 	mov	esi,[ebx]
       get_memory_setting:
-	lodsb
-	or	al,al
-	jz	memory_setting_ok
-	sub	al,30h
-	jc	bad_params
-	cmp	al,9
-	ja	bad_params
-	imul	edx,10
-	jo	bad_params
-	add	edx,eax
-	jc	bad_params
-	jmp	get_memory_setting
-      memory_setting_ok:
+	call	get_option_value
 	or	edx,edx
 	jz	bad_params
 	cmp	edx,1 shl (32-10)
 	jae	bad_params
 	mov	[memory_setting],edx
+	jmp	next_param
+      passes_option:
+	cmp	byte [esi],0
+	jne	get_passes_setting
+	dec	ecx
+	jz	bad_params
+	add	ebx,4
+	mov	esi,[ebx]
+      get_passes_setting:
+	call	get_option_value
+	or	edx,edx
+	jz	bad_params
+	cmp	edx,10000h
+	ja	bad_params
+	mov	[passes_limit],dx
       next_param:
 	add	ebx,4
-	loop	get_param
+	dec	ecx
+	jnz	get_param
 	cmp	[input_file],0
 	je	bad_params
-	cmp	[output_file],0
-	je	bad_params
 	clc
+	ret
+      get_option_value:
+	xor	eax,eax
+	mov	edx,eax
+      get_option_digit:
+	lodsb
+	cmp	al,20h
+	je	option_value_ok
+	cmp	al,0Dh
+	je	option_value_ok
+	or	al,al
+	jz	option_value_ok
+	sub	al,30h
+	jc	invalid_option_value
+	cmp	al,9
+	ja	invalid_option_value
+	imul	edx,10
+	jo	invalid_option_value
+	add	edx,eax
+	jc	invalid_option_value
+	jmp	get_option_digit
+      option_value_ok:
+	dec	esi
+	clc
+	ret
+      invalid_option_value:
+	stc
 	ret
 
 get_environment_variable:

@@ -96,7 +96,7 @@ include '..\x86.inc'
 _copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0Dh,0Ah,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,0
-_usage db 'usage: fasm source output',0Dh,0Ah,0
+_usage db 'usage: fasm source [output]',0Dh,0Ah,0
 
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
@@ -123,6 +123,7 @@ code_size dd ?
 real_code_size dd ?
 start_time dd ?
 written_size dd ?
+headers_size dd ?
 
 current_line dd ?
 macros_list dd ?
@@ -158,6 +159,7 @@ number_start dd ?
 current_offset dd ?
 value dq ?
 fp_value rd 8
+adjustment dq ?
 symbol_identifier dd ?
 address_symbol dd ?
 format_flags dd ?
@@ -174,6 +176,7 @@ image_base dd ?
 resource_data dd ?
 resource_size dd ?
 
+passes_limit dw ?
 macro_status db ?
 parenthesis_stack db ?
 output_format db ?

@@ -1,6 +1,15 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.54
+[04-08-2004]
+------------
+[+] commands allowed in the same line after end of macro definition
+[+] automatic generation of output file name addded to formatter
+[+] allowed public aliases of external symbols with MS COFF format
+[-] fixed "defined" to return true only for accessible symbols
+[-] improved label resolving algorithms
+
 version 1.53
 [22-07-2004]
 ------------

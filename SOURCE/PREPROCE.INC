@@ -248,6 +248,7 @@ convert_line:
 preprocess_line:
 	push	[struc_name]
 	push	ecx esi
+      preprocess_current_line:
 	mov	esi,[current_line]
 	add	esi,16
 	lods	byte [esi]
@@ -969,11 +970,30 @@ define_macro:
 	jz	line_preprocessed
 	cmp	al,'}'
 	jne	skip_macro_block
+	and	[macro_status],0F0h
 	lods	byte [esi]
 	or	al,al
-	jnz	extra_characters_on_line
-	and	[macro_status],0F0h
-	jmp	line_preprocessed
+	jz	line_preprocessed
+	dec	esi
+	mov	ecx,edi
+	sub	ecx,esi
+	mov	edx,esi
+	lea	esi,[esi+ecx-1]
+	lea	edi,[edi+1+16]
+	mov	ebx,edi
+	dec	edi
+	std
+	rep	movs byte [edi],[esi]
+	cld
+	mov	edi,edx
+	xor	al,al
+	stos	byte [edi]
+	mov	esi,[current_line]
+	mov	[current_line],edi
+	mov	ecx,4
+	rep	movs dword [edi],[esi]
+	mov	edi,ebx
+	jmp	preprocess_current_line
       skip_macro_symbol:
 	movzx	eax,byte [esi]
 	inc	esi

@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.53
+                              flat assembler 1.54
                               Programmer's Manual
 
 
@@ -97,18 +97,26 @@ requires a Win32 console compatible with 3.1 version.
 
 To execute flat assembler from the command line you need to provide two
 parameters - first should be name of source file, second should be name of
-destination file. After displaying short information about the program name
-and version, compiler will read the data from source file and compile it.
-When the compilation is successful, compiler will write the generated code
-to the destination file and display the summary of compilation process;
-otherwise it will display the information about error that occurred.
+destination file. If no second parameter is given, the name for output
+file will be guessed automatically. After displaying short information about
+the program name and version, compiler will read the data from source file and
+compile it. When the compilation is successful, compiler will write the
+generated code to the destination file and display the summary of compilation
+process; otherwise it will display the information about error that occurred.
   The source file should be a text file, and can be created in any text
 editor. Line breaks are accepted in both DOS and Unix standards, tabulators
 are treated as spaces.
   In the command line you can also include "-m" option followed by a number,
 which specifies how many kilobytes of memory flat assembler should maximally
 use. In case of DOS version this options limits only the usage of extended
-memory.
+memory. The "-p" option followed by a number can be used to specify the limit
+for number of passes the assembler performs. If code cannot be generated
+within specified amount of passes, the assembly will be terminated with an
+error message. The maximum value of this setting is 65536, while the default
+limit, used when no such option is included in command line, is 100.
+It is also possible to limit the number of passes the assembler
+performs, with the "-p" option followed by a number specifying the maximum
+number of passes.
   There are no command line options that would affect the output of compiler,
 flat assembler requires only the source code to include the information it
 really needs. For example, to specify output format you specify it by using
@@ -123,21 +131,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.53
+flat assembler  version 1.54
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.53
+flat assembler  version 1.54
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.53
+flat assembler  version 1.54
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -147,7 +155,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.53
+flat assembler  version 1.54
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -2118,7 +2126,8 @@ The "used" operator should be followed by a symbol name, it checks whether the
 given symbol is used somewhere (it returns correct result even if symbol is
 used only after this check). The "defined" operator can be followed by any
 expression, usually just by a single symbol name; it checks whether the given
-expression contains only symbols that are defined in the source.
+expression contains only symbols that are defined in the source and accessible
+from the current position.
   The following simple example uses the "count" constant that should be
 defined somewhere in source:
 

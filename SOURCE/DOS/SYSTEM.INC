@@ -349,6 +349,7 @@ xms_handle dw ? 			; handle of XMS memory block
 
 get_params:
 	mov	[memory_setting],0
+	mov	[passes_limit],100
 	push	ds
 	mov	ds,[psp_segment]
 	mov	esi,81h
@@ -396,8 +397,39 @@ get_params:
 	je	memory_option
 	cmp	al,'M'
 	je	memory_option
+	cmp	al,'p'
+	je	passes_option
+	cmp	al,'P'
+	je	passes_option
     invalid_option:
 	pop	ds
+	stc
+	ret
+    get_option_value:
+	xor	eax,eax
+	mov	edx,eax
+    get_option_digit:
+	lodsb
+	cmp	al,20h
+	je	option_value_ok
+	cmp	al,0Dh
+	je	option_value_ok
+	or	al,al
+	jz	option_value_ok
+	sub	al,30h
+	jc	bad_params_value
+	cmp	al,9
+	ja	bad_params_value
+	imul	edx,10
+	jo	bad_params_value
+	add	edx,eax
+	jc	bad_params_value
+	jmp	get_option_digit
+    option_value_ok:
+	dec	esi
+	clc
+	ret
+    bad_params_value:
 	stc
 	ret
     memory_option:
@@ -409,32 +441,30 @@ get_params:
 	or	al,al
 	jz	invalid_option
 	dec	esi
-	xor	eax,eax
-	mov	edx,eax
-    get_memory_setting:
-	lodsb
-	cmp	al,20h
-	je	memory_setting_ok
-	cmp	al,0Dh
-	je	memory_setting_ok
-	or	al,al
-	jz	memory_setting_ok
-	sub	al,30h
+	call	get_option_value
 	jc	invalid_option
-	cmp	al,9
-	ja	invalid_option
-	imul	edx,10
-	jo	invalid_option
-	add	edx,eax
-	jc	invalid_option
-	jmp	get_memory_setting
-    memory_setting_ok:
 	or	edx,edx
 	jz	invalid_option
 	cmp	edx,1 shl (32-10)
 	jae	invalid_option
 	mov	[es:memory_setting],edx
+	jmp	find_param
+    passes_option:
+	lodsb
+	cmp	al,20h
+	je	passes_option
+	cmp	al,0Dh
+	je	invalid_option
+	or	al,al
+	jz	invalid_option
 	dec	esi
+	call	get_option_value
+	jc	bad_params
+	or	edx,edx
+	jz	invalid_option
+	cmp	edx,10000h
+	ja	invalid_option
+	mov	[es:passes_limit],dx
 	jmp	find_param
     param_end:
 	dec	esi
@@ -453,16 +483,18 @@ get_params:
 	je	bad_params
 	lea	eax,[params+1]
 	mov	[input_file],eax
+	mov	[output_file],0
 	movzx	ecx,byte [eax-1]
 	add	eax,ecx
 	cmp	byte [eax],0
-	je	bad_params
+	je	params_ok
 	inc	eax
 	mov	[output_file],eax
 	movzx	ecx,byte [eax-1]
 	add	eax,ecx
 	cmp	byte [eax],0
 	jne	bad_params
+    params_ok:
 	clc
 	ret
     bad_params:

@@ -29,6 +29,8 @@ assembler:
 	mov	esi,[source_start]
 	mov	edi,[code_start]
 	xor	eax,eax
+	mov	dword [adjustment],eax
+	mov	dword [adjustment+4],eax
 	mov	[org_origin],edi
 	mov	[org_start],edi
 	mov	[org_registers],eax
@@ -88,8 +90,10 @@ assembler:
       use_prediction_ok:
 	test	byte [eax+8],40h
 	jz	check_next_symbol
-	mov	cx,[current_pass]
 	and	byte [eax+8],not 40h
+	test	byte [eax+8],4
+	jnz	define_misprediction
+	mov	cx,[current_pass]
 	test	byte [eax+8],80h
 	jnz	check_define_prediction
 	cmp	cx,[eax+16]
@@ -117,7 +121,8 @@ assembler:
 	jmp	near [error]
       next_pass:
 	inc	[current_pass]
-	cmp	[current_pass],0
+	mov	ax,[current_pass]
+	cmp	ax,[passes_limit]
 	je	code_cannot_be_generated
 	jmp	assembler_loop
       assemble_ok:
@@ -170,6 +175,20 @@ assemble_line:
 	je	make_label
 	mov	ch,2
       make_label:
+	cmp	[virtual_data],0
+	jne	make_virtual_label
+	or	byte [ebx+9],1
+	xchg	eax,[ebx]
+	xchg	edx,[ebx+4]
+	sub	eax,[ebx]
+	sbb	edx,[ebx+4]
+	mov	dword [adjustment],eax
+	mov	dword [adjustment+4],edx
+	or	eax,edx
+	setnz	ah
+	jmp	finish_label_symbol
+      make_virtual_label:
+	and	byte [ebx+9],not 1
 	cmp	eax,[ebx]
 	mov	[ebx],eax
 	setne	ah
@@ -177,6 +196,7 @@ assemble_line:
 	mov	[ebx+4],edx
 	setne	al
 	or	ah,al
+      finish_label_symbol:
 	cmp	cl,[ebx+10]
 	mov	[ebx+10],cl
 	setne	al
@@ -257,6 +277,7 @@ assemble_line:
 	cmp	ch,3
 	je	invalid_use_of_symbol
       make_constant:
+	and	byte [ebx+9],not 1
 	cmp	eax,[ebx]
 	mov	[ebx],eax
 	setne	ah
@@ -435,8 +456,15 @@ org_directive:
 	mov	[org_origin],ecx
 	mov	[org_registers],0
 	mov	[org_start],edi
-	mov	eax,[symbol_identifier]
-	mov	[org_symbol],eax
+	mov	edx,[symbol_identifier]
+	mov	[org_symbol],edx
+	cmp	[output_format],1
+	ja	instruction_assembled
+	cmp	edi,[code_start]
+	jne	instruction_assembled
+	cmp	eax,100h
+	jne	instruction_assembled
+	bts	[format_flags],0
 	jmp	instruction_assembled
 label_directive:
 	lods	byte [esi]
@@ -466,7 +494,27 @@ label_directive:
 	cdq
 	mov	ebp,[org_registers]
 	cmp	byte [esi],80h
-	jne	define_free_label
+	je	get_free_label_value
+	xor	ch,ch
+	cmp	[reloc_labels],0
+	je	make_adjustable_label
+	mov	ch,2
+	push	[org_symbol]
+	pop	[symbol_identifier]
+      make_adjustable_label:
+	cmp	[virtual_data],0
+	jne	make_free_label
+	or	byte [ebx+9],1
+	xchg	eax,[ebx]
+	xchg	edx,[ebx+4]
+	sub	eax,[ebx]
+	sbb	edx,[ebx+4]
+	mov	dword [adjustment],eax
+	mov	dword [adjustment+4],edx
+	or	eax,edx
+	setne	ah
+	jmp	finish_label
+      get_free_label_value:
 	inc	esi
 	lods	byte [esi]
 	cmp	al,'('
@@ -492,15 +540,8 @@ label_directive:
 	jz	make_free_label
 	cmp	ch,2
 	jne	invalid_use_of_symbol
-	jmp	make_free_label
-      define_free_label:
-	xor	ch,ch
-	cmp	[reloc_labels],0
-	je	make_free_label
-	mov	ch,2
-	push	[org_symbol]
-	pop	[symbol_identifier]
       make_free_label:
+	and	byte [ebx+9],not 1
 	cmp	eax,[ebx]
 	mov	[ebx],eax
 	setne	ah
@@ -508,6 +549,8 @@ label_directive:
 	mov	[ebx+4],edx
 	setne	al
 	or	ah,al
+	jmp	finish_label
+      finish_label:
 	cmp	cl,[ebx+10]
 	mov	[ebx+10],cl
 	setne	al
@@ -680,13 +723,8 @@ display_directive:
 	cmp	edi,[display_buffer]
 	ja	out_of_memory
 	lods	byte [esi]
-	or	al,al
-	jz	do_display
-	cmp	al,0Fh
-	je	do_display
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	prepare_display
+	je	prepare_display
       do_display:
 	dec	esi
 	mov	ebp,edi
@@ -1127,8 +1165,7 @@ data_bytes:
 	cmp	al,0Fh
 	je	data_end
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	data_bytes
+	je	data_bytes
       data_end:
 	dec	esi
 	jmp	instruction_assembled
@@ -1187,8 +1224,8 @@ data_words:
 	cmp	al,0Fh
 	je	data_end
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	get_words_data
+	je	get_words_data
+	jmp	data_end
       word_string:
 	inc	esi
 	lods	dword [esi]
@@ -1256,8 +1293,8 @@ data_dwords:
 	cmp	al,0Fh
 	je	data_end
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	data_dwords
+	je	data_dwords
+	jmp	data_end
 data_pwords:
 	lods	byte [esi]
 	cmp	al,'('
@@ -1313,8 +1350,8 @@ data_pwords:
 	cmp	al,0Fh
 	je	data_end
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	data_pwords
+	je	data_pwords
+	jmp	data_end
 data_qwords:
 	lods	byte [esi]
 	cmp	al,'('
@@ -1343,8 +1380,8 @@ data_qwords:
 	cmp	al,0Fh
 	je	data_end
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	data_qwords
+	je	data_qwords
+	jmp	data_end
 data_twords:
 	lods	byte [esi]
 	cmp	al,'('
@@ -1397,8 +1434,8 @@ data_twords:
 	cmp	al,0Fh
 	je	data_end
 	cmp	al,','
-	jne	extra_characters_on_line
-	jmp	data_twords
+	je	data_twords
+	jmp	data_end
 data_file:
 	lods	word [esi]
 	cmp	ax,'('

@@ -949,21 +949,35 @@ calculate_expression:
 	or	byte [ebx+8],8
 	test	byte [ebx+8],1
 	jz	label_undefined
-	test	byte [ebx+8],4
-	jz	label_defined
 	cmp	ax,[ebx+16]
-	jne	label_undefined
+	je	label_defined
+	test	byte [ebx+8],4
+	jnz	label_undefined
+	test	byte [ebx+9],1
+	jz	label_defined
+	mov	eax,[ebx]
+	sub	eax,dword [adjustment]
+	stos	dword [edi]
+	mov	eax,[ebx+4]
+	sbb	eax,dword [adjustment+4]
+	stos	dword [edi]
+	mov	eax,dword [adjustment]
+	or	eax,dword [adjustment+4]
+	jz	got_label
+	or	[next_pass_needed],-1
+	jmp	got_label
       label_defined:
-	mov	al,[ebx+11]
-	mov	[edi+12],al
-	mov	eax,[ebx+12]
-	mov	[edi+8],eax
-	mov	eax,[ebx+20]
-	mov	[edi+16],eax
 	mov	eax,[ebx]
 	stos	dword [edi]
 	mov	eax,[ebx+4]
 	stos	dword [edi]
+      got_label:
+	mov	al,[ebx+11]
+	mov	[edi-8+12],al
+	mov	eax,[ebx+12]
+	mov	[edi-8+8],eax
+	mov	eax,[ebx+20]
+	mov	[edi-8+16],eax
 	add	edi,0Ch
 	mov	al,[ebx+10]
 	or	al,al
@@ -1019,15 +1033,15 @@ calculate_expression:
 	cmp	eax,2
 	je	timestamp_label
       label_undefined:
-	cmp	[current_pass],0
-	je	force_second_pass
+	cmp	[current_pass],1
+	jbe	force_next_pass
 	cmp	[error_line],0
 	jne	undefined_value
 	mov	eax,[current_line]
 	mov	[error_line],eax
 	mov	[error],undefined_symbol
 	jmp	undefined_value
-      force_second_pass:
+      force_next_pass:
 	or	[next_pass_needed],-1
       undefined_value:
 	mov	byte [edi+12],0
@@ -2335,18 +2349,28 @@ get_logical_value:
 	cmp	eax,0Fh
 	jb	check_expression
 	je	reserved_word_used_as_symbol
+	test	byte [eax+8],4
+	jnz	no_prediction
+	test	byte [eax+8],1
+	jz	symbol_predicted_undefined
+	mov	cx,[current_pass]
+	sub	cx,[eax+16]
+	jz	check_expression
+	cmp	cx,1
+	ja	symbol_predicted_undefined
+	or	byte [eax+8],40h+80h
+	jmp	check_expression
+      no_prediction:
 	test	byte [eax+8],1
 	jz	symbol_undefined
 	mov	cx,[current_pass]
 	sub	cx,[eax+16]
-	jz	  check_expression
-	cmp	cx,1
-	ja	symbol_undefined
-	or	byte [eax+8],40h+80h
-	jmp	check_expression
-      symbol_undefined:
+	jz	check_expression
+	jmp	symbol_undefined
+      symbol_predicted_undefined:
 	or	byte [eax+8],40h
 	and	byte [eax+8],not 80h
+      symbol_undefined:
 	xor	bl,bl
 	jmp	check_expression
       expression_checked:

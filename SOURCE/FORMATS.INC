@@ -4,6 +4,109 @@
 ; All rights reserved.
 
 formatter:
+	cmp	[output_file],0
+	jne	output_path_ok
+	push	edi
+	mov	esi,[input_file]
+	mov	edi,[free_additional_memory]
+      copy_output_path:
+	lods	byte [esi]
+	cmp	edi,[structures_buffer]
+	jae	out_of_memory
+	stos	byte [edi]
+	or	al,al
+	jnz	copy_output_path
+	dec	edi
+	mov	eax,edi
+	dec	edi
+      find_extension:
+	dec	eax
+	cmp	eax,[free_additional_memory]
+	jb	extension_found
+	cmp	byte [eax],'\'
+	je	extension_found
+	cmp	byte [eax],'/'
+	je	extension_found
+	cmp	byte [eax],'.'
+	jne	find_extension
+	mov	edi,eax
+      extension_found:
+	lea	eax,[edi+9]
+	cmp	eax,[structures_buffer]
+	jae	out_of_memory
+	cmp	[output_format],2
+	je	exe_extension
+	jb	bin_extension
+	cmp	[output_format],4
+	je	obj_extension
+	cmp	[output_format],5
+	je	o_extension
+	cmp	[output_format],3
+	jne	no_extension
+	cmp	[subsystem],1
+	je	sys_extension
+	bt	[format_flags],8
+	jnc	exe_extension
+	mov	eax,'.dll'
+	jmp	make_extension
+      sys_extension:
+	mov	eax,'.sys'
+	jmp	make_extension
+      bin_extension:
+	mov	eax,'.bin'
+	bt	[format_flags],0
+	jnc	make_extension
+	mov	eax,'.com'
+	jmp	make_extension
+      obj_extension:
+	mov	eax,'.obj'
+	jmp	make_extension
+      o_extension:
+	mov	eax,'.o'
+	bt	[format_flags],0
+	jnc	make_extension
+      no_extension:
+	xor	eax,eax
+	jmp	make_extension
+      exe_extension:
+	mov	eax,'.exe'
+      make_extension:
+	xchg	eax,[edi]
+	scas	dword [edi]
+	mov	byte [edi],0
+	scas	byte [edi]
+	mov	esi,edi
+	stos	dword [edi]
+	sub	edi,9
+	xor	eax,eax
+	mov	ebx,characters
+      adapt_case:
+	mov	al,[esi]
+	or	al,al
+	jz	adapt_next
+	xlat	byte [ebx]
+	cmp	al,[esi]
+	je	adapt_ok
+	sub	byte [edi],20h
+      adapt_ok:
+	inc	esi
+      adapt_next:
+	inc	edi
+	cmp	byte [edi],0
+	jne	adapt_case
+	mov	esi,edi
+	lea	ecx,[esi+1]
+	sub	ecx,[free_additional_memory]
+	mov	edi,[structures_buffer]
+	dec	edi
+	std
+	rep	movs byte [edi],[esi]
+	cld
+	inc	edi
+	mov	[structures_buffer],edi
+	mov	[output_file],edi
+	pop	edi
+      output_path_ok:
 	cmp	[output_format],4
 	je	coff_formatter
 	cmp	[output_format],5
@@ -41,6 +144,8 @@ formatter:
 	call	close
 	ret
       write_code:
+	mov	eax,[written_size]
+	mov	[headers_size],eax
 	mov	edx,[code_start]
 	mov	ecx,[code_size]
 	add	[written_size],ecx
@@ -506,7 +611,7 @@ make_stub:
 	int	21h
 	mov	ax,4C01h
 	int	21h
-      stub_message db 'this program cannot be run in DOS mode.',0Dh,0Ah,24h
+      stub_message db 'This program cannot be run in DOS mode.',0Dh,0Ah,24h
 	rq	1
       default_stub_end:
 	use32
@@ -2020,16 +2125,23 @@ coff_formatter:
 	shl	edx,8
 	mov	dl,80h
 	mov	[esi],edx
-	inc	eax
+	mov	edx,[esi+8]
 	add	esi,10h
+	inc	eax
+	cmp	byte [edx+11],2
+	jne	enumerate_symbols
+	mov	edx,[edx+20]
+	cmp	byte [edx],81h
+	jne	enumerate_symbols
+	inc	eax
 	jmp	enumerate_symbols
       enumerate_extrn:
 	mov	edx,eax
 	shl	edx,8
 	mov	dl,81h
 	mov	[esi],edx
-	inc	eax
 	add	esi,0Ch
+	inc	eax
 	jmp	enumerate_symbols
       prepare_default_section:
 	mov	ebx,[symbols_stream]
@@ -2262,6 +2374,8 @@ coff_formatter:
 	jne	invalid_use_of_symbol
 	mov	ecx,[eax+20]
 	mov	ecx,[ecx]
+	cmp	cl,81h
+	je	alias_symbol
 	or	cl,cl
 	jnz	invalid_use_of_symbol
 	shr	ecx,8
@@ -2278,6 +2392,23 @@ coff_formatter:
 	mov	eax,[eax]
 	mov	[ebx+8],eax
 	mov	byte [ebx+10h],2
+	add	esi,10h
+	add	ebx,12h
+	jmp	make_symbols_table
+      alias_symbol:
+	bt	[format_flags],0
+	jnc	invalid_use_of_symbol
+	mov	ecx,[eax]
+	or	ecx,[eax+4]
+	jnz	invalid_use_of_symbol
+	mov	byte [ebx+10h],69h
+	mov	byte [ebx+11h],1
+	add	ebx,12h
+	mov	ecx,[eax+20]
+	mov	ecx,[ecx]
+	shr	ecx,8
+	mov	[ebx],ecx
+	mov	byte [ebx+4],3
 	add	esi,10h
 	add	ebx,12h
 	jmp	make_symbols_table
