@@ -5,241 +5,81 @@
 
 parser:
 	mov	eax,[memory_end]
-	mov	[last_label_id],eax
-	dec	eax
-	mov	byte [eax],0
 	mov	[labels_list],eax
 	mov	[current_locals_prefix],0
-	xor	al,al
-	mov	edi,[additional_memory_end]
-	dec	edi
-	mov	[edi],al
-	mov	[names_list],edi
 	mov	esi,[source_start]
 	mov	edi,[code_start]
+	push	[additional_memory]
      parser_loop:
 	mov	[current_line],esi
-	add	esi,4
-	lods	byte [esi]
-	mov	[line_type],al
 	cmp	edi,[labels_list]
 	jae	out_of_memory
+	mov	al,0Fh
+	stos	byte [edi]
+	mov	eax,esi
+	stos	dword [edi]
+	add	esi,12
 	call	parse_line
 	cmp	esi,[code_start]
 	jb	parser_loop
 	xor	al,al
 	stos	byte [edi]
+	pop	[additional_memory]
 	mov	eax,[code_start]
 	mov	[source_start],eax
 	mov	[code_start],edi
 	ret
 
 parse_line:
-	mov	al,80h
-	mov	ah,[line_type]
-	cmp	ah,'{'
-	je	ignore_line
-	cmp	ah,20h
-	je	line_start
-	cmp	ah,';'
-	je	line_start
-	cmp	ah,'-'
-	je	line_start
-	mov	eax,[current_line]
-	mov	[home_line],eax
-	mov	al,81h
-      line_start:
-	stos	byte [edi]
-	mov	eax,[current_line]
-	stos	dword [edi]
-	push	edi
-	mov	edi,[additional_memory]
-	mov	[symbol_counter],0
-      convert_line_data:
-	call	skip_spaces
-	lods	byte [esi]
-	stos	byte [edi]
-	mov	ah,al
-	mov	ebx,characters
-	xlatb
-	xchg	al,ah
-	or	ah,ah
-	jnz	convert_separator
-	cmp	al,27h
-	je	copy_string
-	cmp	al,22h
-	je	copy_string
-	mov	al,1Ah
-	xchg	al,[edi-1]
-	inc	edi
-	stos	byte [edi]
-	mov	edx,1
-      convert_symbol:
-	lods	byte [esi]
-	stos	byte [edi]
-	mov	ah,al
-	mov	ebx,characters
-	xlatb
-	xchg	al,ah
-	or	ah,ah
-	jnz	symbol_end
-	or	al,al
-	jz	symbol_end
-	inc	edx
-	jmp	convert_symbol
-      copy_string:
-	mov	ah,al
-	mov	byte [edi-1],27h
-      .copy:
-	lods	byte [esi]
-	stos	byte [edi]
-	or	al,al
-	jz	missing_end_quote
-	cmp	al,ah
-	jne	.copy
-	lods	byte [esi]
-	cmp	al,ah
-	je	.copy
-	dec	esi
-	mov	byte [edi-1],1Ah
-	jmp	convert_line_data
-      symbol_end:
-	cmp	edx,255
-	ja	name_too_long
-	mov	ebx,edi
-	sub	ebx,edx
-	mov	byte [ebx-2],dl
-	cmp	[symbol_counter],0
-	jne	count_symbol
-	cmp	al,':'
-	je	preprocess_symbol
-      count_symbol:
-	inc	[symbol_counter]
-      preprocess_symbol:
-	cmp	[line_type],'='
-	je	check_symbol_count
-	cmp	[line_type],'-'
-	jne	check_name
-      check_symbol_count:
-	cmp	[symbol_counter],0
-	je	check_name
-	cmp	[symbol_counter],2
-	ja	check_name
-	dec	esi
-	dec	edi
-	jmp	convert_line_data
-      check_name:
-	push	ax esi
-	mov	ebx,[names_list]
-	lea	esi,[edi-1]
-	sub	esi,edx
-      compare_names:
-	mov	eax,esi
-	mov	ecx,edx
-	cmp	byte [ebx],0
-	je	symbol_converted
-	cmp	[ebx],cl
-	jne	next_name
-	lea	edi,[ebx+1]
-	repe	cmps byte [esi],[edi]
-	jne	next_name
-	lea	esi,[edi+4]
-	mov	ecx,[edi]
-	lea	edi,[eax-2]
-	mov	ebx,ecx
-	rep	movs byte [edi],[esi]
-	mov	ecx,ebx
-	mov	esi,eax
-	pop	esi ax
-	dec	esi
-	jmp	convert_line_data
-      next_name:
-	mov	esi,eax
-	movzx	eax,byte [ebx]
-	lea	ebx,[ebx+1+eax]
-	mov	eax,[ebx]
-	lea	ebx,[ebx+4+eax]
-	jmp	compare_names
-      symbol_converted:
-	add	esi,ecx
-	mov	edi,esi
-	pop	esi ax
-	dec	esi
-	jmp	convert_line_data
-      convert_separator:
-	cmp	al,3Bh
-	je	ignore_comment
-	or	al,al
-	jnz	convert_line_data
-	jmp	line_converted
-      convert_space:
-	dec	edi
-	jmp	convert_line_data
-      ignore_comment:
-	lods	byte [esi]
-	or	al,al
-	jnz	ignore_comment
-	mov	byte [edi-1],0
-      line_converted:
-	pop	edi
-	push	esi
-	mov	esi,[additional_memory]
 	mov	[parenthesis_stack],0
       instruction_start:
-	push	edi
 	cmp	byte [esi],1Ah
 	jne	empty_instruction
+	push	edi
 	inc	esi
-	lods	byte [esi]
-	movzx	ecx,al
+	movzx	ecx,byte [esi]
+	inc	esi
 	cmp	byte [esi+ecx],':'
 	je	simple_label
-	cmp	[line_type],':'
-	je	skip_rest_of_line
-	cmp	[line_type],';'
-	je	skip_rest_of_line
 	push	esi ecx
 	add	esi,ecx
 	cmp	byte [esi],1Ah
-	je	get_following_instruction
+	je	check_for_data_label
 	cmp	byte [esi],'='
 	je	constant_label
-	jmp	get_main_instruction
-      get_following_instruction:
-	inc	esi
-	lods	byte [esi]
-	movzx	ecx,al
-	call	get_instruction
-	jc	get_following_symbol
-	cmp	ah,1
-	je	data_label
-	cmp	ah,2
-	je	data_label
-	jmp	get_main_instruction
-      get_following_symbol:
-	mov	edi,symbols
-	call	get_symbol
-	jc	get_main_instruction
-	cmp	ax,17h
-	je	equ_definition
-      get_main_instruction:
 	pop	ecx esi
-	call	get_instruction
-	pop	edi
-	jnc	parse_instruction
+	jmp	get_main_instruction
+      check_for_data_label:
+	inc	esi
+	movzx	ecx,byte [esi]
+	inc	esi
 	push	edi
+	mov	edi,data_directives
+	call	get_symbol
+	pop	edi
+	jnc	data_label
+	pop	ecx esi
+      get_main_instruction:
+	call	get_instruction
+	jnc	parse_instruction
+	mov	edi,data_directives
+	call	get_symbol
+	jnc	data_instruction
 	mov	edi,symbols
 	call	get_symbol
 	pop	edi
 	jc	unknown_instruction
 	stos	word [edi]
 	jmp	parse_arguments
+      data_instruction:
+	movzx	ebx,ah
+	mov	bx,[data_handlers+ebx*2]
+	jmp	parse_instruction
       unknown_instruction:
 	sub	esi,2
 	jmp	parse_arguments
       constant_label:
 	pop	ecx esi
-	call	check_label_name
 	pop	edi
 	call	identify_label
 	mov	byte [edi],3
@@ -249,59 +89,20 @@ parse_line:
 	stos	byte [edi]
 	inc	esi
 	jmp	parse_arguments
-      equ_definition:
-	mov	ebx,esi
-      find_equ_end:
-	lods	byte [esi]
-	or	al,al
-	jnz	find_equ_end
-	dec	esi
-	mov	ecx,esi
-	sub	ecx,ebx
-	pop	eax edx
-	push	esi
-	mov	esi,ebx
-	mov	edi,[names_list]
-	sub	edi,ecx
-	lea	ebx,[edi-4]
-	mov	[ebx],ecx
-	rep	movs byte [edi],[esi]
-	mov	esi,edx
-	sub	ebx,eax
-	mov	edi,ebx
-	dec	ebx
-	mov	[ebx],al
-	mov	[names_list],ebx
-	sub	ebx,100h
-	cmp	ebx,[additional_memory]
-	jbe	out_of_memory
-	mov	ecx,eax
-	cmp	byte [esi],27h
-	je	invalid_name
-	cmp	byte [esi],22h
-	je	invalid_name
-	rep	movs byte [edi],[esi]
-	pop	esi edi
-	jmp	instruction_start
       data_label:
-	mov	ebp,esi
-	pop	ecx esi
+	pop	ecx ebx
 	pop	edi
-	push	ax bx
-	push	ebp edi
-	call	check_label_name
-	pop	edi
+	push	ax esi
+	mov	esi,ebx
 	call	identify_label
-	pop	esi
 	mov	byte [edi],2
 	inc	edi
 	stos	dword [edi]
-	pop	bx ax
-	and	al,0Fh
+	pop	esi ax
 	stos	byte [edi]
-	jmp	parse_instruction
+	push	edi
+	jmp	data_instruction
       simple_label:
-	call	check_label_name
 	pop	edi
 	call	identify_label
 	mov	byte [edi],2
@@ -311,66 +112,59 @@ parse_line:
 	xor	al,al
 	stos	byte [edi]
 	jmp	instruction_start
-      check_label_name:
-	mov	al,[esi]
-	cmp	al,27h
-	je	invalid_name
-	cmp	al,22h
-	je	invalid_name
-	cmp	al,30h
-	jb	name_first_char_ok
-	cmp	al,39h
-	jbe	invalid_name
-      name_first_char_ok:
-	cmp	ecx,1
-	jne	check_for_reserved_word
-	cmp	al,'$'
-	je	reserved_word_used_as_symbol
-      check_for_reserved_word:
-	call	get_instruction
-	jnc	reserved_word_used_as_symbol
-	mov	edi,symbols
-	call	get_symbol
-	jnc	reserved_word_used_as_symbol
-	ret
       identify_label:
 	cmp	byte [esi],'.'
 	je	local_label_name
 	call	get_label_id
-	mov	ebx,[label_name]
+	mov	ebx,[eax+4]
+	dec	ebx
 	mov	[current_locals_prefix],ebx
 	ret
       local_label_name:
 	call	get_label_id
 	ret
-      parse_instruction:
-	mov	dx,ax
-	mov	al,1
-	stos	byte [edi]
-	mov	ax,bx
-	stos	word [edi]
-	mov	ax,dx
-	stos	word [edi]
-	mov	[instruction_type],ax
-	cmp	bx,label_directive-assembler
-	je	parse_label_instruction
-	cmp	bx,load_directive-assembler
-	je	parse_label_instruction
-	cmp	bx,segment_directive-assembler
+      parse_prefix_instruction:
+	cmp	byte [esi],1Ah
 	jne	parse_arguments
-      parse_label_instruction:
+	push	edi
+	inc	esi
+	movzx	ecx,byte [esi]
+	inc	esi
+	jmp	get_main_instruction
+      parse_label_directive:
 	push	edi
 	lods	byte [esi]
 	cmp	al,1Ah
 	jne	invalid_argument
+	movzx	ecx,byte [esi]
 	lods	byte [esi]
-	movzx	ecx,al
-	call	check_label_name
 	pop	edi
-	mov	al,4
+	mov	al,2
 	stos	byte [edi]
-	call	get_label_id
+	call	identify_label
 	stos	dword [edi]
+	xor	al,al
+	stos	byte [edi]
+	jmp	parse_arguments
+      parse_instruction:
+	pop	edi
+	mov	dl,al
+	mov	al,1
+	stos	byte [edi]
+	mov	ax,bx
+	stos	word [edi]
+	mov	al,dl
+	stos	byte [edi]
+	cmp	bx,prefix_instruction-assembler
+	je	parse_prefix_instruction
+	cmp	bx,end_directive-assembler
+	je	parse_prefix_instruction
+	cmp	bx,label_directive-assembler
+	je	parse_label_directive
+	cmp	bx,load_directive-assembler
+	je	parse_label_directive
+	cmp	bx,segment_directive-assembler
+	je	parse_label_directive
       parse_arguments:
 	lods	byte [esi]
 	cmp	al,':'
@@ -401,25 +195,35 @@ parse_line:
 	cmp	al,1Ah
 	jne	expression_argument
 	push	edi
-	mov	edx,esi
+	mov	edi,directive_operators
+	call	get_operator
+	or	al,al
+	jnz	operator_argument
 	inc	esi
-	lods	byte [esi]
-	movzx	ecx,al
+	movzx	ecx,byte [esi]
+	inc	esi
 	mov	edi,symbols
 	call	get_symbol
-	jc	not_symbol_argument
-	pop	edi
-	stos	word [edi]
-	cmp	ax,13h
-	je	at_parsed
-	jmp	argument_parsed
-      not_symbol_argument:
+	jnc	symbol_argument
+	mov	edi,formatter_symbols
+	call	get_symbol
+	jnc	symbol_argument
 	cmp	ecx,1
 	jne	check_argument
 	cmp	byte [esi],'?'
 	jne	check_argument
 	pop	edi
 	movs	byte [edi],[esi]
+	jmp	argument_parsed
+      symbol_argument:
+	pop	edi
+	stos	word [edi]
+	jmp	argument_parsed
+      operator_argument:
+	pop	edi
+	stos	byte [edi]
+	cmp	al,80h
+	je	forced_expression
 	jmp	argument_parsed
       check_argument:
 	push	esi ecx
@@ -430,29 +234,20 @@ parse_line:
 	or	al,al
 	jnz	not_instruction
 	call	get_instruction
-	jc	not_instruction
-	pop	edi
-	jmp	parse_instruction
+	jnc	parse_instruction
+	mov	edi,data_directives
+	call	get_symbol
+	jnc	data_instruction
       not_instruction:
 	pop	edi
 	sub	esi,2
       expression_argument:
-	cmp	byte [esi],27h
+	cmp	byte [esi],22h
 	jne	not_string
-	mov	ebx,esi
-	inc	esi
-	xor	ecx,ecx
-      get_string_length:
-	lods	byte [esi]
-	inc	ecx
-	or	al,al
-	jz	missing_end_quote
-	cmp	al,1Ah
-	jne	get_string_length
-	dec	ecx
-	xchg	esi,ebx
-	cmp	ecx,8
-	ja	forced_string
+	mov	eax,[esi+1]
+	cmp	eax,8
+	ja	string_argument
+	lea	ebx,[esi+5+eax]
 	push	ebx ecx esi edi
 	mov	al,'('
 	stos	byte [edi]
@@ -461,19 +256,25 @@ parse_line:
 	stos	byte [edi]
 	pop	eax edx ecx ebx
 	cmp	esi,ebx
-	je	string_argument
-	jmp	expression_parsed
-      string_argument:
+	jne	expression_parsed
 	mov	edi,eax
 	mov	esi,edx
-      forced_string:
+      string_argument:
 	inc	esi
 	mov	ax,'('
 	stos	word [edi]
-	mov	eax,ecx
+	lods	dword [esi]
+	mov	ecx,eax
 	stos	dword [edi]
-	rep	movs byte [edi],[esi]
-	inc	esi
+	shr	ecx,1
+	jnc	string_movsb_ok
+	movs	byte [edi],[esi]
+      string_movsb_ok:
+	shr	ecx,1
+	jnc	string_movsw_ok
+	movs	word [edi],[esi]
+      string_movsw_ok:
+	rep	movs dword [edi],[esi]
 	xor	al,al
 	stos	byte [edi]
 	jmp	argument_parsed
@@ -500,13 +301,7 @@ parse_line:
 	mov	eax,[fp_value+8]
 	stos	dword [edi]
 	jmp	expression_parsed
-      at_parsed:
-	cmp	[parenthesis_stack],0
-	je	at_expression
-	dec	[parenthesis_stack]
-	add	esp,8
-	jmp	at_parsed
-      at_expression:
+      forced_expression:
 	mov	al,'('
 	stos	byte [edi]
       expression:
@@ -517,16 +312,20 @@ parse_line:
       address_argument:
 	mov	al,'['
 	stos	byte [edi]
-	cmp	byte [esi+4],':'
-	jne	convert_address
 	cmp	word [esi],021Ah
+	jne	convert_address
+	push	esi
+	add	esi,4
+	lea	ebx,[esi+1]
+	cmp	byte [esi],':'
+	pop	esi
 	jne	convert_address
 	add	esi,2
 	mov	ecx,2
-	push	edi
+	push	ebx edi
 	mov	edi,symbols
 	call	get_symbol
-	pop	edi
+	pop	edi esi
 	jc	invalid_address
 	cmp	al,10h
 	jne	invalid_address
@@ -535,7 +334,6 @@ parse_line:
 	cmp	ah,60h
 	jne	invalid_address
 	stos	byte [edi]
-	inc	esi
       convert_address:
 	cmp	byte [esi],1Ah
 	jne	convert_address_value
@@ -543,12 +341,10 @@ parse_line:
 	lods	word [esi]
 	movzx	ecx,ah
 	push	edi
-	mov	edi,symbols
+	mov	edi,address_sizes
 	call	get_symbol
 	pop	edi
 	jc	no_size_prefix
-	cmp	al,11h
-	jne	no_size_prefix
 	mov	al,ah
 	add	al,70h
 	stos	byte [edi]
@@ -578,7 +374,7 @@ parse_line:
 	mov	al,'ò'
 	jmp	separator
       less:
-	cmp	word [edi-2],13h+1 shl 8
+	cmp	byte [edi-1],83h
 	je	separator
 	cmp	byte [esi],'>'
 	je	not_equal
@@ -605,42 +401,40 @@ parse_line:
 	dec	[parenthesis_stack]
 	pop	edi esi
 	jmp	parse_expression
-      skip_rest_of_line:
-	pop	edi
-	jmp	skip_line_data
       empty_instruction:
-	pop	edi
 	lods	byte [esi]
 	or	al,al
 	jz	line_parsed
 	cmp	al,':'
 	je	empty_label
+	cmp	al,3Bh
+	je	skip_preprocessed_symbol
 	dec	esi
 	jmp	parse_arguments
       empty_label:
-	mov	ebx,locals_counter
+	mov	eax,_counter
 	call	increase_counter
-	mov	[current_locals_prefix],ebx
+	mov	[current_locals_prefix],eax
 	jmp	instruction_start
-      skip_line_data:
+      skip_preprocessed_symbol:
+	lods	byte [esi]
+	movzx	eax,al
+	add	esi,eax
+      skip_next:
 	lods	byte [esi]
 	or	al,al
-	jnz	skip_line_data
+	jz	line_parsed
+	cmp	al,1Ah
+	je	skip_preprocessed_symbol
+	cmp	al,22h
+	je	skip_preprocessed_string
+	jmp	skip_next
+      skip_preprocessed_string:
+	lods	dword [esi]
+	add	esi,eax
+	jmp	skip_next
       line_parsed:
 	cmp	[parenthesis_stack],0
 	jne	invalid_expression
-	pop	esi
-	ret
-      ignore_line:
-	lods	byte [esi]
-	or	al,al
-	jnz	ignore_line
 	ret
 
-align 4
-
-current_locals_prefix dd ?
-instruction_type dw ?
-line_type db ?
-symbol_counter db ?
-parenthesis_stack db ?

@@ -30,11 +30,11 @@ convert_expression:
 	call	get_operator
 	pop	edi
       expression_number:
-	push	ax
+	push	eax
 	cmp	byte [esi],0
 	je	invalid_expression
 	call	convert_number
-	pop	ax
+	pop	eax
 	or	al,al
 	jz	expression_operator
 	stos	byte [edi]
@@ -94,15 +94,16 @@ convert_number:
 	ret
       qword_number:
 	mov	byte [edi-1],8
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	ret
       dword_number:
 	mov	byte [edi-1],4
-	add	edi,4
+	scas	dword [edi]
 	ret
       word_number:
 	mov	byte [edi-1],2
-	add	edi,2
+	scas	word [edi]
 	ret
       expression_value:
 	inc	esi
@@ -118,7 +119,7 @@ convert_number:
 	lods	byte [esi]
 	movzx	ecx,al
 	push	ecx esi edi
-	mov	edi,index_registers
+	mov	edi,address_registers
 	call	get_symbol
 	jnc	register_value
 	mov	edi,symbols
@@ -139,11 +140,11 @@ convert_number:
 
 get_number:
 	xor	ebp,ebp
-	cmp	byte [esi],27h
+	lods	byte [esi]
+	cmp	al,22h
 	je	get_text_number
-	cmp	byte [esi],1Ah
+	cmp	al,1Ah
 	jne	not_number
-	inc	esi
 	lods	byte [esi]
 	movzx	ecx,al
 	mov	[number_start],esi
@@ -207,8 +208,9 @@ get_number:
 	pop	eax
       invalid_number:
 	mov	esi,[number_start]
-	sub	esi,2
+	dec	esi
       not_number:
+	dec	esi
 	stc
 	ret
       get_bin_number:
@@ -253,7 +255,6 @@ get_number:
 	cmp	al,9
 	jbe	hex_digit_ok
 	sub	al,7
-	jc	bad_number
 	cmp	al,15
 	jbe	hex_digit_ok
 	sub	al,20h
@@ -320,18 +321,16 @@ get_number:
 	clc
 	ret
       get_text_number:
-	inc	esi
+	lods	dword [esi]
+	mov	edx,eax
 	xor	bl,bl
 	mov	dword [edi],0
 	mov	dword [edi+4],0
       get_text_character:
-	lods	byte [esi]
-	cmp	al,1Ah
-	je	number_done
-	or	al,al
-	jz	missing_end_quote
-	movzx	eax,al
-	xor	edx,edx
+	sub	edx,1
+	jc	number_done
+	movzx	eax,byte [esi]
+	inc	esi
 	mov	cl,bl
 	cmp	bl,64
 	je	text_out_of_range
@@ -508,12 +507,12 @@ get_fp_value:
 	lods	byte [esi]
 	movzx	ecx,al
       get_exponent:
-	lods	byte [esi]
+	movzx	eax,byte [esi]
+	inc	esi
 	sub	al,30h
 	imul	edx,10
 	cmp	edx,8000h
 	jae	value_out_of_range
-	movzx	eax,al
 	add	edx,eax
 	loop	get_exponent
 	mov	edi,fp_value
@@ -722,7 +721,7 @@ get_fp_value:
 calculate_expression:
 	lods	byte [esi]
 	or	al,al
-	jz	convert_string
+	jz	get_string_value
 	cmp	al,'.'
 	je	convert_fp
 	cmp	al,1
@@ -791,7 +790,8 @@ calculate_expression:
 	stos	dword [edi]
 	xor	al,al
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       get_word_number:
 	mov	word [edi+8],0
@@ -801,7 +801,8 @@ calculate_expression:
 	stos	dword [edi]
 	xor	ax,ax
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       get_dword_number:
 	mov	word [edi+8],0
@@ -809,14 +810,16 @@ calculate_expression:
 	movs	dword [edi],[esi]
 	xor	eax,eax
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       get_qword_number:
 	mov	word [edi+8],0
 	mov	byte [edi+12],0
 	movs	dword [edi],[esi]
 	movs	dword [edi],[esi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       get_register:
 	mov	byte [edi+9],0
@@ -827,7 +830,8 @@ calculate_expression:
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       get_label:
 	mov	word [edi+8],0
@@ -860,7 +864,8 @@ calculate_expression:
 	stos	dword [edi]
 	mov	eax,[ebx+4]
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	mov	al,[ebx+10]
 	or	al,al
 	jz	calculate_expression
@@ -892,24 +897,26 @@ calculate_expression:
 	stos	dword [edi]
 	mov	eax,[org_sib]
 	stos	dword [edi]
-	add	edi,4
+	scas	dword [edi]
 	jmp	calculate_expression
       counter_label:
 	mov	eax,[counter]
 	stos	dword [edi]
 	xor	eax,eax
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       label_undefined:
 	cmp	[current_pass],0
 	jne	invalid_value
-	mov	[next_pass_needed],1
+	or	[next_pass_needed],-1
 	mov	byte [edi+12],0
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
-	add	edi,8
+	scas	dword [edi]
+	scas	dword [edi]
 	jmp	calculate_expression
       calculate_add:
 	cmp	[next_pass_needed],0
@@ -1361,7 +1368,8 @@ calculate_expression:
 	je	invalid_use_of_symbol
       rva_ok:
 	mov	byte [edi+12],0
-	mov	eax,[image_base]
+	mov	eax,[header_data]
+	mov	eax,[eax+34h]
 	sub	[edi],eax
 	sbb	dword [edi+4],0
 	add	edi,10h
@@ -1515,7 +1523,7 @@ calculate_expression:
 	mov	[edi+4],edx
 	add	esi,12
 	ret
-      convert_string:
+      get_string_value:
 	lods	dword [esi]
 	mov	ecx,eax
 	cmp	ecx,8
@@ -1559,8 +1567,6 @@ get_byte_value:
 	jne	return_value
 	mov	eax,[current_line]
 	mov	[error_line],eax
-	mov	eax,[home_line]
-	mov	[error_home_line],eax
 	mov	[error],value_out_of_range
 	ret
 get_word_value:
@@ -1827,7 +1833,7 @@ get_logical_value:
 	cmp	byte [esi],'~'
 	jne	negation_ok
 	inc	esi
-	mov	al,1
+	or	al,-1
       negation_ok:
 	push	ax
 	cmp	byte [esi],'{'
@@ -1839,7 +1845,7 @@ get_logical_value:
       check_for_values:
 	xor	bl,bl
 	cmp	byte [esi],'('
-	jne	find_equ_symbol
+	jne	find_eq_symbol
 	call	skip_symbol
 	lods	byte [esi]
 	cmp	al,'='
@@ -1855,27 +1861,27 @@ get_logical_value:
 	cmp	al,'ö'
 	je	compare_values
 	dec	esi
-      find_equ_symbol:
-	cmp	byte [esi],17h
+      find_eq_symbol:
+	cmp	byte [esi],81h
 	je	compare_symbols
-	cmp	word [esi],13h+1 shl 8
+	cmp	byte [esi],83h
 	je	scan_symbols_list
 	call	check_character
-	jc	invalid_expression
+	jc	logical_number
 	cmp	al,','
-	jne	next_equ_symbol
+	jne	next_eq_symbol
 	mov	bl,1
-      next_equ_symbol:
+      next_eq_symbol:
 	call	skip_symbol
-	jmp	find_equ_symbol
+	jmp	find_eq_symbol
       compare_symbols:
-	add	esi,2
+	inc	esi
 	pop	ebx
 	mov	edx,esi
 	push	edi
 	mov	edi,ebx
 	mov	ecx,esi
-	sub	ecx,2
+	dec	ecx
 	sub	ecx,edi
 	repe	cmps byte [esi],[edi]
 	pop	edi
@@ -1894,13 +1900,13 @@ get_logical_value:
 	or	bl,bl
 	jnz	invalid_expression
 	xor	bp,bp
-	add	esi,2
+	inc	esi
 	lods	byte [esi]
 	cmp	al,'<'
 	jne	invalid_expression
 	pop	ebx
 	mov	ecx,esi
-	sub	ecx,3
+	sub	ecx,2
 	sub	ecx,ebx
       compare_in_list:
 	mov	edx,esi
@@ -1943,20 +1949,18 @@ get_logical_value:
       check_character:
 	mov	al,[esi]
 	or	al,al
-	jz	.stop
-	cmp	al,80h
-	je	.stop
-	cmp	al,81h
-	je	.stop
+	jz	stop
+	cmp	al,0Fh
+	je	stop
 	cmp	al,'}'
-	je	.stop
+	je	stop
 	cmp	al,'|'
-	je	.stop
+	je	stop
 	cmp	al,'&'
-	je	.stop
+	je	stop
 	clc
 	ret
-      .stop:
+      stop:
 	stc
 	ret
       compare_values:
@@ -2026,11 +2030,19 @@ get_logical_value:
 	jne	return_true
 	cmp	edx,ecx
 	jne	return_true
+	jmp	return_false
+      logical_number:
+	pop	esi
+	call	get_value
+	cmp	[value_type],0
+	jne	invalid_expression
+	or	eax,edx
+	jnz	return_true
       return_false:
 	xor	al,al
 	jmp	logical_value_ok
       return_true:
-	mov	al,1
+	or	al,-1
 	jmp	logical_value_ok
       logical_expression:
 	inc	esi
@@ -2044,17 +2056,3 @@ get_logical_value:
 	pop	bx
 	xor	al,bl
 	ret
-
-align 4
-
-number_start dd ?
-expression_stack dd ?
-current_offset dd ?
-fp_value rd 8
-fp_sign db ?
-fp_format db ?
-value_size db ?
-forced_size db ?
-value_type db ?
-address_size db ?
-compare_type db ?

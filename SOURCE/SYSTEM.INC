@@ -111,6 +111,7 @@ write:
 	call	[WriteFile]
 	or	eax,eax
 	jz	file_error
+	clc
 	ret
 read:
 	mov	ebp,ecx
@@ -124,6 +125,7 @@ read:
 	jz	file_error
 	cmp	ebp,[bytes_count]
 	jne	file_error
+	clc
 	ret
 close:
 	push	ebx
@@ -139,10 +141,12 @@ lseek:
 	ret
 
 display_string:
+	push	esi
 	push	STD_OUTPUT_HANDLE
 	call	[GetStdHandle]
-	mov	ebx,eax
-	mov	edi,edx
+	mov	ebp,eax
+	pop	esi
+	mov	edi,esi
 	or	ecx,-1
 	xor	al,al
 	repne	scasb
@@ -151,8 +155,8 @@ display_string:
 	push	0
 	push	bytes_count
 	push	ecx
-	push	edx
-	push	ebx
+	push	esi
+	push	ebp
 	call	[WriteFile]
 	ret
 display_block:
@@ -182,6 +186,7 @@ display_character:
 	pop	ebx
 	ret
 display_number:
+	push	ebx
 	mov	ecx,1000000000
 	xor	edx,edx
 	xor	bl,bl
@@ -210,69 +215,98 @@ display_number:
 	pop	eax
 	or	ecx,ecx
 	jnz	display_loop
+	pop	ebx
 	ret
 
 fatal_error:
-	mov	edx,error_prefix
+	mov	esi,error_prefix
 	call	display_string
-	pop	edx
+	pop	esi
 	call	display_string
-	mov	edx,error_suffix
+	mov	esi,error_suffix
 	call	display_string
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
-	mov	edx,[home_line]
-	mov	ebp,[edx]
-	call	display_line_number
-	mov	edx,[current_line]
-	cmp	edx,[home_line]
-	je	line_number_ok
-	mov	ebp,[edx]
-	mov	dl,20h
-	call	display_character
-	call	display_line_number
-      line_number_ok:
-	mov	edx,line_number_end
+	call	flush_display_buffer
+	mov	ebx,[current_line]
+      find_error_home:
+	test	byte [ebx+7],80h
+	jz	error_home_ok
+	mov	ebx,[ebx+8]
+	jmp	find_error_home
+      error_home_ok:
+	mov	esi,[ebx]
 	call	display_string
-	mov	edx,[home_line]
-	add	edx,5
+	mov	esi,line_number_start
 	call	display_string
-	mov	edx,cr_lf
-	call	display_string
-	mov	edx,error_prefix
-	call	display_string
-	pop	edx
-	call	display_string
-	mov	edx,error_suffix
-	call	display_string
-	mov	al,2
-	jmp	exit_program
-      display_line_number:
-	mov	ecx,ebp
-	shr	ecx,20
-	dec	ecx
-	mov	esi,[files_list]
-	inc	esi
-      get_error_file:
-	jecxz	error_file_found
-      skip_file_name:
-	lods	byte [esi]
-	or	al,al
-	jnz	skip_file_name
-	add	esi,5
-	loop	get_error_file
-      error_file_found:
-	mov	edx,esi
-	call	display_string
-	mov	edx,line_number_start
-	call	display_string
-	mov	eax,ebp
-	and	eax,0FFFFFh
+	mov	eax,[ebx+4]
 	call	display_number
 	mov	dl,']'
 	call	display_character
-	ret
+	cmp	ebx,[current_line]
+	je	line_number_ok
+	mov	dl,20h
+	call	display_character
+	mov	esi,[current_line]
+	mov	esi,[esi]
+	movzx	ecx,byte [esi]
+	inc	esi
+	call	display_block
+	mov	esi,line_number_start
+	call	display_string
+	mov	esi,[current_line]
+	mov	eax,[esi+4]
+	and	eax,7FFFFFFFh
+	call	display_number
+	mov	dl,']'
+	call	display_character
+      line_number_ok:
+	mov	esi,line_data_start
+	call	display_string
+	mov	esi,ebx
+	mov	edx,[esi]
+	call	open
+	mov	al,2
+	xor	edx,edx
+	call	lseek
+	mov	edx,[esi+8]
+	sub	eax,edx
+	push	eax
+	xor	al,al
+	call	lseek
+	mov	ecx,[esp]
+	mov	edx,[memory_start]
+	call	read
+	call	close
+	pop	ecx
+	mov	esi,[memory_start]
+      get_line_data:
+	mov	al,[esi]
+	cmp	al,0Ah
+	je	display_line_data
+	cmp	al,0Dh
+	je	display_line_data
+	cmp	al,1Ah
+	je	display_line_data
+	or	al,al
+	jz	display_line_data
+	inc	esi
+	loop	get_line_data
+      display_line_data:
+	mov	ecx,esi
+	mov	esi,[memory_start]
+	sub	ecx,esi
+	call	display_block
+	mov	esi,cr_lf
+	call	display_string
+	mov	esi,error_prefix
+	call	display_string
+	pop	esi
+	call	display_string
+	mov	esi,error_suffix
+	call	display_string
+	jmp	exit_program
 
 character db ?,0
 bytes_count dd ?
@@ -281,6 +315,6 @@ error_prefix db 'error: ',0
 error_suffix db '.'
 cr_lf db 0Dh,0Ah,0
 line_number_start db ' [',0
-line_number_end db ':',0Dh,0Ah,0
+line_data_start db ':',0Dh,0Ah,0
 
 macro dm string { db string,0 }

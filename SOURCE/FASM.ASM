@@ -3,13 +3,13 @@
 ; Copyright (c) 1999-2001, Tomasz Grysztar
 ; All rights reserved.
 
-	format	PE console
+	format	PE console on 'dos\fasm.com'
 
 	macro	align value { rb (value-1) - (rva $ + value-1) mod value }
 
 start:
 
-	mov	edx,_logo
+	mov	esi,_logo
 	call	display_string
 
 	call	get_params
@@ -29,15 +29,24 @@ start:
 	mov	edi,characters
 	mov	ecx,100h
 	xor	al,al
-	rep	stosb
+      make_characters_table:
+	stosb
+	inc	al
+	loop	make_characters_table
+	if	CASE_INSENSITIVE
+	mov	esi,characters+'a'
+	mov	edi,characters+'A'
+	mov	ecx,26
+	rep	movsb
+	end	if
 	mov	edi,characters
-	mov	esi,special_characters+1
+	mov	esi,symbol_characters+1
 	movzx	ecx,byte [esi-1]
 	xor	ebx,ebx
       convert_table:
 	lodsb
 	mov	bl,al
-	mov	byte [edi+ebx],0FFh
+	mov	byte [edi+ebx],0
 	loop	convert_table
 
 	call	[GetTickCount]
@@ -46,12 +55,11 @@ start:
 	call	preprocessor
 	call	parser
 	call	assembler
-	call	formatter
 
 	movzx	eax,[current_pass]
 	inc	al
 	call	display_number
-	mov	edx,_passes_suffix
+	mov	esi,_passes_suffix
 	call	display_string
 	call	[GetTickCount]
 	sub	eax,[start_time]
@@ -69,18 +77,18 @@ start:
 	call	display_character
 	pop	eax
 	call	display_number
-	mov	edx,_seconds_suffix
+	mov	esi,_seconds_suffix
 	call	display_string
       display_bytes_count:
 	mov	eax,[written_size]
 	call	display_number
-	mov	edx,_bytes_suffix
+	mov	esi,_bytes_suffix
 	call	display_string
 	xor	al,al
 	jmp	exit_program
 
 information:
-	mov	edx,_usage
+	mov	esi,_usage
 	call	display_string
 	mov	al,1
 	jmp	exit_program
@@ -156,41 +164,101 @@ get_params:
 
 include 'system.inc'
 
-include '..\version.inc'
-include '..\errors.inc'
-include '..\expressi.inc'
-include '..\preproce.inc'
-include '..\parser.inc'
-include '..\assemble.inc'
-include '..\formats.inc'
-include '..\tables.inc'
+include 'version.inc'
+include 'errors.inc'
+include 'expressi.inc'
+include 'preproce.inc'
+include 'parser.inc'
+include 'assemble.inc'
+include 'formats.inc'
+include 'tables.inc'
 
-_copyright db 'Copyright (c) 1999-2001, Tomasz Grysztar',0
+_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',0
 
-_logo db 'flat assembler  version ',VERSION,0Dh,0Ah,0
-_usage db 'usage: fasmw source output',0Dh,0Ah,0
+_logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,0
+_usage db 'usage: fasm source output',0Dh,0Ah,0
 
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0Dh,0Ah,0
 
+_counter db 4,'0000'
+
 align 4
 
-additional_memory dd ?
-additional_memory_end dd ?
 memory_start dd ?
 memory_end dd ?
-
+additional_memory dd ?
+additional_memory_end dd ?
 input_file dd ?
 output_file dd ?
-
 source_start dd ?
 code_start dd ?
 code_size dd ?
 real_code_size dd ?
-
 start_time dd ?
 written_size dd ?
+
+current_line dd ?
+macros_list dd ?
+macro_constants dd ?
+macro_block dd ?
+macro_block_line_number dd ?
+struc_name dd ?
+current_locals_prefix dd ?
+labels_list dd ?
+label_hash dd ?
+org_start dd ?
+org_sib dd ?
+undefined_data_start dd ?
+undefined_data_end dd ?
+counter dd ?
+counter_limit dd ?
+error_line dd ?
+error dd ?
+display_buffer dd ?
+structures_buffer dd ?
+number_start dd ?
+current_offset dd ?
+value dq ?
+fp_value rd 8
+format_flags dd ?
+number_of_relocations dd ?
+number_of_sections dd ?
+stub_size dd ?
+header_data dd ?
+sections_data dd ?
+current_section dd ?
+machine dw ?
+subsystem dw ?
+subsystem_version dd ?
+
+macro_status db ?
+parenthesis_stack db ?
+output_format db ?
+code_type db ?
+current_pass db ?
+next_pass_needed db ?
+reloc_labels db ?
+times_working db ?
+virtual_data db ?
+fp_sign db ?
+fp_format db ?
+value_size db ?
+forced_size db ?
+value_type db ?
+address_size db ?
+compare_type db ?
+base_code db ?
+extended_code db ?
+postbyte_register db ?
+segment_register db ?
+operand_size db ?
+imm_sized db ?
+jump_type db ?
+mmx_size db ?
+mmx_prefix db ?
+nextbyte db ?
 
 params rb 100h
 characters rb 100h
@@ -238,3 +306,5 @@ section '.idata' import data readable writeable
     db 'VirtualAlloc',0
   _GetTickCount dw 0
     db 'GetTickCount',0
+
+section '.reloc' fixups data readable discardable

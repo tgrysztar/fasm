@@ -217,7 +217,7 @@ extended_memory_ok:
 	add	[additional_memory_end],ecx
 	cmp	[memory_start],0	; if extended memory available, done
 	jne	memory_ok
-	shr	ecx,2			; use part of conventional memory
+	shr	ecx,3			; use part of conventional memory
 	add	edi,ecx 		; as a substitute for extended memory
 	mov	[memory_start],edi
 	xchg	[additional_memory_end],edi
@@ -354,15 +354,15 @@ lseek:
 	mov	eax,edx
 	ret
 
-display_asciiz:
+display_string:
 	lods	byte [esi]
 	or	al,al
-	jz	asciiz_end
+	jz	string_end
 	mov	dl,al
 	mov	ah,2
 	int	21h
-	jmp	display_asciiz
-      asciiz_end:
+	jmp	display_string
+      string_end:
 	ret
 display_block:
 	lods	byte [esi]
@@ -372,6 +372,7 @@ display_block:
 	loop	display_block
 	ret
 display_number:
+	push	ebx
 	mov	ecx,1000000000
 	xor	edx,edx
 	xor	bl,bl
@@ -399,6 +400,7 @@ display_number:
 	pop	eax
 	or	ecx,ecx
 	jnz	display_loop
+	pop	ebx
 	ret
 
 fatal_error:
@@ -412,26 +414,93 @@ fatal_error:
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
-	mov	edx,[home_line]
-	mov	ebp,[edx]
-	call	display_line_number
-	mov	edx,[current_line]
-	cmp	edx,[home_line]
+	call	flush_display_buffer
+	mov	ebx,[current_line]
+      find_error_home:
+	test	byte [ebx+7],80h
+	jz	error_home_ok
+	mov	ebx,[ebx+8]
+	jmp	find_error_home
+      error_home_ok:
+	mov	esi,[ebx]
+	call	display_string
+	mov	dx,line_number_start
+	mov	ah,9
+	int	21h
+	mov	eax,[ebx+4]
+	call	display_number
+	mov	dl,']'
+	mov	ah,2
+	int	21h
+	cmp	ebx,[current_line]
 	je	line_number_ok
-	mov	ebp,[edx]
 	mov	dl,20h
 	mov	ah,2
 	int	21h
-	call	display_line_number
-      line_number_ok:
-	mov	dx,line_number_end
+	mov	esi,[current_line]
+	mov	esi,[esi]
+	movzx	ecx,byte [esi]
+	inc	esi
+	call	display_block
+	mov	dx,line_number_start
 	mov	ah,9
 	int	21h
-	mov	esi,[home_line]
-	add	esi,5
-	call	display_asciiz
+	mov	esi,[current_line]
+	mov	eax,[esi+4]
+	and	eax,7FFFFFFFh
+	call	display_number
+	mov	dl,']'
+	mov	ah,2
+	int	21h
+      line_number_ok:
+	mov	dx,line_data_start
 	mov	ah,9
+	int	21h
+	mov	esi,ebx
+	mov	edx,[esi]
+	call	open
+	mov	al,2
+	xor	edx,edx
+	call	lseek
+	mov	edx,[esi+8]
+	sub	eax,edx
+	mov	[counter],eax
+	xor	al,al
+	call	lseek
+	mov	esi,[memory_start]
+      read_line_data:
+	mov	ecx,100h
+	cmp	ecx,[counter]
+	jbe	bytes_count_ok
+	mov	ecx,[counter]
+      bytes_count_ok:
+	sub	[counter],ecx
+	push	ecx
+	mov	edx,esi
+	call	read
+	pop	ecx
+      get_line_data:
+	mov	al,[esi]
+	cmp	al,0Ah
+	je	display_line_data
+	cmp	al,0Dh
+	je	display_line_data
+	cmp	al,1Ah
+	je	display_line_data
+	or	al,al
+	jz	display_line_data
+	inc	esi
+	loop	get_line_data
+	cmp	[counter],0
+	ja	read_line_data
+      display_line_data:
+	call	close
+	mov	ecx,esi
+	mov	esi,[memory_start]
+	sub	ecx,esi
+	call	display_block
 	mov	dx,cr_lf
+	mov	ah,9
 	int	21h
 	mov	dx,error_prefix
 	int	21h
@@ -439,39 +508,15 @@ assembler_error:
 	int	21h
 	mov	dx,error_suffix
 	int	21h
-	mov	al,2
 	jmp	exit_program
-      display_line_number:
-	mov	ecx,ebp
-	shr	ecx,20
-	dec	ecx
-	mov	esi,[files_list]
-	inc	esi
-      get_error_file:
-	jecxz	error_file_found
-      skip_file_name:
-	lods	byte [esi]
-	or	al,al
-	jnz	skip_file_name
-	add	esi,5
-	loop	get_error_file
-      error_file_found:
-	call	display_asciiz
-	mov	ah,9
-	mov	dx,line_number_start
-	int	21h
-	mov	eax,ebp
-	and	eax,0FFFFFh
-	call	display_number
-	mov	dl,']'
-	mov	ah,2
-	int	21h
-	ret
+
+character db ?,0
+bytes_count dd ?
 
 error_prefix db 'error: ',24h
 error_suffix db '.'
 cr_lf db 0Dh,0Ah,24h
 line_number_start db ' [',24h
-line_number_end db ':',0Dh,0Ah,24h
+line_data_start db ':',0Dh,0Ah,24h
 
 macro dm string { db string,24h }

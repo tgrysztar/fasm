@@ -1,6 +1,6 @@
 
-flat assembler	version 1.20
-Copyright (c) 1999-2001, Tomasz Grysztar
+flat assembler  version 1.30
+Copyright (c) 1999-2002, Tomasz Grysztar
 All rights reserved.
 
 This program is free for commercial and non-commercial use as long as

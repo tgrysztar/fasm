@@ -81,9 +81,6 @@ extra_characters_on_line:
 name_too_long:
 	call	assembler_error
 	dm	"name too long"
-argument_too_long:
-	call	assembler_error
-	dm	"argument too long"
 invalid_name:
 	call	assembler_error
 	dm	"invalid name"

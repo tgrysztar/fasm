@@ -36,15 +36,24 @@ start:
 	mov	di,characters
 	mov	cx,100h
 	xor	al,al
-	rep	stosb
+      make_characters_table:
+	stosb
+	inc	al
+	loop	make_characters_table
+	if	CASE_INSENSITIVE
+	mov	si,characters+'a'
+	mov	di,characters+'A'
+	mov	cx,26
+	rep	movsb
+	end	if
 	mov	di,characters
-	mov	si,special_characters+1
+	mov	si,symbol_characters+1
 	movzx	cx,byte [si-1]
-	xor	bh,bh
+	xor	bx,bx
       convert_table:
 	lodsb
 	mov	bl,al
-	mov	byte [di+bx],0FFh
+	mov	byte [di+bx],0
 	loop	convert_table
 
 	mov	ebx,46Ch
@@ -55,7 +64,18 @@ start:
 	call	preprocessor
 	call	parser
 	call	assembler
-	call	formatter
+
+;	 mov	 [written_size],0	    ;
+;	 mov	 edx,[output_file]	    ;
+;	 call	 create 		    ;
+;	 jc	 write_failed		    ;
+;	 mov	 edx,[source_start]	    ;
+;	 mov	 ecx,[code_start]	    ;
+;	 sub	 ecx,edx		    ;
+;	 add	 [written_size],ecx	    ;
+;	 call	 write			    ;
+;	 jc	 write_failed		    ;
+;	 call	 close			    ;
 
 	movzx	eax,[current_pass]
 	inc	al
@@ -149,41 +169,99 @@ include '..\assemble.inc'
 include '..\formats.inc'
 include '..\tables.inc'
 
-_copyright db 'Copyright (c) 1999-2001, Tomasz Grysztar',24h
+_copyright db 'Copyright (c) 1999-2002, Tomasz Grysztar',24h
 
-_logo db 'flat assembler  version ',VERSION,0Dh,0Ah,24h
+_logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,24h
 _usage db 'usage: fasm source output',0Dh,0Ah,24h
 
 _passes_suffix db ' passes, ',24h
 _seconds_suffix db ' seconds, ',24h
 _bytes_suffix db ' bytes.',0Dh,0Ah,24h
 
+_counter db 4,'0000'
+
 align 4
 
 program_base dd ?
-
-additional_memory dd ?
-additional_memory_end dd ?
 memory_start dd ?
 memory_end dd ?
-
+additional_memory dd ?
+additional_memory_end dd ?
 input_file dd ?
 output_file dd ?
-
 source_start dd ?
 code_start dd ?
 code_size dd ?
 real_code_size dd ?
-
 start_time dd ?
 written_size dd ?
+
+current_line dd ?
+macros_list dd ?
+macro_constants dd ?
+macro_block dd ?
+macro_block_line_number dd ?
+struc_name dd ?
+current_locals_prefix dd ?
+labels_list dd ?
+label_hash dd ?
+org_start dd ?
+org_sib dd ?
+undefined_data_start dd ?
+undefined_data_end dd ?
+counter dd ?
+counter_limit dd ?
+error_line dd ?
+error dd ?
+display_buffer dd ?
+structures_buffer dd ?
+number_start dd ?
+current_offset dd ?
+value dq ?
+fp_value rd 8
+format_flags dd ?
+number_of_relocations dd ?
+number_of_sections dd ?
+stub_size dd ?
+header_data dd ?
+sections_data dd ?
+current_section dd ?
+machine dw ?
+subsystem dw ?
+subsystem_version dd ?
+
+macro_status db ?
+parenthesis_stack db ?
+output_format db ?
+code_type db ?
+current_pass db ?
+next_pass_needed db ?
+reloc_labels db ?
+times_working db ?
+virtual_data db ?
+fp_sign db ?
+fp_format db ?
+value_size db ?
+forced_size db ?
+value_type db ?
+address_size db ?
+compare_type db ?
+base_code db ?
+extended_code db ?
+postbyte_register db ?
+segment_register db ?
+operand_size db ?
+imm_sized db ?
+jump_type db ?
+mmx_size db ?
+mmx_prefix db ?
+nextbyte db ?
 
 params rb 100h
 characters rb 100h
 buffer rb 4000h
 
 rb 400h
-
 if $ > 10000h
   display 'warning: 64k limit exceeded.'
 end if

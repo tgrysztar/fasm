@@ -9,9 +9,9 @@
 		       ÛÛ   Û	   ÛÛ Ü     ÞÛ ÞÛ  Û  Ý
 		     ßßßßßß  ßßßßß ßß  ßßßßßß	ß  ß  ß
 
-			flat assembler	version 1.20
+			flat assembler	version 1.30
 
-	 Copyright (c) 1999-2001, Tomasz Grysztar. All rights reserved.
+	 Copyright (c) 1999-2002, Tomasz Grysztar. All rights reserved.
 
 
 Table of Contents
@@ -69,9 +69,9 @@ reccommended for best performance.
 
      Other than an OS compatible with MSDOS 2.0+, fasm needs no other
 software.  Note that fasm will not run if the CPU is in protected or
-V86 modes, since flat real mode cannot be entered in that case.  The
-fasmw needs to run an OS compatible with Win32, it may also be executed
-under DOS using WDOSX extender.
+V86 modes, since flat real mode cannot be entered in that case.  But
+it will still run under Win32, because version for that system is attached
+to fasm executable.
 
 1.4  Output formats
 
@@ -110,12 +110,11 @@ register, while 'mov eax,[myvar]' will place the 32-bit value of the
 variable 'myvar' in eax.  Note that fasm will exit with an error if 'myvar'
 has not been defined as a 32-bit value. When 'myvar' has not been defined
 as 32-bit value, but you need to assemble instruction 'mov eax,[myvar]',
-use size override: 'mov eax,dword [myvar]', or (short form):
-'mov eax,d[myvar]'. This is dangerous if 'myvar' has been defined as an
-8-bit or a 16-bit variable; eax will contain whatever is in the four bytes
-beginning at the address of 'myvar'! Allowed size overrides are: byte (8-bit),
-word (16-bit), dword (32-bit), pword (48-bit), qword (64-bit), tword (80-bit),
-dqword (128-bit), first letters are the short forms.
+use size override: 'mov eax,dword [myvar]'. This is dangerous if 'myvar' has
+been defined as an 8-bit or a 16-bit variable; eax will contain whatever is
+in the four bytes beginning at the address of 'myvar'! Allowed size overrides
+are: byte (8-bit), word (16-bit), dword (32-bit), pword (48-bit),
+qword (64-bit), tword (80-bit), dqword (128-bit).
 
 2.1.1.2  Jumps and calls
 
@@ -208,10 +207,7 @@ arguments.
 The logical operators are: ~ (not), | (or), & (and). Logical values
 can be defined using comparing operators: = (equal), < (less), > (greater),
 <= (less or equal), >= (greater or equal), <> (not equal) for numbers;
-'eq' or 'in' for all other symbols. Word 'equ' means the same as 'eq' in
-logical expressions, but is also used to define symbolic constants. When you
-want to use 'true' and 'false' values in logical expressions, define them
-using 'equ': 'true equ 0=0', 'false equ ~true'.
+'eq' or 'in' for all other symbols.
 
 2.1.4  Defining constants
 
@@ -287,9 +283,9 @@ directive before data definition, for example:
 
 2.2.1  Preprocessor directives
 
-common - used inside macro definitions, all following instructions in this
-	 part of macroinstructions will be processed only once, even if
-	 multiple arguments are processed.
+    The all preprocessor directives in the source code are processed before
+the main assembly process, and so they are not affected by the 'if' or
+'repeat' directives, which are processed at assembly time (see 2.2.4).
 
 include - includes source file in source code before assembly
 
@@ -299,6 +295,9 @@ macro - defines macroinstructions, arguments are macro name and names
 	Here's an example of macroinstruction for data alignment:
 
 	macro align value { rb (value-1) - ($ + value-1) mod value }
+
+	Note that in PE format you should replace '$' with 'rva $' to allow
+	this calculations.
 
 	Macroinstructions may have empty arguments; to check if argument
 	is empty use something like 'if <argument> eq <>'.
@@ -330,7 +329,7 @@ macro - defines macroinstructions, arguments are macro name and names
 	mov   es,ds,dx	      ; 'push ds', 'pop es' and 'mov ds,dx'
 
 	But note that using these macros in big programs will dramatically
-	slow down assembly (up to 4 times!) and increase memory requirements.
+	slow down assembly (up to 3 times!) and increase memory requirements.
 
 	If you type arguments in brackets, macroinstruction will allow
 	multiple groups of arguments, and will repeat all instructions for
@@ -344,18 +343,49 @@ macro - defines macroinstructions, arguments are macro name and names
 
 	stoschar 1,2,3,4      ; store four bytes at es:di
 
-	Also macroinstruction may be divided into parts, each beginning
-	with '{', and ending with '}' character. Each macroinstruction part
-	will be processed for all groups of arguments before processing next
-	part. Local symbol defined in one of parts will be available in all
-	next parts, when processing the same group of arguments.
+	There are some special directives available only inside macro
+	definitions. The 'local' directive defines local symbols, which
+	will have unique names in every macro call; arguments are local
+	symbol names, separated with commas. The 'forward', 'reverse' and
+	'common' directives divide macroinstruction into parts, each one
+	processed after the previous one processing is finished. The part
+	defined using 'forward' directive will be processed for each
+	group of multiple arguments, from first to last; the same as
+	default macroinstruction behaviour. Local symbol defined in one of
+	the parts will be available in all next parts, when processing the
+	same group of arguments.
+
 	For example, to create table of addresses to strings, and then
 	strings data, use this macro:
 
 	macro strtbl [string]
-	 { local label
-	   dd label }
-	 { label db string,0 }
+	 { forward
+	     local label
+	     dd label
+	   forward
+	     label db string,0 }
+
+	The 'reverse' directive will cause groups of arguments to be
+	processed from last to first; and the 'common' directive will define
+	part, which will be processed only once.
+
+	Here's example how to define macro for calling procedures with
+	arguments on stack in using the above directives:
+
+	macro stdcall proc,[arg]
+	 { reverse push arg
+	   common call proc }
+
+	Note that instructions can follow the directive defining part of
+	macroinstruction.
+
+	Also, in 'common' part name of the macro argument will be replaced
+	with all the argument values, from first to last, separated with
+	commas. So we can define next macro for indirectly invoking
+	procedures this way:
+
+	macro invoke proc,[arg]
+	 { common stdcall [proc],arg }
 
 struc - this is the variant of macro directive used to create data
 	structures. When struc macro is used in program, it must be preceded
@@ -383,15 +413,11 @@ struc - this is the variant of macro directive used to create data
 	example just: 'mypix pixel'), you can write something like
 	'.x dw x+0', or use 'if <x> eq <>'.
 
-local - used inside macro definitions, defines local symbols, which
-	will have unique names in every macro call; arguments are local
-	symbol names, separated with commas.
-
 purge - argument is one or more macro names, separated with commas; this
 	directive will remove last definition of specified macro; for example
 	when you've redefined some macro, you can get previous definition
 	back using purge. If the macro has not been defined, you won't get
-	any error. When you need do totally undefine some non-preprocessor
+	any error. When you need to totally undefine some non-preprocessor
 	symbol (defined with equ, or labels), use this clever macro:
 
 	macro undefine symbol
@@ -405,7 +431,8 @@ purge - argument is one or more macro names, separated with commas; this
 	use '_add equ add', and then 'undefine add', you can define 'add'
 	label and have access to 'add' instruction using '_add' symbol.
 
-equ - defines symbolic constant.
+equ - defines symbolic constant. This directive should be preceded by the
+      symbol name, and followed by the symbol value.
 
 2.2.2  Code and format settings
 
@@ -422,7 +449,8 @@ format - set output file format, can be set binary, MZ or PE; binary
 	 settings can follow; use 'console', 'GUI' or 'native' words to set
 	 target subsystem type (subsystem version can follow); 'i386',
 	 'i486' or 'i586' to specify target machine type; 'DLL' to create
-	 dynamic link library.
+	 dynamic link library. Use 'on <file>' phrase to specify custom
+	 stub program.
 
 segment - define segment at current position (only in MZ format),
 	  code will be aligned to paragraph. In segment definition, after
@@ -479,15 +507,12 @@ repeat - larger version of times directive, repeat has one argument -
 	 number of repeats, instructions to repeat are expected in next
 	 lines, ended with 'end repeat' directive.
 
-display - display text at the assembly time; arguments are strings or byte
-	  values to be displayed.
-
 virtual - creates virtual code or data at specified address; this data
 	  won't be included in output file, but labels defined there can
 	  be useful in other parts of program; argument to virtual is
 	  'at <address>' phrase, virtual instructions are expected in
 	  next lines, ended with 'end virtual' directive. If directive
-	  has no arguments, directive uses current address, same as
+	  has no arguments, it uses the current address, the same as
 	  'virtual at $'.
 
 if - used to assemble some part of codes, when specified conditions are
@@ -497,11 +522,17 @@ if - used to assemble some part of codes, when specified conditions are
 
 end - used to end structures defined with some other directives.
 
+display - display text at the assembly time; arguments are strings or byte
+	  values to be displayed.
+
 ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 Thanks to:
 
-    Ken Martwick - for help in writing documentation
-    Bartek Uliasz - for help at the beginning of fasm project
-    Bill Isherwood - for all useful suggestions
-    Leonid Petroff - for bugs reporting and other important suggestions
+    Leonid Petroff - for really good work with bugs reporting and many
+		     helpful suggestions
+
+    Bartek Uliasz - without him the flat assembler project would never
+		    be started
+
+    and all others who helped me (there were many of them)!
