@@ -1,0 +1,13 @@
+
+version 1.02
+------------
+[-] minor bugs fixed
+[+] some documentation changes
+
+version 1.01
+------------
+[-] fixed bug in MZ header generator
+
+version 1.00
+------------
+[+] first serious release

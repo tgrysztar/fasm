@@ -1,5 +1,5 @@
 
-; flat assembler  version 1.01
+; flat assembler  version 1.02
 ; Copyright (c) 1999-2000, Tomasz Grysztar
 ; All rights reserved.
 
@@ -383,6 +383,8 @@ parse_line:
 	jz	line_parsed
 	cmp	al,'['
 	je	address_argument
+	cmp	al,']'
+	je	separator
 	dec	esi
 	cmp	al,27h
 	je	string_argument
