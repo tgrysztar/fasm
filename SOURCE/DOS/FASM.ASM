@@ -3,9 +3,9 @@
 ; Copyright (c) 1999-2003, Tomasz Grysztar.
 ; All rights reserved.
 
-	format	MZ
-	heap	0
-	entry	main:start
+        format  MZ
+        heap    0
+        entry   main:start
 
 include 'modes.inc'
 
@@ -13,120 +13,120 @@ segment main use16
 
 start:
 
-	mov	ax,ds
-	mov	dx,[2Ch]
-	push	cs cs
-	pop	ds es
-	mov	[psp_segment],ax
-	mov	[environment_segment],dx
+        mov     ax,ds
+        mov     dx,[2Ch]
+        push    cs cs
+        pop     ds es
+        mov     [psp_segment],ax
+        mov     [environment_segment],dx
 
-	mov	dx,_logo
-	mov	ah,9
-	int	21h
+        mov     dx,_logo
+        mov     ah,9
+        int     21h
 
-	cld
+        cld
 
-	call	go32
-	use32
-	call	init_memory
+        call    go32
+        use32
+        call    init_memory
 
-	call	get_params
-	cmp	[params],0
-	je	information
-	lea	eax,[params+1]
-	mov	[input_file],eax
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	je	information
-	inc	eax
-	mov	[output_file],eax
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	jne	information
+        call    get_params
+        cmp     [params],0
+        je      information
+        lea     eax,[params+1]
+        mov     [input_file],eax
+        movzx   ecx,byte [eax-1]
+        add     eax,ecx
+        cmp     byte [eax],0
+        je      information
+        inc     eax
+        mov     [output_file],eax
+        movzx   ecx,byte [eax-1]
+        add     eax,ecx
+        cmp     byte [eax],0
+        jne     information
 
-	mov	edi,characters
-	mov	ecx,100h
-	xor	al,al
+        mov     edi,characters
+        mov     ecx,100h
+        xor     al,al
       make_characters_table:
-	stosb
-	inc	al
-	loop	make_characters_table
-	mov	esi,characters+'a'
-	mov	edi,characters+'A'
-	mov	ecx,26
-	rep	movsb
-	mov	edi,characters
-	mov	esi,symbol_characters+1
-	movzx	ecx,byte [esi-1]
-	xor	ebx,ebx
+        stosb
+        inc     al
+        loop    make_characters_table
+        mov     esi,characters+'a'
+        mov     edi,characters+'A'
+        mov     ecx,26
+        rep     movsb
+        mov     edi,characters
+        mov     esi,symbol_characters+1
+        movzx   ecx,byte [esi-1]
+        xor     ebx,ebx
       convert_table:
-	lodsb
-	mov	bl,al
-	mov	byte [edi+ebx],0
-	loop	convert_table
-	mov	[display_buffer],0
+        lodsb
+        mov     bl,al
+        mov     byte [edi+ebx],0
+        loop    convert_table
+        mov     [display_buffer],0
 
-	xor	ah,ah
-	int	1Ah
-	mov	ax,cx
-	shl	eax,16
-	mov	ax,dx
-	mov	[start_time],eax
+        xor     ah,ah
+        int     1Ah
+        mov     ax,cx
+        shl     eax,16
+        mov     ax,dx
+        mov     [start_time],eax
 
-	call	preprocessor
-	call	parser
-	call	assembler
-	call	formatter
+        call    preprocessor
+        call    parser
+        call    assembler
+        call    formatter
 
-	call	display_user_messages
-	movzx	eax,[current_pass]
-	inc	eax
-	call	display_number
-	mov	ah,9
-	mov	dx,_passes_suffix
-	call	dos_int
-	xor	ah,ah
-	int	1Ah
-	mov	ax,cx
-	shl	eax,16
-	mov	ax,dx
-	sub	eax,[start_time]
-	mov	ebx,100
-	mul	ebx
-	mov	ebx,182
-	div	ebx
-	or	eax,eax
-	jz	display_bytes_count
-	xor	edx,edx
-	mov	ebx,10
-	div	ebx
-	push	edx
-	call	display_number
-	mov	ah,2
-	mov	dl,'.'
-	int	21h
-	pop	eax
-	call	display_number
-	mov	ah,9
-	mov	dx,_seconds_suffix
-	call	dos_int
+        call    display_user_messages
+        movzx   eax,[current_pass]
+        inc     eax
+        call    display_number
+        mov     ah,9
+        mov     dx,_passes_suffix
+        call    dos_int
+        xor     ah,ah
+        int     1Ah
+        mov     ax,cx
+        shl     eax,16
+        mov     ax,dx
+        sub     eax,[start_time]
+        mov     ebx,100
+        mul     ebx
+        mov     ebx,182
+        div     ebx
+        or      eax,eax
+        jz      display_bytes_count
+        xor     edx,edx
+        mov     ebx,10
+        div     ebx
+        push    edx
+        call    display_number
+        mov     ah,2
+        mov     dl,'.'
+        int     21h
+        pop     eax
+        call    display_number
+        mov     ah,9
+        mov     dx,_seconds_suffix
+        call    dos_int
       display_bytes_count:
-	mov	eax,[written_size]
-	call	display_number
-	mov	ah,9
-	mov	dx,_bytes_suffix
-	call	dos_int
-	xor	al,al
-	jmp	exit_program
+        mov     eax,[written_size]
+        call    display_number
+        mov     ah,9
+        mov     dx,_bytes_suffix
+        call    dos_int
+        xor     al,al
+        jmp     exit_program
 
 information:
-	mov	dx,_usage
-	mov	ah,9
-	call	dos_int
-	mov	al,1
-	jmp	exit_program
+        mov     dx,_usage
+        mov     ah,9
+        call    dos_int
+        mov     al,1
+        jmp     exit_program
 
 include 'system.inc'
 
@@ -184,6 +184,8 @@ anonymous_reverse dd ?
 anonymous_forward dd ?
 labels_list dd ?
 label_hash dd ?
+label_leaf dd ?
+hash_tree dd ?
 org_origin dd ?
 org_registers dd ?
 org_start dd ?

@@ -307,11 +307,9 @@ preprocess_line:
 	mov	byte [edx-2],3Bh
 	movzx	ebx,ax
 	add	ebx,preprocessor
-	xor	eax,eax
 	jmp	near ebx
       not_preprocessor_directive:
-	mov	al,cl
-	xor	ah,ah
+	xor	ch,ch
 	call	get_macro
 	jc	not_macro
 	mov	byte [edx-2],3Bh
@@ -342,7 +340,8 @@ preprocess_line:
 	je	define_equ_constant
 	mov	al,3
       not_symbolic_constant:
-	mov	ah,1
+	mov	ch,1
+	mov	cl,al
 	call	get_macro
 	jc	not_preprocessor_symbol
 	mov	al,3Ah
@@ -418,29 +417,152 @@ preprocess_line:
 	pop	[struc_name]
 	ret
 
-get_macro:
-	mov	edx,esi
-	mov	ebp,edi
-	mov	ebx,[free_additional_memory]
-      check_macro:
-	mov	cl,al
-	cmp	ebx,[macros_list]
-	je	no_macro_found
-	sub	ebx,8
-	cmp	ax,[ebx]
-	jne	check_macro
-	mov	edi,[ebx+4]
-	repe	cmps byte [esi],[edi]
-	je	macro_ok
-	mov	esi,edx
-	jmp	check_macro
-      no_macro_found:
-	mov	edi,ebp
-	stc
+define_fix_constant:
+	add	esi,3
+	push	ebp esi
+	call	process_fix_constants
+	mov	esi,[esp+4]
+	movzx	ecx,byte [esi-1]
+	mov	[value_type],1
+	call	find_symbolic_constant
+	jc	allocate_new_fix_constant
+	mov	ebx,edx
+	jmp	make_fix_constant
+      allocate_new_fix_constant:
+	mov	edx,[labels_list]
+	sub	edx,16
+	cmp	edx,[free_additional_memory]
+	jb	out_of_memory
+	mov	[labels_list],edx
+      make_fix_constant:
+	pop	ebx
+	mov	ecx,edi
+	dec	ecx
+	sub	ecx,ebx
+	mov	[edx+8],ecx
+	mov	[edx+12],ebx
+	pop	ebx
+	mov	byte [ebx-2],3Bh
+	mov	ch,1
+	mov	cl,[ebx-1]
+	push	edx
+	call	hash_constant
+	pop	edx
+	mov	[edx],eax
+	mov	[edx+4],ebx
+	inc	[fix_constants_count]
+	jmp	line_preprocessed
+define_equ_constant:
+	add	esi,3
+	push	esi
+	call	process_equ_constants
+	pop	ebx
+	mov	edx,[labels_list]
+	sub	edx,16
+	cmp	edx,[free_additional_memory]
+	jb	out_of_memory
+	mov	[labels_list],edx
+	mov	ecx,edi
+	dec	ecx
+	sub	ecx,ebx
+	mov	[edx+8],ecx
+	mov	[edx+12],ebx
+	mov	ebx,[struc_name]
+	mov	byte [ebx-2],3Bh
+	xor	ch,ch
+	mov	cl,[ebx-1]
+	push	edx
+	call	hash_constant
+	pop	edx
+	mov	[edx],eax
+	mov	[edx+4],ebx
+	inc	[equ_constants_count]
+	jmp	line_preprocessed
+hash_constant:
+	push	esi ebp
+	mov	esi,ebx
+	xor	ebx,ebx
+	mov	eax,2166136261
+	mov	ebp,16777619
+      hash_constant_name:
+	xor	al,[esi+ebx]
+	mul	ebp
+	inc	bl
+	cmp	bl,cl
+	jb	hash_constant_name
+	mov	ebp,eax
+	and	ebp,2FFh shl 22
+	shl	eax,10
+	xor	eax,ebp
+	or	ax,cx
+	mov	ebx,esi
+	pop	ebp esi
 	ret
-      macro_ok:
-	mov	edi,ebp
+restore_equ_constant:
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	invalid_name
+	movzx	ecx,byte [esi]
+	inc	esi
+	mov	[value_type],0
+	call	find_symbolic_constant
+	jc	no_symbolic_constant
+	mov	ecx,edx
+	sub	ecx,[labels_list]
+	add	[labels_list],16
+	shr	ecx,2
+	jz	constant_restored
+	mov	ebx,esi
+	mov	esi,edx
+	xchg	edi,edx
+	add	edi,16-4
+	sub	esi,4
+	std
+	rep	movs dword [edi],[esi]
+	cld
+	dec	[equ_constants_count]
+	mov	esi,ebx
+	mov	edi,edx
+	jmp	constant_restored
+      no_symbolic_constant:
+	add	esi,ecx
+      constant_restored:
+	lods	byte [esi]
+	cmp	al,','
+	je	restore_equ_constant
+	or	al,al
+	jnz	extra_characters_on_line
+	jmp	line_preprocessed
+find_symbolic_constant:
+	push	edi
+	mov	ebx,esi
+	mov	ch,[value_type]
+	call	hash_constant
+	movzx	ecx,al
+	mov	edx,[labels_list]
+	align	16
+      scan_symbolic_constants:
+	cmp	edx,[additional_memory_end]
+	je	symbolic_constants_ok
+	cmp	eax,[edx]
+	je	check_symbolic_constant
+      next_symbolic_constant:
+	add	edx,16
+	jmp	scan_symbolic_constants
+      check_symbolic_constant:
+	mov	edi,[edx+4]
+	repe	cmps byte [esi],[edi]
+	mov	cl,al
+	je	symbolic_constant_found
+	mov	esi,ebx
+	jmp	next_symbolic_constant
+      symbolic_constant_found:
+	pop	edi
 	clc
+	ret
+      symbolic_constants_ok:
+	pop	edi
+	stc
 	ret
 process_fix_constants:
 	cmp	[fix_constants_count],0
@@ -450,7 +572,8 @@ process_fix_constants:
 process_equ_constants:
 	cmp	[equ_constants_count],0
 	je	no_symbolic_constants
-	mov	[value_type],2
+	mov	[value_type],0
+	align	16
       process_symbolic_constants:
 	mov	ebp,esi
 	lods	byte [esi]
@@ -474,42 +597,13 @@ process_equ_constants:
 	jnc	replace_symbolic_constant
 	add	esi,ecx
 	jmp	process_symbolic_constants
-      find_symbolic_constant:
-	push	edi
-	mov	ebx,esi
-	mov	eax,ecx
-	mov	edx,[labels_list]
-      scan_symbolic_constants:
-	mov	esi,ebx
-	mov	ecx,eax
-	cmp	edx,[additional_memory_end]
-	je	symbolic_constants_ok
-	mov	al,[value_type]
-	cmp	al,[edx+1]
-	mov	eax,ecx
-	jne	next_symbolic_constant
-	cmp	cl,[edx]
-	jne	next_symbolic_constant
-	mov	edi,[edx+4]
-	repe	cmps byte [esi],[edi]
-	je	symbolic_constant_found
-      next_symbolic_constant:
-	add	edx,16
-	jmp	scan_symbolic_constants
-      symbolic_constants_ok:
-	pop	edi
-	stc
-	ret
-      symbolic_constant_found:
-	pop	edi
-	clc
-	ret
       replace_symbolic_constant:
 	mov	ecx,[edx+8]
 	mov	edx,[edx+12]
 	xchg	esi,edx
 	call	move_data
 	mov	esi,edx
+	align	16
       process_after_replaced:
 	lods	byte [esi]
 	cmp	al,1Ah
@@ -525,22 +619,21 @@ process_equ_constants:
 	call	move_data
 	ret
       move_data:
-	xor	eax,eax
 	shr	ecx,1
-	rcl	al,1
+	jnc	movsb_ok
+	movs	byte [edi],[esi]
+      movsb_ok:
 	shr	ecx,1
-	rcl	ah,1
+	jnc	movsw_ok
+	movs	word [edi],[esi]
+      movsw_ok:
 	rep	movs dword [edi],[esi]
-	mov	cl,ah
-	rep	movs word [edi],[esi]
-	mov	cl,al
-	rep	movs byte [edi],[esi]
 	ret
       string_after_replaced:
 	lods	dword [esi]
 	stos	dword [edi]
 	mov	ecx,eax
-	rep	movs byte [edi],[esi]
+	call	move_data
 	jmp	process_after_replaced
       symbol_after_replaced:
 	movzx	ecx,byte [esi]
@@ -550,7 +643,7 @@ process_equ_constants:
 	mov	al,1Ah
 	mov	ah,cl
 	stos	word [edi]
-	rep	movs byte [edi],[esi]
+	call	move_data
 	jmp	process_after_replaced
 process_concatenations:
 	xor	dl,dl
@@ -700,117 +793,64 @@ process_concatenations:
 	mov	ecx,eax
 	rep	movs byte [edi],[esi]
 	jmp	after_concatenation
-include_file:
-	lods	byte [esi]
-	cmp	al,22h
-	jne	invalid_argument
-	lods	dword [esi]
+
+get_macro:
+	call	hash_macro
 	mov	edx,esi
-	add	esi,eax
-	cmp	byte [esi],0
-	jne	extra_characters_on_line
-	call	preprocess_file
-	jc	file_not_found
-	jmp	line_preprocessed
-define_fix_constant:
-	add	esi,3
-	push	ebp esi
-	call	process_fix_constants
-	mov	esi,[esp+4]
-	movzx	ecx,byte [esi-1]
-	mov	[value_type],1
-	call	find_symbolic_constant
-	jc	allocate_new_fix_constant
-	mov	ebx,edx
-	jmp	make_fix_constant
-      allocate_new_fix_constant:
-	mov	edx,[labels_list]
-	sub	edx,16
-	cmp	edx,[free_additional_memory]
-	jb	out_of_memory
-	mov	[labels_list],edx
-      make_fix_constant:
-	pop	ebx
-	mov	ecx,edi
-	dec	ecx
-	sub	ecx,ebx
-	mov	[edx+8],ecx
-	mov	[edx+12],ebx
-	pop	ebx
-	mov	byte [ebx-2],3Bh
-	mov	al,[ebx-1]
-	mov	[edx],al
-	mov	[edx+4],ebx
-	mov	byte [edx+1],1
-	inc	[fix_constants_count]
-	jmp	line_preprocessed
-define_equ_constant:
-	add	esi,3
-	push	esi
-	call	process_equ_constants
-	pop	ebx
-	mov	edx,[labels_list]
-	sub	edx,16
-	cmp	edx,[free_additional_memory]
-	jb	out_of_memory
-	mov	[labels_list],edx
-	mov	ecx,edi
-	dec	ecx
-	sub	ecx,ebx
-	mov	[edx+8],ecx
-	mov	[edx+12],ebx
-	mov	ebx,[struc_name]
-	mov	byte [ebx-2],3Bh
-	mov	al,[ebx-1]
-	mov	[edx],al
-	mov	[edx+4],ebx
-	mov	byte [edx+1],2
-	inc	[equ_constants_count]
-	jmp	line_preprocessed
-restore_equ_constant:
-	lods	byte [esi]
-	cmp	al,1Ah
-	jne	invalid_name
-	movzx	ecx,byte [esi]
-	inc	esi
-	mov	[value_type],2
-	call	find_symbolic_constant
-	jc	no_symbolic_constant
-	mov	ecx,edx
-	sub	ecx,[labels_list]
-	add	[labels_list],16
-	shr	ecx,2
-	jz	constant_restored
-	mov	ebx,esi
-	mov	esi,edx
-	xchg	edi,edx
-	add	edi,16-4
-	sub	esi,4
-	std
-	rep	movs dword [edi],[esi]
-	cld
-	dec	[equ_constants_count]
-	mov	esi,ebx
-	mov	edi,edx
-	jmp	constant_restored
-      no_symbolic_constant:
-	add	esi,ecx
-      constant_restored:
-	lods	byte [esi]
-	cmp	al,','
-	je	restore_equ_constant
-	or	al,al
-	jnz	extra_characters_on_line
-	jmp	line_preprocessed
-define_struc:
-	or	ah,1
-define_macro:
-	lods	byte [esi]
-	cmp	al,1Ah
-	jne	invalid_name
-	lods	byte [esi]
+	mov	ebp,edi
 	mov	ebx,[free_additional_memory]
-	mov	[ebx],ax
+	movzx	ecx,cl
+	align	16
+      check_macro:
+	cmp	ebx,[macros_list]
+	je	no_macro_found
+	sub	ebx,8
+	cmp	eax,[ebx]
+	jne	check_macro
+	mov	edi,[ebx+4]
+	repe	cmps byte [esi],[edi]
+	mov	cl,al
+	je	macro_ok
+	mov	esi,edx
+	jmp	check_macro
+      macro_ok:
+	mov	edi,ebp
+	clc
+	ret
+      no_macro_found:
+	mov	edi,ebp
+	stc
+	ret
+hash_macro:
+	xor	ebx,ebx
+	mov	eax,2166136261
+	mov	ebp,16777619
+      hash_macro_name:
+	xor	al,[esi+ebx]
+	mul	ebp
+	inc	bl
+	cmp	bl,cl
+	jb	hash_macro_name
+	mov	ebp,eax
+	and	ebp,2FFh shl 22
+	shl	eax,10
+	xor	eax,ebp
+	or	ax,cx
+	ret
+define_struc:
+	mov	ch,1
+	jmp	make_macro
+define_macro:
+	xor	ch,ch
+      make_macro:
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	invalid_name
+	lods	byte [esi]
+	mov	cl,al
+	call	hash_macro
+	mov	ebx,[free_additional_memory]
+	mov	[ebx],eax
 	mov	[ebx+4],esi
 	add	ebx,8
 	cmp	ebx,[labels_list]
@@ -907,10 +947,11 @@ purge_macro:
 	cmp	al,1Ah
 	jne	invalid_name
 	lods	byte [esi]
-	xor	ah,ah
+	xor	ch,ch
+	mov	cl,al
 	call	get_macro
 	jc	macro_purged
-	or	byte [ebx+1],80h
+	or	byte [ebx+1],2
       macro_purged:
 	lods	byte [esi]
 	cmp	al,','
@@ -923,7 +964,7 @@ use_macro:
 	push	[counter] [counter_limit]
 	push	dword [macro_status]
 	or	[macro_status],10h
-	or	byte [ebx+1],80h
+	or	byte [ebx+1],2
 	mov	edx,esi
 	mov	eax,[ebx+4]
 	movzx	esi,byte [ebx]
@@ -1094,6 +1135,7 @@ use_macro:
 	jz	process_macro
 	mov	ax,3Bh
 	stos	word [edi]
+	align	16
       process_macro:
 	lods	byte [esi]
 	cmp	al,'}'
@@ -1357,7 +1399,7 @@ use_macro:
       macro_block_processed:
 	call	close_macro_block
 	jc	process_macro_line
-	and	byte [ebx+1],not 80h
+	and	byte [ebx+1],not 2
 	pop	[current_line]
 	mov	eax,[macro_constants]
 	mov	[memory_end],eax
@@ -1412,6 +1454,19 @@ use_macro:
 	mov	esi,[edx+12]
 	call	move_data
 	pop	edi
+	jmp	line_preprocessed
+
+include_file:
+	lods	byte [esi]
+	cmp	al,22h
+	jne	invalid_argument
+	lods	dword [esi]
+	mov	edx,esi
+	add	esi,eax
+	cmp	byte [esi],0
+	jne	extra_characters_on_line
+	call	preprocess_file
+	jc	file_not_found
 	jmp	line_preprocessed
 
 increase_counter:

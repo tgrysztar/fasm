@@ -129,13 +129,11 @@ assemble_line:
 	cmp	edi,eax
 	ja	out_of_memory
 	lods	byte [esi]
-	or	al,al
-	jz	source_end
 	cmp	al,1
 	je	assemble_instruction
-	cmp	al,2
-	je	define_label
+	jb	source_end
 	cmp	al,3
+	jb	define_label
 	je	define_constant
 	cmp	al,0Fh
 	je	new_line
@@ -318,10 +316,10 @@ assemble_line:
       assemble_instruction:
 	mov	[operand_size],0
 	mov	[forced_size],0
-	lods	word [esi]
-	movzx	ebx,ax
+	movzx	ebx,word [esi]
+	mov	al,[esi+2]
 	add	ebx,assembler
-	lods	byte [esi]
+	add	esi,3
 	jmp	near ebx
       instruction_assembled:
 	mov	al,[esi]
@@ -626,14 +624,19 @@ load_directive:
 	push	esi edi
 	mov	esi,edi
 	sub	esi,eax
-	jc	value_out_of_range
+	jc	bad_load_address
 	cmp	esi,[org_start]
-	jb	value_out_of_range
+	jb	bad_load_address
 	mov	edi,value
 	movzx	ecx,[operand_size]
 	cmp	ecx,eax
-	ja	value_out_of_range
+	ja	bad_load_address
 	rep	movs byte [edi],[esi]
+	pop	edi esi
+	jmp	value_loaded
+      bad_load_address:
+	cmp	[next_pass_needed],0
+	je	value_out_of_range
 	pop	edi esi
 	jmp	value_loaded
 display_directive:

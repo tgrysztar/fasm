@@ -38,12 +38,14 @@ init_memory:
     allocate_memory:
 	mov	ebx,[additional_memory]
 	add	ebx,dword [buffer+14h]
+	add	ebx,dword [buffer+24h]
 	mov	eax,45
 	int	0x80
 	mov	[memory_end],eax
 	sub	eax,[additional_memory]
 	jz	not_enough_memory
 	shr	eax,3
+	imul	eax,3
 	add	eax,[additional_memory]
 	mov	[additional_memory_end],eax
 	mov	[memory_start],eax

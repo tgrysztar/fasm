@@ -49,6 +49,7 @@ init_memory:
     allocate_memory:
 	mov	edx,eax
 	shr	edx,3
+	imul	edx,3
 	mov	ecx,eax
 	sub	ecx,edx
 	mov	[memory_end],ecx

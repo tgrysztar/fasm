@@ -12,6 +12,8 @@ parser:
 	mov	[current_locals_prefix],eax
 	mov	[anonymous_reverse],eax
 	mov	[anonymous_forward],eax
+	mov	[hash_tree],eax
+	push	[additional_memory_end]
 	mov	esi,[memory_start]
 	mov	edi,[source_start]
      parser_loop:
@@ -31,6 +33,7 @@ parser:
 	cmp	[anonymous_forward],0
 	jne	unexpected_end_of_file
 	mov	[code_start],edi
+	pop	[additional_memory_end]
 	ret
 
 parse_line:
@@ -39,27 +42,19 @@ parse_line:
 	cmp	byte [esi],1Ah
 	jne	empty_instruction
 	push	edi
-	inc	esi
-	movzx	ecx,byte [esi]
-	inc	esi
+	add	esi,2
+	movzx	ecx,byte [esi-1]
 	cmp	byte [esi+ecx],':'
 	je	simple_label
-	push	esi ecx
-	add	esi,ecx
-	cmp	byte [esi],1Ah
-	je	check_for_data_label
-	cmp	byte [esi],'='
+	cmp	byte [esi+ecx],'='
 	je	constant_label
-	pop	ecx esi
-	jmp	get_main_instruction
-      check_for_data_label:
-	inc	esi
-	movzx	ecx,byte [esi]
-	inc	esi
-	push	edi
+	cmp	byte [esi+ecx],1Ah
+	jne	get_main_instruction
+	push	esi ecx
+	lea	esi,[esi+ecx+2]
+	movzx	ecx,byte [esi-1]
 	mov	edi,data_directives
 	call	get_symbol
-	pop	edi
 	jnc	data_label
 	pop	ecx esi
       get_main_instruction:
@@ -82,9 +77,8 @@ parse_line:
 	sub	esi,2
 	jmp	parse_arguments
       constant_label:
-	pop	ecx esi
 	pop	edi
-	call	identify_label
+	call	get_label_id
 	mov	byte [edi],3
 	inc	edi
 	stos	dword [edi]
@@ -97,6 +91,7 @@ parse_line:
 	pop	edi
 	push	eax esi
 	mov	esi,ebx
+	movzx	ecx,byte [esi-1]
 	call	identify_label
 	mov	byte [edi],2
 	inc	edi
@@ -136,6 +131,32 @@ parse_line:
       local_label_name:
 	call	get_label_id
 	ret
+      parse_label_directive:
+	cmp	byte [esi],1Ah
+	jne	argument_parsed
+	inc	esi
+	movzx	ecx,byte [esi]
+	lods	byte [esi]
+	mov	al,2
+	stos	byte [edi]
+	call	identify_label
+	stos	dword [edi]
+	xor	al,al
+	stos	byte [edi]
+	jmp	argument_parsed
+      parse_load_directive:
+	cmp	byte [esi],1Ah
+	jne	argument_parsed
+	inc	esi
+	movzx	ecx,byte [esi]
+	lods	byte [esi]
+	mov	al,2
+	stos	byte [edi]
+	call	get_label_id
+	stos	dword [edi]
+	xor	al,al
+	stos	byte [edi]
+	jmp	argument_parsed
       parse_prefix_instruction:
 	cmp	byte [esi],1Ah
 	jne	parse_arguments
@@ -144,21 +165,6 @@ parse_line:
 	movzx	ecx,byte [esi]
 	inc	esi
 	jmp	get_main_instruction
-      parse_label_directive:
-	cmp	byte [esi],1Ah
-	jne	argument_parsed
-	push	edi
-	inc	esi
-	movzx	ecx,byte [esi]
-	lods	byte [esi]
-	pop	edi
-	mov	al,2
-	stos	byte [edi]
-	call	identify_label
-	stos	dword [edi]
-	xor	al,al
-	stos	byte [edi]
-	jmp	argument_parsed
       parse_instruction:
 	pop	edi
 	mov	dl,al
@@ -174,10 +180,10 @@ parse_line:
 	je	parse_prefix_instruction
 	cmp	bx,label_directive-assembler
 	je	parse_label_directive
-	cmp	bx,load_directive-assembler
-	je	parse_label_directive
 	cmp	bx,segment_directive-assembler
 	je	parse_label_directive
+	cmp	bx,load_directive-assembler
+	je	parse_load_directive
 	cmp	bx,extrn_directive-assembler
 	je	parse_extrn_directive
 	cmp	bx,public_directive-assembler
@@ -722,26 +728,25 @@ get_label_id:
 	cmp	[current_locals_prefix],0
 	je	standard_label
 	push	edi
+	mov	edi,[additional_memory_end]
+	sub	edi,2
+	sub	edi,ecx
 	push	ecx esi
-	mov	edi,[free_additional_memory]
-	xor	ax,ax
-	stos	word [edi]
 	mov	esi,[current_locals_prefix]
-	mov	ebx,edi
 	lods	byte [esi]
 	movzx	ecx,al
-	lea	ebp,[edi+ecx]
-	cmp	ebp,[additional_memory_end]
-	jae	out_of_memory
+	sub	edi,ecx
+	cmp	edi,[free_additional_memory]
+	jb	out_of_memory
+	mov	[additional_memory_end],edi
+	mov	word [edi],0
+	add	edi,2
+	mov	ebx,edi
 	rep	movs byte [edi],[esi]
 	pop	esi ecx
 	add	al,cl
 	jc	name_too_long
-	lea	ebp,[edi+ecx]
-	cmp	ebp,[additional_memory_end]
-	jae	out_of_memory
 	rep	movs byte [edi],[esi]
-	mov	[free_additional_memory],edi
 	pop	edi
 	push	esi
 	movzx	ecx,al
@@ -832,29 +837,82 @@ get_label_id:
 	sub	esi,2
       find_label:
 	xor	ebx,ebx
-	xor	ebp,ebp
+	mov	eax,2166136261
+	mov	ebp,16777619
       hash_label:
-	rol	ebp,12
-	mov	eax,ebp
-	shr	ebp,8
-	and	eax,1111b
-	or	ebp,eax
-	movzx	eax,byte [esi+ebx]
-	add	ebp,eax
+	xor	al,[esi+ebx]
+	mul	ebp
 	inc	bl
 	cmp	bl,cl
 	jb	hash_label
-	and	ebp,0FFFFFFh
-	shl	ebx,24
+	mov	ebp,eax
+	shl	eax,8
+	and	ebp,0FFh shl 24
+	xor	ebp,eax
 	or	ebp,ebx
 	mov	[label_hash],ebp
-	push	edi
-	push	esi
+	push	edi esi
+	push	ecx
+	mov	ecx,32
+	mov	ebx,hash_tree
+      follow_tree:
+	mov	edx,[ebx]
+	or	edx,edx
+	jz	extend_tree
+	xor	eax,eax
+	shl	ebp,1
+	adc	eax,0
+	lea	ebx,[edx+eax*4]
+	dec	ecx
+	jnz	follow_tree
+	mov	[label_leaf],ebx
+	pop	edx
+	mov	eax,[ebx]
+	or	eax,eax
+	jz	add_label
 	mov	ebx,esi
-	mov	edx,ecx
-	mov	eax,[labels_list]
+	mov	ebp,[label_hash]
+	align	16
+      scan_hashes:
+	cmp	ebp,[eax]
+	je	check_label
+      next_label:
+	add	eax,8
 	cmp	eax,[memory_end]
 	jne	scan_hashes
+	jmp	add_label
+      check_label:
+	mov	esi,ebx
+	mov	ecx,edx
+	mov	edi,[eax+4]
+	repe	cmps byte [esi],[edi]
+	jne	next_label
+      label_found:
+	add	esp,4
+	pop	edi
+	mov	ebx,[eax+4]
+      make_label_id:
+	sub	eax,[memory_end]
+	imul	eax,3
+	add	eax,[memory_end]
+	ret
+      extend_tree:
+	mov	edx,[free_additional_memory]
+	lea	eax,[edx+8]
+	cmp	eax,[additional_memory_end]
+	ja	out_of_memory
+	mov	[free_additional_memory],eax
+	xor	eax,eax
+	mov	[edx],eax
+	mov	[edx+4],eax
+	shl	ebp,1
+	adc	eax,0
+	mov	[ebx],edx
+	lea	ebx,[edx+eax*4]
+	dec	ecx
+	jnz	extend_tree
+	mov	[label_leaf],ebx
+	pop	edx
       add_label:
 	mov	ecx,edx
 	pop	esi
@@ -910,34 +968,12 @@ get_label_id:
 	pop	edi
 	cmp	eax,edi
 	jbe	out_of_memory
+	mov	edx,[label_leaf]
+	mov	[edx],eax
 	jmp	make_label_id
       reserved_word:
 	mov	eax,0Fh
 	pop	edi
-	ret
-	align	16
-      scan_hashes:
-	cmp	ebp,[eax]
-	je	check_label
-      next_label:
-	add	eax,8
-	cmp	eax,[memory_end]
-	jne	scan_hashes
-	jmp	add_label
-      check_label:
-	mov	esi,ebx
-	mov	ecx,edx
-	mov	edi,[eax+4]
-	repe	cmps byte [esi],[edi]
-	jne	next_label
-      label_found:
-	add	esp,4
-	pop	edi
-	mov	ebx,[eax+4]
-      make_label_id:
-	sub	eax,[memory_end]
-	imul	eax,3
-	add	eax,[memory_end]
 	ret
 
 operators:

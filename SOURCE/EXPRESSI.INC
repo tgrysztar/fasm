@@ -327,9 +327,15 @@ get_number:
 	cmp	bl,64
 	jae	oct_out_of_range
 	add	bl,3
-	cmp	cl,32
-	jae	oct_digit_high
+	cmp	cl,30
+	je	oct_digit_wrap
+	ja	oct_digit_high
 	shl	eax,cl
+	or	dword [edi],eax
+	jmp	get_oct_digit
+      oct_digit_wrap:
+	shl	eax,cl
+	adc	dword [edi+4],0
 	or	dword [edi],eax
 	jmp	get_oct_digit
       oct_digit_high:
@@ -455,7 +461,8 @@ get_fp_value:
 	movzx	ecx,al
 	inc	ecx
       fp_character_ok:
-	loop	check_fp_value
+	dec	ecx
+	jnz	check_fp_value
 	or	ah,ah
 	jz	not_fp_value
 	pop	esi

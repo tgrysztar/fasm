@@ -4436,8 +4436,9 @@ fild_instruction:
 	jmp	instruction_assembled
       fild_mem_64bit:
 	mov	al,[postbyte_register]
-	cmp	al,0
-	je	fild_mem_64bit_store
+	cmp	al,1
+	je	fisttp_64bit_store
+	jb	fild_mem_64bit_store
 	dec	[postbyte_register]
 	cmp	al,3
 	je	fild_mem_64bit_store
@@ -4447,6 +4448,11 @@ fild_instruction:
 	mov	[base_code],0DFh
 	call	store_instruction
 	jmp	instruction_assembled
+      fisttp_64bit_store:
+	mov	[base_code],0DDh
+	call	store_instruction
+	jmp	instruction_assembled
+
 fbld_instruction:
 	mov	[postbyte_register],al
 	lods	byte [esi]
@@ -4901,6 +4907,31 @@ movdq_instruction:
 	stos	word [edi]
 	mov	al,bl
 	stos	byte [edi]
+	jmp	instruction_assembled
+lddqu_instruction:
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_mmx_register
+	cmp	ah,16
+	jne	invalid_operand_size
+	push	eax
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,'['
+	jne	invalid_operand
+	call	get_address
+	pop	eax
+	mov	[postbyte_register],al
+	mov	[mmx_prefix],0F2h
+	mov	[base_code],0Fh
+	mov	[extended_code],0F0h
+	call	store_mmx_instruction
 	jmp	instruction_assembled
 movq2dq_instruction:
 	lods	byte [esi]
@@ -5885,6 +5916,46 @@ movnti_instruction:
 	jne	invalid_operand_size
 	mov	[postbyte_register],al
 	call	store_instruction
+	jmp	instruction_assembled
+monitor_instruction:
+	mov	[postbyte_register],al
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_register
+	cmp	ax,0400h
+	jne	invalid_operand
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_register
+	cmp	ax,0401h
+	jne	invalid_operand
+	cmp	[postbyte_register],0C8h
+	jne	monitor_instruction_store
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_register
+	cmp	ax,0402h
+	jne	invalid_operand
+      monitor_instruction_store:
+	mov	ax,010Fh
+	stos	word [edi]
+	mov	al,[postbyte_register]
+	stos	byte [edi]
 	jmp	instruction_assembled
 
 convert_register:
@@ -7030,6 +7101,8 @@ instructions_5:
  dw loop_instruction_32bit-assembler
  db 'label',0
  dw label_directive-assembler
+ db 'lddqu',0
+ dw lddqu_instruction-assembler
  db 'leave',0C9h
  dw simple_instruction-assembler
  db 'lodsb',0ACh
@@ -7082,6 +7155,8 @@ instructions_5:
  dw sse_sd_instruction-assembler
  db 'mulss',59h
  dw sse_ss_instruction-assembler
+ db 'mwait',0C9h
+ dw monitor_instruction-assembler
  db 'outsb',6Eh
  dw simple_instruction-assembler
  db 'outsd',6Fh
@@ -7312,6 +7387,8 @@ instructions_6:
  dw fi_instruction-assembler
  db 'fidivr',7
  dw fi_instruction-assembler
+ db 'fisttp',1
+ dw fild_instruction-assembler
  db 'fisubr',5
  dw fi_instruction-assembler
  db 'fldenv',4
@@ -7360,6 +7437,14 @@ instructions_6:
  dw ffree_instruction-assembler
  db 'fxsave',0
  dw fxsave_instruction-assembler
+ db 'haddpd',07Ch
+ dw sse_pd_instruction-assembler
+ db 'haddps',07Ch
+ dw cvtpd2dq_instruction-assembler
+ db 'hsubpd',07Dh
+ dw sse_pd_instruction-assembler
+ db 'hsubps',07Dh
+ dw cvtpd2dq_instruction-assembler
  db 'invlpg',0
  dw invlpg_instruction-assembler
  db 'lfence',0E8h
@@ -7558,6 +7643,10 @@ instructions_7:
  dw loop_instruction_32bit-assembler
  db 'loopnzw',0E0h
  dw loop_instruction_16bit-assembler
+ db 'monitor',0C8h
+ dw monitor_instruction-assembler
+ db 'movddup',12h
+ dw sse_sd_instruction-assembler
  db 'movdq2q',0
  dw movdq2q_instruction-assembler
  db 'movhlps',12h
@@ -7636,6 +7725,10 @@ instructions_7:
  dw virtual_directive-assembler
  db 0
 instructions_8:
+ db 'addsubpd',0D0h
+ dw sse_pd_instruction-assembler
+ db 'addsubps',0D0h
+ dw cvtpd2dq_instruction-assembler
  db 'cmpneqpd',4
  dw cmp_pd_instruction-assembler
  db 'cmpneqps',4
@@ -7708,6 +7801,10 @@ instructions_8:
  dw movmskpd_instruction-assembler
  db 'movmskps',0
  dw movmskps_instruction-assembler
+ db 'movshdup',16h
+ dw cvtdq2pd_instruction-assembler
+ db 'movsldup',12h
+ dw cvtdq2pd_instruction-assembler
  db 'packssdw',6Bh
  dw mmx_instruction-assembler
  db 'packsswb',63h

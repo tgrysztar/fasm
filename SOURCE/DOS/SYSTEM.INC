@@ -149,14 +149,22 @@ extended_memory_ok:
 	mov	[additional_memory],edi
 	mov	[additional_memory_end],edi
 	add	[additional_memory_end],ecx
-	cmp	[memory_start],0	; if extended memory available, done
-	jne	memory_ok
+	cmp	[memory_start],0
+	je	only_conventional_memory
+	mov	eax,[memory_end]
+	sub	eax,[memory_start]
+	shr	eax,3
+	imul	eax,3
+	cmp	eax,ecx
+	ja	no_conventional_memory
+	ret
+    only_conventional_memory:
 	shr	ecx,3			; use part of conventional memory
+	imul	ecx,3
 	add	edi,ecx 		; as a substitute for extended memory
 	mov	[memory_start],edi
 	xchg	[additional_memory_end],edi
 	mov	[memory_end],edi
-    memory_ok:
 	ret
 
 init_dpmi_memory:
@@ -188,22 +196,29 @@ init_dpmi_memory:
 	int	31h
 	movzx	ecx,bx
 	shl	ecx,4
-	jecxz	conventional_memory_unavailable
+	jecxz	no_conventional_memory
 	mov	ax,100h 		; allocate all conventional memory
 	int	31h
 	movzx	edi,ax
 	shl	edi,4
 	sub	edi,[program_base]
-	jc	conventional_memory_unavailable
+	jc	no_conventional_memory
 	mov	[additional_memory],edi
 	mov	[additional_memory_end],edi
 	add	[additional_memory_end],ecx
+	mov	eax,[memory_end]
+	sub	eax,[memory_start]
+	shr	eax,3
+	imul	eax,3
+	cmp	eax,ecx
+	ja	no_conventional_memory
 	ret
-    conventional_memory_unavailable:
+    no_conventional_memory:
 	mov	eax,[memory_end]
 	mov	ebx,[memory_start]
 	sub	eax,ebx
 	shr	eax,3
+	imul	eax,3
 	mov	[additional_memory],ebx
 	add	ebx,eax
 	mov	[additional_memory_end],ebx
@@ -412,7 +427,7 @@ open:
 	jnz	next_variable
 	cmp	byte [esi],0
 	jne	compare_variable_names
-	pop	esi
+	pop	esi ds
 	jmp	copy_path
       end_of_variable_name:
 	cmp	ah,'%'
@@ -787,8 +802,8 @@ make_timestamp:
 	sub	ebp,2
       months_correction_ok:
 	cmp	ecx,2
-	jbe	day_correction_ok
 	pop	cx
+	jbe	day_correction_ok
 	test	ecx,11b
 	jnz	day_correction_ok
 	xor	edx,edx

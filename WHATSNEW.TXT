@@ -1,6 +1,13 @@
 
 Visit http://flatassembler.net/ for more information
 
+version 1.51
+[31-01-2004]
+------------
+[+] added SSE3 instructions
+[-] speed improvements
+[-] few more bugs fixed
+
 version 1.50
 [08-12-2003]
 ------------
