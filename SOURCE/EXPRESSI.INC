@@ -743,11 +743,11 @@ calculate_expression:
 	je	expression_calculated
 	cmp	al,']'
 	je	expression_calculated
-	sub	edi,20h
+	sub	edi,10h
 	mov	ebx,edi
-	sub	ebx,20h
-	mov	dx,[ebx+24]
-	or	dx,[edi+24]
+	sub	ebx,10h
+	mov	dx,[ebx+8]
+	or	dx,[edi+8]
 	cmp	al,0E0h
 	je	calculate_rva
 	cmp	al,0D0h
@@ -758,8 +758,8 @@ calculate_expression:
 	je	calculate_add
 	cmp	al,81h
 	je	calculate_sub
-	mov	ah,[ebx+26]
-	or	ah,[edi+26]
+	mov	ah,[ebx+12]
+	or	ah,[edi+12]
 	jnz	invalid_use_of_symbol
 	cmp	al,90h
 	je	calculate_mul
@@ -781,70 +781,67 @@ calculate_expression:
 	je	calculate_shr
 	jmp	invalid_expression
       expression_calculated:
-	sub	edi,20h
+	sub	edi,10h
 	ret
       get_byte_number:
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	xor	eax,eax
 	lods	byte [esi]
 	stos	dword [edi]
 	xor	al,al
 	stos	dword [edi]
-	add	edi,18h
+	add	edi,8
 	jmp	calculate_expression
       get_word_number:
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	xor	eax,eax
 	lods	word [esi]
 	stos	dword [edi]
 	xor	ax,ax
 	stos	dword [edi]
-	add	edi,18h
+	add	edi,8
 	jmp	calculate_expression
       get_dword_number:
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	movs	dword [edi],[esi]
 	xor	eax,eax
 	stos	dword [edi]
-	add	edi,18h
+	add	edi,8
 	jmp	calculate_expression
       get_qword_number:
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	movs	dword [edi],[esi]
 	movs	dword [edi],[esi]
-	add	edi,18h
+	add	edi,8
 	jmp	calculate_expression
       get_register:
-	mov	byte [edi+25],0
-	mov	byte [edi+26],0
+	mov	byte [edi+9],0
+	mov	byte [edi+12],0
 	lods	byte [esi]
-	mov	[edi+24],al
+	mov	[edi+8],al
+	mov	byte [edi+10],1
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
-	mov	al,1
-	stos	dword [edi]
-	xor	al,al
-	stos	dword [edi]
-	add	edi,10h
+	add	edi,8
 	jmp	calculate_expression
       get_label:
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	lods	dword [esi]
 	or	eax,eax
 	jz	current_offset_label
 	cmp	eax,1
 	je	counter_label
 	mov	ebx,eax
-	cmp	byte [ebx+8],0
-	je	label_undefined
-	cmp	byte [ebx+13],0
-	je	label_defined
+	test	byte [ebx+8],1
+	jz	label_undefined
+	test	byte [ebx+8],4
+	jz	label_defined
 	mov	al,[current_pass]
 	cmp	al,[ebx+9]
 	jne	label_undefined
@@ -856,12 +853,14 @@ calculate_expression:
 	jne	label_type_ok
 	xor	al,al
       label_type_ok:
-	mov	[edi+26],al
+	mov	[edi+12],al
+	mov	eax,[ebx+12]
+	mov	[edi+8],eax
 	mov	eax,[ebx]
 	stos	dword [edi]
 	mov	eax,[ebx+4]
 	stos	dword [edi]
-	add	edi,18h
+	add	edi,8
 	mov	al,[ebx+10]
 	or	al,al
 	jz	calculate_expression
@@ -883,43 +882,45 @@ calculate_expression:
       current_offset_label:
 	cmp	[reloc_labels],0
 	je	get_current_offset
-	mov	byte [edi+26],2
+	mov	byte [edi+12],2
       get_current_offset:
 	mov	eax,[current_offset]
 	sub	eax,[org_start]
+	cdq
 	stos	dword [edi]
-	xor	eax,eax
+	mov	eax,edx
 	stos	dword [edi]
-	add	edi,18h
+	mov	eax,[org_sib]
+	stos	dword [edi]
+	add	edi,4
 	jmp	calculate_expression
       counter_label:
 	mov	eax,[counter]
 	stos	dword [edi]
 	xor	eax,eax
 	stos	dword [edi]
-	add	edi,18h
+	add	edi,8
 	jmp	calculate_expression
       label_undefined:
 	cmp	[current_pass],0
 	jne	invalid_value
 	mov	[next_pass_needed],1
-	mov	byte [edi+26],0
+	mov	byte [edi+12],0
 	xor	eax,eax
 	stos	dword [edi]
 	stos	dword [edi]
-	add	edi,18h
+	add	edi,8
 	jmp	calculate_expression
       calculate_add:
 	cmp	[next_pass_needed],0
 	jne	add_values
-	cmp	byte [edi+26],0
+	cmp	byte [edi+12],0
 	je	add_values
-	cmp	byte [ebx+26],0
-	je	add_values
-	jmp	invalid_use_of_symbol
+	cmp	byte [ebx+12],0
+	jne	invalid_use_of_symbol
       add_values:
-	mov	al,[edi+26]
-	or	[ebx+26],al
+	mov	al,[edi+12]
+	or	[ebx+12],al
 	mov	eax,[edi]
 	add	[ebx],eax
 	mov	eax,[edi+4]
@@ -928,11 +929,11 @@ calculate_expression:
 	jz	calculate_expression
 	push	esi
 	mov	esi,ebx
-	lea	ebx,[edi+8]
-	mov	cl,[edi+24]
+	lea	ebx,[edi+10]
+	mov	cl,[edi+8]
 	call	add_register
-	lea	ebx,[edi+16]
-	mov	cl,[edi+25]
+	lea	ebx,[edi+11]
+	mov	cl,[edi+9]
 	call	add_register
 	pop	esi
 	jmp	calculate_expression
@@ -940,61 +941,49 @@ calculate_expression:
 	or	cl,cl
 	jz	add_register_done
       add_register_start:
-	cmp	[esi+24],cl
+	cmp	[esi+8],cl
 	jne	add_in_second_slot
-	mov	eax,[ebx]
-	add	[esi+8],eax
-	mov	eax,[ebx+4]
-	adc	[esi+8+4],eax
-	mov	eax,[esi+8]
-	or	eax,[esi+8+4]
+	mov	al,[ebx]
+	add	[esi+10],al
 	jnz	add_register_done
-	mov	byte [esi+24],0
+	mov	byte [esi+8],0
 	ret
       add_in_second_slot:
-	cmp	[esi+25],cl
+	cmp	[esi+9],cl
 	jne	create_in_first_slot
-	mov	eax,[ebx]
-	add	[esi+16],eax
-	mov	eax,[ebx+4]
-	adc	[esi+16+4],eax
-	mov	eax,[esi+16]
-	or	eax,[esi+16+4]
+	mov	al,[ebx]
+	add	[esi+11],al
 	jnz	add_register_done
-	mov	byte [esi+25],0
+	mov	byte [esi+9],0
 	ret
       create_in_first_slot:
-	cmp	byte [esi+24],0
+	cmp	byte [esi+8],0
 	jne	create_in_second_slot
-	mov	[esi+24],cl
-	mov	eax,[ebx]
-	mov	[esi+8],eax
-	mov	eax,[ebx+4]
-	mov	[esi+8+4],eax
+	mov	[esi+8],cl
+	mov	al,[ebx]
+	mov	[esi+10],al
 	ret
       create_in_second_slot:
-	cmp	byte [esi+25],0
+	cmp	byte [esi+9],0
 	jne	invalid_expression
-	mov	[esi+25],cl
-	mov	eax,[ebx]
-	mov	[esi+16],eax
-	mov	eax,[ebx+4]
-	mov	[esi+16+4],eax
+	mov	[esi+9],cl
+	mov	al,[ebx]
+	mov	[esi+11],al
       add_register_done:
 	ret
       calculate_sub:
 	xor	ah,ah
 	cmp	[next_pass_needed],0
 	jne	sub_values
-	mov	ah,[ebx+26]
-	mov	al,[edi+26]
+	mov	ah,[ebx+12]
+	mov	al,[edi+12]
 	or	al,al
 	jz	sub_values
 	cmp	al,ah
 	jne	invalid_use_of_symbol
 	xor	ah,ah
       sub_values:
-	mov	byte [ebx+26],ah
+	mov	byte [ebx+12],ah
 	mov	eax,[edi]
 	sub	[ebx],eax
 	mov	eax,[edi+4]
@@ -1003,26 +992,23 @@ calculate_expression:
 	jz	calculate_expression
 	push	esi
 	mov	esi,ebx
-	lea	ebx,[edi+8]
-	mov	cl,[edi+24]
+	lea	ebx,[edi+10]
+	mov	cl,[edi+8]
 	call	sub_register
-	lea	ebx,[edi+16]
-	mov	cl,[edi+25]
+	lea	ebx,[edi+11]
+	mov	cl,[edi+9]
 	call	sub_register
 	pop	esi
 	jmp	calculate_expression
       sub_register:
 	or	cl,cl
 	jz	add_register_done
-	not	dword [ebx]
-	not	dword [ebx+4]
-	add	dword [ebx],1
-	adc	dword [ebx+4],0
+	neg	byte [ebx]
 	jmp	add_register_start
       calculate_mul:
 	or	dx,dx
 	jz	mul_start
-	cmp	word [ebx+24],0
+	cmp	word [ebx+8],0
 	jne	mul_start
 	mov	eax,[ebx]
 	xchg	eax,[edi]
@@ -1033,39 +1019,96 @@ calculate_expression:
 	mov	eax,[ebx+8]
 	xchg	eax,[edi+8]
 	mov	[ebx+8],eax
-	mov	eax,[ebx+8+4]
-	xchg	eax,[edi+8+4]
-	mov	[ebx+8+4],eax
-	mov	eax,[ebx+16]
-	xchg	eax,[edi+16]
-	mov	[ebx+16],eax
-	mov	eax,[ebx+16+4]
-	xchg	eax,[edi+16+4]
-	mov	[ebx+16+4],eax
-	mov	ax,[ebx+24]
-	xchg	ax,[edi+24]
-	mov	[ebx+24],ax
+	mov	eax,[ebx+12]
+	xchg	eax,[edi+12]
+	mov	[ebx+12],eax
       mul_start:
 	push	esi dx
 	mov	esi,ebx
-	call	mul_64
+	xor	bl,bl
+	test	dword [esi+4],1 shl 31
+	jz	mul_first_sign_ok
+	not	dword [esi]
+	not	dword [esi+4]
+	add	dword [esi],1
+	adc	dword [esi+4],0
+	not	bl
+      mul_first_sign_ok:
+	test	dword [edi+4],1 shl 31
+	jz	mul_second_sign_ok
+	not	dword [edi]
+	not	dword [edi+4]
+	add	dword [edi],1
+	adc	dword [edi+4],0
+	not	bl
+      mul_second_sign_ok:
+	cmp	dword [esi+4],0
+	jz	mul_numbers
+	cmp	dword [edi+4],0
+	jnz	value_out_of_range
+      mul_numbers:
+	mov	eax,[esi+4]
+	mul	dword [edi]
+	or	edx,edx
+	jnz	value_out_of_range
+	mov	ecx,eax
+	mov	eax,[esi]
+	mul	dword [edi+4]
+	or	edx,edx
+	jnz	value_out_of_range
+	add	ecx,eax
 	jc	value_out_of_range
+	mov	eax,[esi]
+	mul	dword [edi]
+	add	edx,ecx
+	jc	value_out_of_range
+	mov	[esi],eax
+	mov	[esi+4],edx
+	or	bl,bl
+	jz	mul_ok
+	not	dword [esi]
+	not	dword [esi+4]
+	add	dword [esi],1
+	adc	dword [esi+4],0
+      mul_ok:
 	pop	dx
 	or	dx,dx
 	jz	mul_calculated
-	cmp	word [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_value
-	add	esi,8
-	cmp	byte [esi+16],0
+	cmp	byte [esi+8],0
 	je	mul_first_register_ok
-	call	mul_64
-	jc	value_out_of_range
+	mov	al,[edi]
+	cbw
+	cwde
+	cdq
+	cmp	edx,[edi+4]
+	jne	value_out_of_range
+	cmp	eax,[edi]
+	jne	value_out_of_range
+	imul	byte [esi+10]
+	mov	dl,ah
+	cbw
+	cmp	ah,dl
+	jne	value_out_of_range
+	mov	[esi+10],al
       mul_first_register_ok:
-	add	esi,8
 	cmp	byte [esi+9],0
 	je	mul_calculated
-	call	mul_64
-	jc	value_out_of_range
+	mov	al,[edi]
+	cbw
+	cwde
+	cdq
+	cmp	edx,[edi+4]
+	jne	value_out_of_range
+	cmp	eax,[edi]
+	jne	value_out_of_range
+	imul	byte [esi+11]
+	mov	dl,ah
+	cbw
+	cmp	ah,dl
+	jne	value_out_of_range
+	mov	[esi+11],al
       mul_calculated:
 	pop	esi
 	jmp	calculate_expression
@@ -1076,19 +1119,39 @@ calculate_expression:
 	pop	dx
 	or	dx,dx
 	jz	div_calculated
-	add	esi,8
-	cmp	byte [esi+16],0
+	cmp	byte [esi+8],0
 	je	div_first_register_ok
-	call	div_64
-	or	eax,edx
-	jnz	invalid_value
+	mov	al,[edi]
+	cbw
+	cwde
+	cdq
+	cmp	edx,[edi+4]
+	jne	value_out_of_range
+	cmp	eax,[edi]
+	jne	value_out_of_range
+	or	al,al
+	jz	value_out_of_range
+	mov	al,[esi+10]
+	cbw
+	idiv	byte [edi]
+	mov	[esi+10],al
       div_first_register_ok:
-	add	esi,8
 	cmp	byte [esi+9],0
 	je	div_calculated
-	call	div_64
-	or	eax,edx
-	jnz	invalid_value
+	mov	al,[edi]
+	cbw
+	cwde
+	cdq
+	cmp	edx,[edi+4]
+	jne	value_out_of_range
+	cmp	eax,[edi]
+	jne	value_out_of_range
+	or	al,al
+	jz	value_out_of_range
+	mov	al,[esi+11]
+	cbw
+	idiv	byte [edi]
+	mov	[esi+11],al
       div_calculated:
 	pop	esi
 	jmp	calculate_expression
@@ -1225,9 +1288,9 @@ calculate_expression:
 	mov	dword [ebx+4],0
 	jmp	calculate_expression
       calculate_not:
-	cmp	word [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_expression
-	cmp	byte [edi+26],0
+	cmp	byte [edi+12],0
 	jne	invalid_use_of_symbol
 	cmp	[value_size],1
 	je	not_byte
@@ -1240,7 +1303,7 @@ calculate_expression:
       not_qword:
 	not	dword [edi]
 	not	dword [edi+4]
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
       not_byte:
 	cmp	dword [edi+4],0
@@ -1250,7 +1313,7 @@ calculate_expression:
 	cmp	byte [edi+1],0
 	jne	not_qword
 	not	byte [edi]
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
       not_word:
 	cmp	dword [edi+4],0
@@ -1258,25 +1321,25 @@ calculate_expression:
 	cmp	word [edi+2],0
 	jne	not_qword
 	not	word [edi]
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
       not_dword:
 	cmp	dword [edi+4],0
 	jne	not_qword
 	not	dword [edi]
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
       not_pword:
 	cmp	word [edi+6],0
 	jne	not_qword
 	not	dword [edi]
 	not	word [edi+4]
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
       calculate_neg:
-	cmp	word [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_expression
-	cmp	byte [edi+26],0
+	cmp	byte [edi+12],0
 	jne	invalid_use_of_symbol
 	mov	eax,[edi]
 	mov	edx,[edi+4]
@@ -1284,12 +1347,12 @@ calculate_expression:
 	mov	dword [edi+4],0
 	sub	[edi],eax
 	sbb	[edi+4],edx
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
       calculate_rva:
-	cmp	word [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_expression
-	mov	al,[edi+26]
+	mov	al,[edi+12]
 	cmp	al,2
 	je	rva_ok
 	or	al,al
@@ -1297,64 +1360,12 @@ calculate_expression:
 	cmp	[next_pass_needed],0
 	je	invalid_use_of_symbol
       rva_ok:
-	mov	byte [edi+26],0
+	mov	byte [edi+12],0
 	mov	eax,[image_base]
 	sub	[edi],eax
 	sbb	dword [edi+4],0
-	add	edi,20h
+	add	edi,10h
 	jmp	calculate_expression
-      mul_64:
-	xor	bl,bl
-	test	dword [esi+4],1 shl 31
-	jz	mul_first_sign_ok
-	not	dword [esi]
-	not	dword [esi+4]
-	add	dword [esi],1
-	adc	dword [esi+4],0
-	not	bl
-      mul_first_sign_ok:
-	test	dword [edi+4],1 shl 31
-	jz	mul_second_sign_ok
-	not	dword [edi]
-	not	dword [edi+4]
-	add	dword [edi],1
-	adc	dword [edi+4],0
-	not	bl
-      mul_second_sign_ok:
-	cmp	dword [esi+4],0
-	jz	mul_numbers
-	cmp	dword [edi+4],0
-	jnz	mul_error
-      mul_numbers:
-	mov	eax,[esi+4]
-	mul	dword [edi]
-	or	edx,edx
-	jnz	mul_error
-	mov	ecx,eax
-	mov	eax,[esi]
-	mul	dword [edi+4]
-	or	edx,edx
-	jnz	mul_error
-	add	ecx,eax
-	jc	mul_error
-	mov	eax,[esi]
-	mul	dword [edi]
-	add	edx,ecx
-	jc	mul_error
-	mov	[esi],eax
-	mov	[esi+4],edx
-	or	bl,bl
-	jz	mul_ok
-	not	dword [esi]
-	not	dword [esi+4]
-	add	dword [esi],1
-	adc	dword [esi+4],0
-      mul_ok:
-	clc
-	ret
-      mul_error:
-	stc
-	ret
       div_64:
 	xor	bl,bl
 	cmp	dword [edi],0
@@ -1430,8 +1441,8 @@ calculate_expression:
       div_ok:
 	ret
       convert_fp:
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	mov	al,[value_size]
 	cmp	al,4
 	je	convert_fp_dword
@@ -1517,8 +1528,8 @@ calculate_expression:
 	rep	movs byte [edi],[esi]
 	mov	edi,edx
 	inc	esi
-	mov	word [edi+24],0
-	mov	byte [edi+26],0
+	mov	word [edi+8],0
+	mov	byte [edi+12],0
 	ret
 
 get_byte_value:
@@ -1526,11 +1537,9 @@ get_byte_value:
 	mov	[forced_size],2
 	mov	[current_offset],edi
 	call	calculate_expression
-	cmp	byte [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_value
-	cmp	byte [edi+25],0
-	jne	invalid_value
-	cmp	byte [edi+26],0
+	cmp	byte [edi+12],0
 	jne	invalid_use_of_symbol
 	mov	eax,[edi]
 	cmp	dword [edi+4],0
@@ -1559,11 +1568,9 @@ get_word_value:
 	mov	[forced_size],2
 	mov	[current_offset],edi
 	call	calculate_expression
-	cmp	byte [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_value
-	cmp	byte [edi+25],0
-	jne	invalid_value
-	mov	al,[edi+26]
+	mov	al,[edi+12]
 	cmp	al,2
 	je	invalid_use_of_symbol
 	mov	[value_type],al
@@ -1585,11 +1592,9 @@ get_dword_value:
 	mov	[forced_size],2
 	mov	[current_offset],edi
 	call	calculate_expression
-	cmp	byte [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_value
-	cmp	byte [edi+25],0
-	jne	invalid_value
-	mov	al,[edi+26]
+	mov	al,[edi+12]
 	mov	[value_type],al
       check_dword_value:
 	mov	eax,[edi]
@@ -1606,11 +1611,9 @@ get_pword_value:
 	mov	[forced_size],2
 	mov	[current_offset],edi
 	call	calculate_expression
-	cmp	byte [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_value
-	cmp	byte [edi+25],0
-	jne	invalid_value
-	mov	al,[edi+26]
+	mov	al,[edi+12]
 	mov	[value_type],al
 	mov	eax,[edi]
 	mov	edx,[edi+4]
@@ -1624,11 +1627,9 @@ get_qword_value:
 	mov	[forced_size],2
 	mov	[current_offset],edi
 	call	calculate_expression
-	cmp	byte [edi+24],0
+	cmp	word [edi+8],0
 	jne	invalid_value
-	cmp	byte [edi+25],0
-	jne	invalid_value
-	mov	al,[edi+26]
+	mov	al,[edi+12]
 	mov	[value_type],al
 	mov	eax,[edi]
 	mov	edx,[edi+4]
@@ -1636,8 +1637,8 @@ get_qword_value:
 get_value:
 	mov	[operand_size],0
 	mov	[forced_size],0
-	call	get_operand_size
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_value
 	mov	al,[operand_size]
@@ -1698,10 +1699,16 @@ get_address:
 	ja	invalid_address_size
 	mov	[address_size],al
 	mov	[value_size],al
+	jmp	calculate_address
+get_address_value:
+	mov	[address_size],0
+	mov	[value_size],4
+	push	address_ok
       calculate_address:
 	mov	[current_offset],edi
 	call	calculate_expression
-	mov	al,[edi+26]
+	mov	al,[edi+12]
+	mov	[value_type],al
 	cmp	al,1
 	je	invalid_use_of_symbol
 	or	al,al
@@ -1716,13 +1723,13 @@ get_address:
 	xor	bx,bx
 	xor	cl,cl
 	mov	ch,[address_size]
-	cmp	word [edi+24],0
+	cmp	word [edi+8],0
 	je	check_dword_value
-	mov	al,[edi+24]
-	lea	edx,[edi+8]
+	mov	al,[edi+8]
+	mov	dl,[edi+10]
 	call	get_address_register
-	mov	al,[edi+25]
-	lea	edx,[edi+16]
+	mov	al,[edi+9]
+	mov	dl,[edi+11]
 	call	get_address_register
 	mov	ax,bx
 	shr	ah,4
@@ -1775,9 +1782,7 @@ get_address:
       get_address_register:
 	or	al,al
 	jz	address_register_ok
-	cmp	dword [edx+4],0
-	jne	invalid_address
-	cmp	dword [edx],1
+	cmp	dl,1
 	jne	scaled_register
 	or	bh,bh
 	jnz	scaled_register
@@ -1788,9 +1793,7 @@ get_address:
 	or	bl,bl
 	jnz	invalid_address
 	mov	bl,al
-	mov	cl,[edx]
-	cmp	dword [edx],255
-	ja	invalid_address
+	mov	cl,dl
 	jmp	address_register_ok
       address_ok:
 	mov	edx,eax

@@ -226,12 +226,12 @@ mz_stack:
 mz_heap:
 	cmp	[output_format],2
 	jne	unexpected_instruction
-	call	get_operand_size
-	cmp	[operand_size],1
-	je	invalid_value
-	cmp	[operand_size],2
-	ja	invalid_value
 	lods	byte [esi]
+	call	get_size_operator
+	cmp	ah,1
+	je	invalid_value
+	cmp	ah,2
+	ja	invalid_value
 	cmp	al,'('
 	jne	invalid_argument
 	call	get_word_value
@@ -596,12 +596,11 @@ section_directive:
 	mov	[current_data],-1
 	jmp	instruction_assembled
 pe_entry:
-	call	get_operand_size
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	mov	al,[operand_size]
-	test	al,not 4
+	test	ah,not 4
 	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
@@ -618,12 +617,11 @@ pe_entry:
 	mov	[entry_rva],eax
 	jmp	instruction_assembled
 pe_stack:
-	call	get_operand_size
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	mov	al,[operand_size]
-	test	al,not 4
+	test	ah,not 4
 	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
@@ -634,12 +632,11 @@ pe_stack:
 	cmp	byte [esi],','
 	jne	default_stack_commit
 	lods	byte [esi]
-	call	get_operand_size
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	mov	al,[operand_size]
-	test	al,not 4
+	test	ah,not 4
 	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
@@ -658,12 +655,11 @@ pe_stack:
 	mov	[stack_commit],eax
 	jmp	instruction_assembled
 pe_heap:
-	call	get_operand_size
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	mov	al,[operand_size]
-	test	al,not 4
+	test	ah,not 4
 	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value
@@ -674,12 +670,11 @@ pe_heap:
 	cmp	byte [esi],','
 	jne	default_heap_commit
 	lods	byte [esi]
-	call	get_operand_size
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'('
 	jne	invalid_argument
-	mov	al,[operand_size]
-	test	al,not 4
+	test	ah,not 4
 	jnz	invalid_address
 	cmp	byte [esi],'.'
 	je	invalid_value

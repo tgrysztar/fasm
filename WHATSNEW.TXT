@@ -2,6 +2,15 @@
 Questions or comments please send to:
   grysztar@omega.im.uj.edu.pl
 
+version 1.20
+[17-11-2001]
+------------
+[+] full SSE2 instructions support
+[+] SIB addresses allowed for virtual data
+[+] common directive in macroinstructions
+[-] segment prefixes only if necessary
+[-] general revisions and improvements
+
 version 1.14
 [17-10-2001]
 ------------

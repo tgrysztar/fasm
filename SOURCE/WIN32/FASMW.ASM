@@ -89,6 +89,12 @@ get_params:
 	call	[GetCommandLine]
 	mov	esi,eax
 	mov	edi,params
+    find_command_start:
+	lodsb
+	cmp	al,20h
+	je	find_command_start
+	cmp	al,22h
+	je	skip_quoted_name
     skip_name:
 	lodsb
 	cmp	al,20h
@@ -96,6 +102,13 @@ get_params:
 	or	al,al
 	jz	all_params
 	jmp	skip_name
+    skip_quoted_name:
+	lodsb
+	cmp	al,22h
+	je	find_param
+	or	al,al
+	jz	all_params
+	jmp	skip_quoted_name
     find_param:
 	lodsb
 	cmp	al,20h

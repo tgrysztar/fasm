@@ -557,9 +557,9 @@ define_macro:
 	lods	byte [esi]
       macro_arguments_end:
 	or	al,al
-	jz	find_macro_start
+	jz	find_macro_block
 	cmp	al,';'
-	je	find_macro_start
+	je	find_macro_block
 	cmp	al,'{'
 	je	find_macro_end
 	jmp	invalid_macro_arguments
@@ -572,7 +572,7 @@ define_macro:
 	cmp	al,';'
 	je	invalid_macro_arguments
 	jmp	find_macro_argument
-      find_macro_start:
+      find_macro_block:
 	mov	ebp,esp
 	call	get_macro_line
 	jc	unexpected_end_of_file
@@ -580,9 +580,9 @@ define_macro:
 	call	skip_spaces
 	lods	byte [esi]
 	or	al,al
-	jz	find_macro_start
+	jz	find_macro_block
 	cmp	al,';'
-	je	find_macro_start
+	je	find_macro_block
 	cmp	al,'{'
 	jne	unexpected_characters
       find_macro_end:
@@ -1198,6 +1198,7 @@ use_macro:
 	lods	byte [esi]
 	cmp	al,','
 	je	local_symbols
+      macro_directive_processed:
 	or	al,al
 	jz	macro_directive_end
 	cmp	al,';'
@@ -1216,6 +1217,15 @@ use_macro:
 	pop	esi
 	dec	edi
 	jmp	macro_process
+      common_block:
+	lods	byte [esi]
+	cmp	[multi_macro_current],0
+	je	macro_directive_processed
+	mov	cx,[multi_macro_count]
+	cmp	[multi_macro_current],cx
+	jb	end_macro_block
+	mov	[multi_macro_current],0
+	jmp	macro_directive_processed
       skip_string:
 	lods	byte [esi]
 	stos	byte [edi]
@@ -1256,6 +1266,7 @@ use_macro:
 	cmp	al,'}'
 	jne	macro_process
 	dec	edi
+      end_macro_block:
 	xor	al,al
 	stos	byte [edi]
 	mov	[current_line_end],edi

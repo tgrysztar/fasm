@@ -9,7 +9,7 @@
 		       €€   €	   €€ ‹     ﬁ€ ﬁ€  €  ›
 		     ﬂﬂﬂﬂﬂﬂ  ﬂﬂﬂﬂﬂ ﬂﬂ  ﬂﬂﬂﬂﬂﬂ	ﬂ  ﬂ  ﬂ
 
-			flat assembler	version 1.14
+			flat assembler	version 1.20
 
 	 Copyright (c) 1999-2001, Tomasz Grysztar. All rights reserved.
 
@@ -115,7 +115,7 @@ use size override: 'mov eax,dword [myvar]', or (short form):
 8-bit or a 16-bit variable; eax will contain whatever is in the four bytes
 beginning at the address of 'myvar'! Allowed size overrides are: byte (8-bit),
 word (16-bit), dword (32-bit), pword (48-bit), qword (64-bit), tword (80-bit),
-xword (128-bit), first letters are the short forms.
+dqword (128-bit), first letters are the short forms.
 
 2.1.1.2  Jumps and calls
 
@@ -167,12 +167,12 @@ be [ebx+00000001], etc.
 
 2.1.1.5  Special cases
 
-    'xlat' instruction accepts no arguments, or one argument:
-'[bx]'/'byte [bx]' to create 16-bit version, or '[ebx]'/'byte [ebx]'
-to create 32-bit version of opcode; in the similar way advanced settings
-of string instructions can be done, like 'movs byte [es:edi],[fs:esi]',
-to adjust address registers size and segment override ('movs' needs two
-arguments). 'xlatb', 'movsb', etc. accept no arguments.
+    'xlat' instruction accepts one argument: '[bx]'/'byte [bx]' to create
+16-bit version, or '[ebx]'/'byte [ebx]' to create 32-bit version of opcode;
+in the similar way advanced settings of string instructions can be done, like
+'movs byte [es:edi],[fs:esi]', to adjust address registers size and segment
+override ('movs' needs two arguments). 'xlatb', 'movsb', etc. accept no
+arguments.
 
 2.1.1.6  FPU and MMX instructions
 
@@ -188,7 +188,7 @@ arguments). 'xlatb', 'movsb', etc. accept no arguments.
 	paddb	mm0,mm1 	      ; packed add bytes
 	pand	mm7,qword [esi]       ; logical and
 	addps	xmm0,xmm1	      ; packed single fp add
-	cmpeqps xmm7,xword [esi]      ; packed single fp compare
+	cmpeqps xmm7,dqword [esi]     ; packed single fp compare
 	shufps	xmm4,xmm5,1	      ; shuffle single fp
 
 2.1.2  Number syntax
@@ -286,6 +286,10 @@ directive before data definition, for example:
 2.2  Directives
 
 2.2.1  Preprocessor directives
+
+common - used inside macro definitions, all following instructions in this
+	 part of macroinstructions will be processed only once, even if
+	 multiple arguments are processed.
 
 include - includes source file in source code before assembly
 

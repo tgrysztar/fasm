@@ -410,6 +410,8 @@ parse_line:
 	jc	not_symbol_argument
 	pop	edi
 	stos	word [edi]
+	cmp	ax,13h
+	je	at_parsed
 	jmp	argument_parsed
       not_symbol_argument:
 	cmp	ecx,1
@@ -498,6 +500,15 @@ parse_line:
 	mov	eax,[fp_value+8]
 	stos	dword [edi]
 	jmp	expression_parsed
+      at_parsed:
+	cmp	[parenthesis_stack],0
+	je	at_expression
+	dec	[parenthesis_stack]
+	add	esp,8
+	jmp	at_parsed
+      at_expression:
+	mov	al,'('
+	stos	byte [edi]
       expression:
 	call	convert_expression
 	mov	al,')'
