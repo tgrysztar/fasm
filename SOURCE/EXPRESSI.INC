@@ -1347,56 +1347,10 @@ calculate_expression:
 	or	[ebx+4],eax
 	jmp	calculation_loop
       calculate_xor:
-	cmp	[value_size],1
-	je	xor_byte
-	cmp	[value_size],2
-	je	xor_word
-	cmp	[value_size],4
-	je	xor_dword
-	cmp	[value_size],6
-	je	xor_pword
-      xor_qword:
 	mov	eax,[edi]
 	xor	[ebx],eax
 	mov	eax,[edi+4]
 	xor	[ebx+4],eax
-	jmp	calculation_loop
-      xor_byte:
-	mov	eax,[edi+4]
-	or	eax,[ebx+4]
-	jnz	xor_qword
-	mov	eax,[edi]
-	or	eax,[ebx]
-	and	eax,not 0FFh
-	jnz	xor_qword
-	mov	al,[edi]
-	xor	[ebx],al
-	jmp	calculation_loop
-      xor_word:
-	mov	eax,[edi+4]
-	or	eax,[ebx+4]
-	jnz	xor_qword
-	mov	ax,[edi+2]
-	or	ax,[ebx+2]
-	jnz	xor_qword
-	mov	ax,[edi]
-	xor	[ebx],ax
-	jmp	calculation_loop
-      xor_dword:
-	mov	eax,[edi+4]
-	or	eax,[ebx+4]
-	jnz	xor_qword
-	mov	eax,[edi]
-	xor	[ebx],eax
-	jmp	calculation_loop
-      xor_pword:
-	mov	ax,[edi+6]
-	or	ax,[ebx+6]
-	jnz	xor_qword
-	mov	eax,[edi]
-	xor	[ebx],eax
-	mov	ax,[edi+4]
-	xor	[ebx+4],ax
 	jmp	calculation_loop
       shr_negative:
 	not	dword [edi]
@@ -1783,10 +1737,12 @@ get_byte_value:
       return_byte_value:
 	ret
       range_exceeded:
+	xor	eax,eax
+	xor	edx,edx
 	cmp	[error_line],0
 	jne	return_byte_value
-	mov	eax,[current_line]
-	mov	[error_line],eax
+	mov	ecx,[current_line]
+	mov	[error_line],ecx
 	mov	[error],value_out_of_range
 	ret
 get_word_value:
@@ -1942,12 +1898,13 @@ get_address_value:
 	mov	[value_type],al
 	or	al,al
 	jz	address_symbol_ok
-	shl	al,1
-	or	al,80h
-	xchg	[address_size],al
-	or	al,al
+	shl	al,5
+	mov	ah,[address_size]
+	or	[address_size],al
+	shr	al,4
+	or	ah,ah
 	jz	address_symbol_ok
-	cmp	al,4
+	cmp	al,ah
 	jne	address_sizes_do_not_agree
       address_symbol_ok:
 	xor	bx,bx
@@ -2070,21 +2027,21 @@ get_relative_offset:
 calculate_logical_expression:
 	call	get_logical_value
       logical_loop:
-	push	eax
-	lods	byte [esi]
-	cmp	al,'|'
+	cmp	byte [esi],'|'
 	je	logical_or
-	cmp	al,'&'
+	cmp	byte [esi],'&'
 	je	logical_and
-	dec	esi
-	pop	eax
 	ret
       logical_or:
+	inc	esi
+	push	eax
 	call	get_logical_value
 	pop	ebx
 	or	al,bl
 	jmp	logical_loop
       logical_and:
+	inc	esi
+	push	eax
 	call	get_logical_value
 	pop	ebx
 	and	al,bl

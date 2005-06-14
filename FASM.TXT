@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.60
+                              flat assembler 1.62
                               Programmer's Manual
 
 
@@ -62,6 +62,9 @@ Chapter 2  Instruction set
         2.3.2  Symbolic constants
         2.3.3  Macroinstructions
         2.3.4  Structures
+        2.3.5  Repeating macroinstructions
+        2.3.6  Conditional preprocessing
+        2.3.7  Order of processing
 
         2.4  Formatter directives
         2.4.1  MZ executable
@@ -133,21 +136,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.60
+flat assembler  version 1.62
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.60
+flat assembler  version 1.62
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.60
+flat assembler  version 1.62
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -157,7 +160,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.60
+flat assembler  version 1.62
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -196,11 +199,23 @@ set of the directives - the instructions for compiler.
 
 Instructions in assembly language are separated by line breaks, and one
 instruction is expected to fill the one line of text. If a line contains
-a semicolon, except for the semicolons in quoted strings, the rest of this
-line is the comment and compiler ignores it. If a line contains "\"
-characters, the next line is attached at this point. After the "\" character,
-the line should not contain anything but comments, which are started with
-a semicolon.
+a semicolon, except for the semicolons inside the quoted strings, the rest of
+this line is the comment and compiler ignores it. If a line ends with "\"
+character (eventually the semicolon and comment may follow it), the next line
+is attached at this point.
+  Each line in source is the sequence of items, which may be one of the three
+types. One type are the symbol characters, which are the special characters
+that are individual items even when are not spaced from the other ones.
+Any of the "+-*/=<>()[]{}:,|&~#`" is the symbol character. The sequence of
+other characters, separated from other items with either blank spaces or
+symbol characters, is a symbol. If the first character of symbol is either a
+single or double quote, it integrates the any sequence of characters following
+it, even the special ones, into a quoted string, which should end with the same
+character, with which it began (the single or double quote) - however if there
+are two such characters in a row (without any other character between them),
+they are integrated into quoted string as just one of them and the quoted
+string continues then. The symbols other than symbol characters and quoted
+strings can be used as names, so are also called the name symbols.
   Every instruction consists of the mnemonic and the various number of
 operands, separated with commas. The operand can be register, immediate value
 or a data addressed in memory, it can also be preceded by size operator to
@@ -275,12 +290,20 @@ separated with colon, and "dt" accepts the word and quad word value separated
 with colon, the quad word is stored first. The "dt" directive with single
 expression as parameter accepts only floating point values and creates data in
 FPU double extended precision format.
+  Any of the above directive allows the usage of special "dup" operator to
+make multiple copies of given values. The count of duplicates should precede
+this operator and the value to duplicate should follow - it can even be the
+chain of values separated with commas, but such set of values needs to be
+enclosed with parenthesis, like "db 5 dup (1,2)", which defines five copies
+of the given two byte sequence.
   The "file" is a special directive and its syntax is different. This
 directive includes a chain of bytes from file and it should be followed by the
 quoted file name, then optionally numerical expression specifying offset in
-file preceded by the colon, then - also optionally - comma and numerical
+file preceded by the colon, and - also optionally - comma and numerical
 expression specifying count of bytes to include (if no count is specified, all
-data up to the end of file is included).
+data up to the end of file is included). For example "file 'data.bin'" will
+include the whole file as binary data and "file 'data.bin':10h,4" will include
+only four bytes starting at offset 10h.
   The data reservation directive should be followed by only one numerical
 expression, and this value defines how many cells of the specified size should
 be reserved. All data definition directives also accept the "?" value, which
@@ -2409,7 +2432,7 @@ value and convert them into characters for displaying. Note that this won't
 work if the adresses in current addressing space are relocatable (as it might
 happen with PE or object output formats), since only absolute values can be
 used this way. The absolute value may be obtained by calculating the relative
-address, like "$-$$" or "rva $" in case of PE format.
+address, like "$-$$", or "rva $" in case of PE format.
 
 
 2.3  Preprocessor directives
@@ -2456,12 +2479,20 @@ this value to the new constant. For example:
 
 After there three definitions the value of "NULL" constant is "dword 0" and
 the value of "d" is "edx". So, for example, "push NULL" will be assembled as
-"push dword 0" and "push d" will be assembled as "push edx".
+"push dword 0" and "push d" will be assembled as "push edx". And if then the
+following line was put:
+
+    d equ d,eax
+
+the "d" constant would get the new value of "edx,eax". This way the growing
+lists of symbols can be defined.
   "restore" directive allows to get back previous value of redefined symbolic
 constant. It should be followed by one more names of symbolic constants,
 separated with commas. So "restore d" after the above definitions will give
-"d" constant back the value "dword". If there was no constant defined of given
-name, "restore" won't cause an error, it will be just ignored.
+"d" constant back the value "edx", the second one will restore it to value
+"dword", and one more will revert "d" to original meaning as if no such
+constant was defined. If there was no constant defined of given name,
+"restore" won't cause an error, it will be just ignored.
   Symbolic constant can be used to adjust the syntax of assembler to personal
 preferences. For example the following set of definitions provides the handy
 shortcuts for all the size operators:
@@ -2769,48 +2800,45 @@ line feed.
   It is also possible to put a declaration of macroinstruction inside another
 macroinstruction, so one macro can define another, but there is a problem
 with such definitions caused by the fact, that "}" character cannot occur
-inside the macroinstruction, as it always means the end of definition. But it's
-easy to overcome this problem with use of the "fix" directive. Here is an
-example:
+inside the macroinstruction, as it always means the end of definition. To
+overcome this problem, the escaping of symbols inside macroinstruction can be
+used. This is done by placing one or more backslashes in front of any other
+symbol (even the special character). Preprocessor sees such sequence as a
+single symbol, but each time it meets such symbol during the macroinstruction
+processing, it cuts the backslash character from the front of it. For example
+"\{" is treated as single symbol, but during processing of the macroinstruction
+it becomes the "{" symbol. This allows to put one definition of
+macroinstruction inside another:
 
     macro ext instr
      {
       macro instr op1,op2,op3
-       _%
+       \{
         if op3 eq
           instr op1,op2
         else
           instr op1,op2
           instr op2,op3
         end if
-       %_
+       \}
      }
-
-    _% fix {
-    %_ fix }
 
     ext add
     ext sub
 
-The macro "ext" is defined correctly, but when it is used, the "_%" and "%_"
-are defined as high priority symbolic constants and are replaced with their
-values before doing anything else. So when the "ext add" is processed, the
+The macro "ext" is defined correctly, but when it is used, the "\{" and "\}"
+become the "{" and "}" symbols. So when the "ext add" is processed, the
 contents of macro becomes valid definition of a macroinstruction and this way
 the "add" macro becomes defined. In the same way "ext sub" defines the "sub"
-macro. The use of "_%" constant instead of "{" wasn't really necessary here,
-but is done this way to make the definition more clear. Note that the right
-order of definitions is crucial here.
+macro. The use of "\{" symbol wasn't really necessary here, but is done this
+way to make the definition more clear.
   If some directives specific to macroinstructions, like "local" or "common"
-are needed inside some macro embedded this way, they also have to be replaced
-with some symbols defined later as a high priority constants with the values
-being the intended directives. And when the "#" operator is needed in the
-embedded macro, the help comes from the fact that any sequence of "#"
-characters inside the macroinstruction is reduced to chain shorter by one
-character, and only if it was the single "#" character, the concatenation is
-performed. So to put the concatenation operator inside the embedded macro it is
-enough to write "##" there.
-  The above techniques can be even applied to create the new ways of defining
-macroinstructions. For example:
+are needed inside some macro embedded this way, they can be escaped in the same
+way. Escaping the symbol with more than one backslash is also allowed, which
+allows multiple levels of nesting the macroinstruction definitions.
+  The another technique for defining one macroinstruction by another is to
+use the "fix" directive, which becomes useful when some macroinstruction only
+begins the definition of another one, without closing it. For example:
 
     macro tmacro params
      {
@@ -2859,25 +2887,243 @@ concerning standard macroinstructions apply to structure macroinstructions.
 
 For example "my point 7,11" will define structure labeled "my", consisting of
 two variables: "my.x" with value 7 and "my.y" with value 11.
-  Next example shows how to extend the data definition directive "db" with
-ability to calculate the size of defined data by using the structure
-macroinstruction:
+  If somewhere inside the definition of structure the name consisting of a
+single dot it found, it is replaced by the name of the label for the given
+instance of structure and this label will not be defined automatically in
+such case, allowing to completely customize the definition. The following
+example utilizes this feature to extend the data definition directive "db"
+with ability to calculate the size of defined data:
 
     struc db [data]
      {
-      common
-        label .data byte
-        db data
-        .size = $-.data
+       common
+        . db data
+        .size = $ - .
      }
 
-With such definition for example "msg db 'Hello!',13,10" will define also
-"msg.size" constant, equal to the size of defined data in bytes and also
-additional label "msg.data", which will be recognized as a label for data of
-byte size.
+With such definition "msg db 'Hello!',13,10" will define also "msg.size"
+constant, equal to the size of defined data in bytes.
   Defining data structures addressed by registers or absolute values should be
 done using the "virtual" directive with structure macroinstruction
 (see 2.2.3).
+  "restruc" directive removes the last definition of the structure, just like
+"purge" does with macroinstructions and "restore" with symbolic constants.
+It also has the same syntax - should be followed by one or more names of
+structure macroinstructions, separated with commas.
+
+
+2.3.5  Repeating macroinstructions
+
+The "rept" directive is a special kind of macroinstruction, which makes given
+amount of duplicates of the block enclosed with braces. The basic syntax is
+"rept" directive followed by number (it cannot be an expression, since
+preprocessor doesn't do calculations, if you need repetitions based on values
+calculated by assembler, use one of the code repeating directives that are
+processed by assembler, see 2.2.1), and then block of source enclosed between
+the "{" and "}" characters. The simplest example:
+
+    rept 5 { in al,dx }
+
+will make five duplicates of the "in al,dx" line. The block of instructions
+is defined in the same way as for the standard macroinstruction and any
+special operators and directives which can be used only inside
+macroinstructions are also allowed here. When the given count is zero, the
+block is simply skipped, as if you defined macroinstruction but never used
+it. The number of repetitions can be followed by the name of counter symbol,
+which will get replaced symbolically with the number of duplicate currently
+generated. So this:
+
+    rept 3 counter
+     {
+        byte#counter db counter
+     }
+
+will generate lines:
+
+    byte1 db 1
+    byte2 db 2
+    byte3 db 3
+
+The repetition mechanism applied to "rept" blocks is the same as the one used
+to process multiple groups of arguments for macroinstructions, so directives
+like "forward", "common" and "reverse" can be used in their usual meaning.
+Thus such macroinstruction:
+
+    rept 7 num { reverse display `num }
+
+will display digits from 7 to 1 as text. The "local" directive behaves in the
+same way as inside macroinstruction with multiple groups of arguments, so:
+
+    rept 21
+     {
+       local label
+       label: loop label
+     }
+
+will generate unique label for each duplicate.
+  The counter symbol by default counts from 1, but you can declare different
+base value by placing the number preceded by colon immediately after the name
+of counter. For example:
+
+    rept 8 n:0 { pxor xmm#n,xmm#n }
+
+will generate code which will clear the contents of eight SSE registers.
+You can define multiple counters separated with commas, and each one can have
+different base.
+
+
+2.3.6  Conditional preprocessing
+
+"match" directive causes some block of source to be preprocessed and passed
+to assembler only when the given sequence of symbols matches the specified
+pattern. The pattern comes first, ended with comma, then the symbols that have
+to be matched with the pattern, and finally the block of source, enclosed
+within braces as macroinstruction.
+  There are the few rules for building the expression for matching, first is
+that any of symbol characters and any quoted string should be matched exactly
+as is. In this example:
+
+    match +,+ { include 'first.inc' }
+    match +,- { include 'second.inc' }
+
+the first file will get included, since "+" after comma matches the "+" in
+pattern, and the second file won't be included, since there is no match.
+  To match any other symbol literally, it has to be preceded by "=" character
+in the pattern. Also to match the "=" character itself, or the comma, the
+"==" and "=," constructions have to be used. For example the "=a==" pattern
+will match the "a=" sequence.
+  If some name symbol is placed in the pattern, it matches any sequence
+consisting of at least one symbol and then this name is replaced with the
+matched sequence everywhere inside the following block, analogously to the
+parameters of macroinstruction. For instance:
+
+    match a-b, 0-7
+     { dw a,b-a }
+
+will generate the "dw 0,7-0" instruction. Each name is always matched with
+as few symbols as possible, leaving the rest for the following ones, so in
+this case:
+
+    match a b, 1+2+3 { db a }
+
+the "a" name will match the "1" symbol, leaving the "+2+3" sequence to be
+matched with "b". But in this case:
+
+    match a b, 1 { db a }
+
+there will be nothing left for "b" to match, so the block won't get processed
+at all.
+  The block of source defined by match is processed in the same way as any
+macroinstruction, so any operators specific to macroinstructions can be used
+also in this case.
+  What makes "match" directive more useful is the fact, that it replaces the
+symbolic constants with their values in the matched sequence of symbols (that
+is everywhere after comma up to the beginning of the source block) before
+performing the match. Thanks to this it can be used for example to process
+some block of source under the condition that some symbolic constant has the
+given value, like:
+
+    match =TRUE, DEBUG { include 'debug.inc' }
+
+which will include the file only when the symbolic constant "DEBUG" was
+defined with value "TRUE".
+
+
+2.3.7  Order of processing
+
+When combining various features of the preprocessor, it's important to know
+the order in which they are processed. As it was already noted, the highest
+priority has the "fix" directive and the replacements defined with it. This
+is done completely before doing any other preprocessing, therefore this
+piece of source:
+
+    V fix {
+      macro empty
+       V
+    V fix }
+       V
+
+becomes a valid definition of an empty macroinstruction. It can be interpreted
+that the "fix" directive and prioritized symbolic constants are processed in
+a separate stage, and all other preprocessing is done after on the resulting
+source.
+  The standard preprocessing that comes after, on each line begins with
+recognition of the first symbol. It begins with checking for the preprocessor
+directives, and when none of them is detected, preprocessor checks whether the
+first symbol is macroinstruction. If no macroinstruction is found, it moves
+to the second symbol of line, and again begins with checking for directives,
+which in this case is only the "equ" directive, as this is the only one that
+occurs as the second symbol in line. If there's no directive, the second
+symbol is checked for the case of structure macroinstruction and when none
+of those checks gives the positive result, the symbolic constants are replaced
+with their values and such line is passed to the assembler.
+  To see it on the example, assume that there is defined the macroinstruction
+called "foo" and the structure macroinstruction called "bar". Those lines:
+
+    foo equ
+    foo bar
+
+would be then both interpreted as invocations of macroinstruction "foo", since
+the meaning of the first symbol overrides the meaning of second one.
+  The macroinstructions generate the new lines from their definition blocks,
+replacing the parameters with their values and then processing the "#" and "`"
+operators. The conversion operator has the higher priority than concatenation.
+After this is completed, the newly generated line goes through the standard
+preprocessing, as described above.
+  Though the symbolic constants are usually only replaced in the lines, where
+no preprocessor directives nor macroinstructions has been found, there are some
+special cases where those replacements are performed in the parts of lines
+containing directives. First one is the definition of symbolic constant, where
+the replacements are done everywhere after the "equ" keyword and the resulting
+value is then assigned to the new constant (see 2.3.2). The second such case
+is the "match" directive, where the replacements are done in the symbols
+following comma before matching them with pattern. These features can be used
+for example to maintain the lists, like this set of definitions:
+
+    list equ
+
+    macro append item
+     {
+       match any, list \{ list equ list,item \}
+       match , list \{ list equ item \}
+     }
+
+The "list" constant is here initialized with empty value, and the "append"
+macroinstruction can be used to add the new items into this list, separating
+them with commas. The first match in this macroinstruction occurs only when
+the value of list is not empty (see 2.3.6), in such case the new value for the
+list is the previous one with the comma and the new item appended at the end.
+The second match happens only when the list is still empty, and in such case
+the list is defined to contain just the new item. So starting with the empty
+list, the "append 1" would define "list equ 1" and the "append 2" following it
+would define "list equ 1,2". One might then need to use this list as the
+parameters to some macroinstruction. But it cannot be done directly - if "foo"
+is the macroinstruction, then "foo list" would just pass the "list" symbol
+as a parameter to macro, since symbolic constants are not unrolled at this
+stage. For this purpose again "match" directive comes in handy:
+
+    match params, list { foo params }
+
+The value of "list", if it's not empty, matches the "params" keyword, which is
+then replaced with matched value when generating the new lines defined by the
+block enclosed with braces. So if the "list" had value "1,2", the above line
+would generate the line containing "foo 1,2", which would then go through the
+standard preprocessing.
+   There is one more special case - when preprocessor goes to checking the
+second symbol in the line and it happens to be the colon character (what is
+then interpreted by assembler as definition of a label), it stops in this
+place and finishes the preprocessing of the first symbol (so if it's the
+symbolic constant it gets unrolled) and if it still appears to be the label,
+it performs the standard preprocessing starting from the place after the
+label. This allows to place preprocessor directives and macroinstructions
+after the labels, analogously to the instructions and directives processed
+by assembler, like:
+
+    start: include 'start.inc'
+
+However if the label becomes broken during preprocessing (for example when
+it is the symbolic constant with empty value), only replacing of the symbolic
+constants is continued for the rest of line.
 
 
 2.4  Formatter directives
@@ -2978,7 +3224,9 @@ data is  taken from the given resource file.
 
 To select Common Object File Format, use "format COFF" or "format MS COFF"
 directive whether you want to create classic or Microsoft's COFF file. The
-default code setting for this format is 32-bit.
+default code setting for this format is 32-bit. To create the file in
+Microsoft's COFF format for the x86-64 architecture, use "format MS64 COFF"
+setting, in such case long mode code is generated by default.
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then one or more section flags can
 follow. Available flags are: "code" and "data" for both COFF variants,

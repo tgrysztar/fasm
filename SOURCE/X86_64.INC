@@ -461,11 +461,11 @@ mov_instruction:
 	call	store_instruction
 	jmp	instruction_assembled
       mov_mem_al:
-	test	ch,2
+	test	ch,22h
 	jnz	mov_mem_address16_al
-	test	ch,4
+	test	ch,44h
 	jnz	mov_mem_address32_al
-	test	ch,8
+	test	ch,88h
 	jnz	mov_mem_address64_al
 	or	ch,ch
 	jnz	invalid_address_size
@@ -504,11 +504,11 @@ mov_instruction:
 	push	instruction_assembled
 	jmp	store_address_64bit_value
       mov_mem_ax:
-	test	ch,2
+	test	ch,22h
 	jnz	mov_mem_address16_ax
-	test	ch,4
+	test	ch,44h
 	jnz	mov_mem_address32_ax
-	test	ch,8
+	test	ch,88h
 	jnz	mov_mem_address64_ax
 	or	ch,ch
 	jnz	invalid_address_size
@@ -710,11 +710,11 @@ mov_instruction:
 	call	store_instruction
 	jmp	instruction_assembled
       mov_al_mem:
-	test	ch,2
+	test	ch,22h
 	jnz	mov_al_mem_address16
-	test	ch,4
+	test	ch,44h
 	jnz	mov_al_mem_address32
-	test	ch,8
+	test	ch,88h
 	jnz	mov_al_mem_address64
 	or	ch,ch
 	jnz	invalid_address_size
@@ -739,11 +739,11 @@ mov_instruction:
 	mov	[base_code],0A0h
 	jmp	store_mov_address64
       mov_ax_mem:
-	test	ch,2
+	test	ch,22h
 	jnz	mov_ax_mem_address16
-	test	ch,4
+	test	ch,44h
 	jnz	mov_ax_mem_address32
-	test	ch,8
+	test	ch,88h
 	jnz	mov_ax_mem_address64
 	or	ch,ch
 	jnz	invalid_address_size
@@ -3207,6 +3207,8 @@ jmp_instruction:
 	cmp	[code_type],16
 	je	jmp_16bit
       jmp_32bit:
+	test	[operand_size],not 4
+	jnz	invalid_operand_size
 	sub	eax,2
 	jo	jump_out_of_range
 	mov	edx,eax
@@ -5387,8 +5389,8 @@ prefetch_instruction:
 	call	get_size_operator
 	cmp	al,'['
 	jne	invalid_operand
-	cmp	ah,0
-	je	prefetch_size_ok
+	or	ah,ah
+	jz	prefetch_size_ok
 	cmp	ah,1
 	jne	invalid_operand_size
       prefetch_size_ok:
@@ -5507,6 +5509,81 @@ monitor_instruction:
 	stos	byte [edi]
 	jmp	instruction_assembled
 
+simple_vmx_instruction:
+	mov	ah,al
+	mov	al,0Fh
+	stos	byte [edi]
+	mov	al,1
+	stos	word [edi]
+	jmp	instruction_assembled
+vmclear_instruction:
+	mov	[operand_prefix],66h
+	jmp	vmx_instruction
+vmxon_instruction:
+	mov	[operand_prefix],0F3h
+vmx_instruction:
+	mov	[postbyte_register],al
+	mov	[extended_code],0C7h
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,'['
+	jne	invalid_operand
+	call	get_address
+	mov	al,[operand_size]
+	or	al,al
+	jz	vmx_size_ok
+	cmp	al,8
+	jne	invalid_operand_size
+      vmx_size_ok:
+	mov	[base_code],0Fh
+	call	store_instruction
+	jmp	instruction_assembled
+vmread_instruction:
+	mov	[extended_code],78h
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,'['
+	jne	invalid_operand
+	call	get_address
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_register
+	mov	[postbyte_register],al
+      vmread_check_size:
+	cmp	[code_type],64
+	je	vmread_long
+	cmp	[operand_size],4
+	je	vmx_size_ok
+	jmp	invalid_operand_size
+      vmread_long:
+	cmp	[operand_size],8
+	je	vmx_size_ok
+	jmp	invalid_operand_size
+vmwrite_instruction:
+	mov	[extended_code],79h
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	invalid_operand
+	lods	byte [esi]
+	call	convert_register
+	mov	[postbyte_register],al
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,'['
+	jne	invalid_operand
+	call	get_address
+	jmp	vmread_check_size
+
 convert_register:
 	mov	ah,al
 	shr	ah,4
@@ -5624,13 +5701,17 @@ get_address:
 	jne	address_ok
 	or	bx,bx
 	jnz	address_ok
-	or	ch,ch
+	test	ch,0Fh
 	jnz	address_ok
+      calculate_relative_address:
 	call	calculate_relative_offset
 	mov	[address_high],edx
+	mov	edx,[symbol_identifier]
+	mov	[address_symbol],edx
 	mov	edx,eax
+	mov	ch,[value_type]
 	mov	bx,0FF00h
-	xor	cx,cx
+	xor	cl,cl
       address_ok:
 	ret
 
@@ -5817,7 +5898,7 @@ store_instruction:
       address_bp:
 	mov	al,110b
       postbyte_16bit:
-	test	ch,2
+	test	ch,22h
 	jnz	address_16bit_value
 	or	ch,ch
 	jnz	address_sizes_do_not_agree
@@ -5907,9 +5988,9 @@ store_instruction:
 	or	ah,bl
 	and	bh,111b
 	or	ah,bh
-	test	ch,4
+	test	ch,44h
 	jnz	sib_address_32bit_value
-	test	ch,2
+	or	ch,ch
 	jnz	address_sizes_do_not_agree
 	cmp	bh,5
 	je	address_value
@@ -5955,7 +6036,7 @@ store_instruction:
 	shl	cl,3
 	or	al,cl
 	stos	word [edi]
-	test	ch,4
+	test	ch,44h
 	jnz	store_address_32bit_value
 	or	ch,ch
 	jnz	invalid_address_size
@@ -5969,9 +6050,9 @@ store_instruction:
 	and	al,111b
 	cmp	al,4
 	je	zero_index_register
-	test	ch,4
+	test	ch,44h
 	jnz	simple_address_32bit_value
-	test	ch,2
+	or	ch,ch
 	jnz	address_sizes_do_not_agree
 	or	edx,edx
 	jz	simple_address
@@ -6010,9 +6091,9 @@ store_instruction:
       address_immediate:
 	cmp	[code_type],64
 	je	address_immediate_sib
-	test	ch,4
+	test	ch,44h
 	jnz	address_immediate_32bit
-	test	ch,2
+	test	ch,22h
 	jnz	address_immediate_16bit
 	or	ch,ch
 	jnz	invalid_address_size
@@ -6028,10 +6109,8 @@ store_instruction:
 	or	al,cl
 	stos	byte [edi]
       store_address_32bit_value:
-	test	ch,80h
+	test	ch,0F0h
 	jz	address_32bit_relocation_ok
-	cmp	ch,88h
-	je	invalid_use_of_symbol
 	mov	al,2
 	xchg	[value_type],al
 	mov	ebx,[address_symbol]
@@ -6044,7 +6123,7 @@ store_instruction:
 	stos	dword [edi]
 	ret
       store_address_64bit_value:
-	test	ch,80h
+	test	ch,0F0h
 	jz	address_64bit_relocation_ok
 	mov	al,4
 	xchg	[value_type],al
@@ -6060,7 +6139,7 @@ store_instruction:
 	stos	dword [edi]
 	ret
       address_immediate_sib:
-	test	ch,not 4
+	test	ch,not 44h
 	jnz	invalid_address_size
 	call	address_32bit_prefix
 	call	store_instruction_code
@@ -6084,7 +6163,20 @@ store_instruction:
 	add	eax,5
 	sub	edx,eax
 	jo	value_out_of_range
-	jmp	store_immediate_address
+	mov	al,101b
+	mov	cl,[postbyte_register]
+	shl	cl,3
+	or	al,cl
+	stos	byte [edi]
+	xchg	[value_type],ch
+	mov	ebx,[address_symbol]
+	xchg	ebx,[symbol_identifier]
+	mov	eax,edx
+	call	mark_relocation
+	mov	[value_type],ch
+	mov	[symbol_identifier],ebx
+	stos	dword [edi]
+	ret
       addressing_16bit:
 	cmp	edx,10000h
 	jge	address_immediate_32bit
@@ -7169,6 +7261,8 @@ instructions_5:
  dw sse_ss_instruction-assembler
  db 'times',0
  dw times_directive-assembler
+ db 'vmxon',6
+ dw vmxon_instruction-assembler
  db 'wrmsr',30h
  dw simple_extended_instruction-assembler
  db 'xlatb',0D7h
@@ -7421,8 +7515,16 @@ instructions_6:
  dw sse_sd_instruction-assembler
  db 'sqrtss',51h
  dw sse_ss_instruction-assembler
+ db 'sysret',07h
+ dw simple_extended_instruction-assembler
  db 'swapgs',0
  dw swapgs_instruction-assembler
+ db 'vmcall',0C1h
+ dw simple_vmx_instruction-assembler
+ db 'vmread',0
+ dw vmread_instruction-assembler
+ db 'vmxoff',0C4h
+ dw simple_vmx_instruction-assembler
  db 'wbinvd',9
  dw simple_extended_instruction-assembler
  db 0
@@ -7579,6 +7681,8 @@ instructions_7:
  dw segment_directive-assembler
  db 'stmxcsr',11b
  dw fxsave_instruction-assembler
+ db 'syscall',05h
+ dw simple_extended_instruction-assembler
  db 'sysexit',35h
  dw simple_extended_instruction-assembler
  db 'ucomisd',2Eh
@@ -7587,6 +7691,14 @@ instructions_7:
  dw comiss_instruction-assembler
  db 'virtual',0
  dw virtual_directive-assembler
+ db 'vmclear',6
+ dw vmclear_instruction-assembler
+ db 'vmptrld',6
+ dw vmx_instruction-assembler
+ db 'vmptrst',7
+ dw vmx_instruction-assembler
+ db 'vmwrite',0
+ dw vmwrite_instruction-assembler
  db 0
 instructions_8:
  db 'addsubpd',0D0h
@@ -7695,6 +7807,10 @@ instructions_8:
  dw sse_pd_instruction-assembler
  db 'unpcklps',14h
  dw sse_ps_instruction-assembler
+ db 'vmlaunch',0C2h
+ dw simple_vmx_instruction-assembler
+ db 'vmresume',0C3h
+ dw simple_vmx_instruction-assembler
  db 0
 instructions_9:
  db 'cmpxchg8b',8
@@ -7727,8 +7843,6 @@ instructions_9:
  dw mmx_instruction-assembler
  db 0
 instructions_10:
- db 'cmpxchg16b',16
- dw cmpxchgx_instruction-assembler
  db 'cmpunordpd',3
  dw cmp_pd_instruction-assembler
  db 'cmpunordps',3
@@ -7737,6 +7851,8 @@ instructions_10:
  dw cmp_sd_instruction-assembler
  db 'cmpunordss',3
  dw cmp_ss_instruction-assembler
+ db 'cmpxchg16b',16
+ dw cmpxchgx_instruction-assembler
  db 'loadall286',5
  dw simple_extended_instruction-assembler
  db 'loadall386',7

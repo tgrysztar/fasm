@@ -97,13 +97,6 @@ information:
 include 'system.inc'
 
 include '..\version.inc'
-include '..\errors.inc'
-include '..\expressi.inc'
-include '..\preproce.inc'
-include '..\parser.inc'
-include '..\assemble.inc'
-include '..\formats.inc'
-include '..\x86_64.inc'
 
 _copyright db 'Copyright (c) 1999-2005, Tomasz Grysztar',0Dh,0Ah,24h
 
@@ -114,15 +107,20 @@ _passes_suffix db ' passes, ',24h
 _seconds_suffix db ' seconds, ',24h
 _bytes_suffix db ' bytes.',0Dh,0Ah,24h
 
+include '..\errors.inc'
+include '..\expressi.inc'
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\assemble.inc'
+include '..\formats.inc'
+include '..\x86_64.inc'
+
 align 4
 
 include '..\variable.inc'
 
-program_base dd ?
-buffer_address dd ?
 memory_setting dd ?
 start_time dd ?
-
 params rb 100h
 
 segment buffer

@@ -242,7 +242,7 @@ public_directive:
 	cmp	al,5
 	jne	illegal_instruction
 	bt	[format_flags],0
-	jnz	illegal_instruction
+	jc	illegal_instruction
       public_allowed:
 	lods	byte [esi]
 	cmp	al,2
@@ -281,7 +281,7 @@ extrn_directive:
 	cmp	al,5
 	jne	illegal_instruction
 	bt	[format_flags],0
-	jnz	illegal_instruction
+	jc	illegal_instruction
       extrn_allowed:
 	lods	word [esi]
 	cmp	ax,'('
@@ -667,24 +667,26 @@ make_stub:
 	movzx	ecx,word [esi+4]
 	dec	ecx
 	shl	ecx,9
-	sub	ecx,eax
-	movzx	eax,word [esi+2]
+	movzx	edx,word [esi+2]
+	add	ecx,edx
 	mov	edx,edi
-	add	ecx,eax
-	jz	read_stub_code
+	sub	ecx,eax
+	je	read_stub_code
+	jb	stub_code_ok
 	push	ecx
 	dec	ecx
 	shr	ecx,3
 	inc	ecx
 	shl	ecx,1
 	lea	eax,[edi+ecx*4]
-	cmp	edi,[display_buffer]
+	cmp	eax,[display_buffer]
 	jae	out_of_memory
 	xor	eax,eax
 	rep	stos dword [edi]
 	pop	ecx
      read_stub_code:
 	call	read
+     stub_code_ok:
 	call	close
 	mov	edx,edi
 	sub	edx,esi
@@ -1390,6 +1392,7 @@ make_pe_resource:
 	ja	check_this_type_name
 	jb	check_next_type_name
 	add	ecx,2
+	mov	ax,[esi+ecx]
 	or	ax,[ebx+ecx]
 	jnz	compare_with_previous_type_name
 	jmp	check_next_type_name
@@ -1403,6 +1406,7 @@ make_pe_resource:
 	ja	check_next_type_name
 	jb	type_name_found
 	add	ecx,2
+	mov	ax,[esi+ecx]
 	or	ax,[edx+ecx]
 	jnz	compare_with_current_type_name
 	jmp	same_type_name
@@ -1513,6 +1517,7 @@ make_pe_resource:
 	ja	check_this_resource_name
 	jb	check_next_resource_name
 	add	ecx,2
+	mov	ax,[esi+ecx]
 	or	ax,[ebx+ecx]
 	jnz	compare_with_previous_resource_name
 	jmp	check_next_resource_name
@@ -1536,6 +1541,7 @@ make_pe_resource:
 	ja	check_next_resource_name
 	jb	resource_name_found
 	add	ecx,2
+	mov	ax,[esi+ecx]
 	or	ax,[edx+ecx]
 	jnz	compare_with_current_resource_name
 	jmp	same_resource_name
@@ -1957,6 +1963,10 @@ format_coff:
 	mov	[org_symbol],ebx
 	mov	[labels_type],2
 	mov	[code_type],32
+	test	[format_flags],8
+	jz	instruction_assembled
+	mov	[labels_type],4
+	mov	[code_type],64
 	jmp	instruction_assembled
 coff_section:
 	call	close_coff_section
@@ -1976,6 +1986,10 @@ coff_section:
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
 	mov	[labels_type],2
+	test	[format_flags],8
+	jz	coff_labels_type_ok
+	mov	[labels_type],4
+      coff_labels_type_ok:
 	mov	[ebx+10h],eax
 	mov	[ebx+14h],eax
 	lods	word [esi]
@@ -2066,11 +2080,14 @@ mark_coff_relocation:
 	cmp	[value_type],3
 	je	coff_relocation_relative
 	push	ebx eax
+	test	[format_flags],8
+	jnz	coff_64bit_relocation
 	mov	al,6
 	jmp	coff_relocation
+      coff_64bit_relocation:
+	mov	al,1
+	jmp	coff_relocation
       coff_relocation_relative:
-	cmp	[labels_type],2
-	jne	invalid_use_of_symbol
 	push	ebx
 	bt	[format_flags],0
 	jnc	relative_ok
@@ -2082,6 +2099,15 @@ mark_coff_relocation:
       relative_ok:
 	push	eax
 	mov	al,20
+	test	[format_flags],8
+	jnz	relative_coff_64bit_relocation
+	cmp	[labels_type],2
+	jne	invalid_use_of_symbol
+	jmp	coff_relocation
+      relative_coff_64bit_relocation:
+	mov	al,4
+	cmp	[labels_type],4
+	jne	invalid_use_of_symbol
       coff_relocation:
 	mov	ebx,[free_additional_memory]
 	add	ebx,0Ch
@@ -2121,6 +2147,10 @@ coff_formatter:
 	xor	eax,eax
 	rep	stos dword [edi]
 	mov	word [ebx],14Ch
+	test	[format_flags],8
+	jz	coff_magic_ok
+	mov	word [ebx],8664h
+      coff_magic_ok:
 	mov	word [ebx+12h],104h
 	bt	[format_flags],0
 	jnc	coff_flags_ok
@@ -2402,8 +2432,15 @@ coff_formatter:
 	mov	cl,[eax+11]
 	or	cl,cl
 	jz	public_constant
+	test	[format_flags],8
+	jnz	check_64bit_public_symbol
 	cmp	cl,2
+	je	public_symbol_type_ok
+	jmp	invalid_use_of_symbol
+      check_64bit_public_symbol:
+	cmp	cl,4
 	jne	invalid_use_of_symbol
+      public_symbol_type_ok:
 	mov	ecx,[eax+20]
 	mov	ecx,[ecx]
 	cmp	cl,81h
@@ -3045,22 +3082,9 @@ elf_formatter:
 	mov	eax,[eax]
 	shr	eax,8
 	stos	dword [edi]
-	mov	eax,[image_base]
-	add	eax,[esi+4]
-	push	edx
-	cmp	byte [esi],1
-	je	rela_64bit
-	mov	eax,[eax]
-	cdq
-	jmp	rela_ok
-      rela_64bit:
-	mov	edx,[eax+4]
-	mov	eax,[eax]
-      rela_ok:
+	xor	eax,eax
 	stos	dword [edi]
-	mov	eax,edx
 	stos	dword [edi]
-	pop	edx
       relocation_entry_ok:
 	add	esi,0Ch
 	jmp	convert_relocations
@@ -3608,6 +3632,7 @@ formatter_symbols:
  db 3,'gui',1Bh,2
  db 6,'import',1Ah,1
  db 2,'ms',17h,41h
+ db 4,'ms64',17h,49h
  db 2,'mz',18h,20h
  db 6,'native',1Bh,1
  db 11,'notpageable',19h,27

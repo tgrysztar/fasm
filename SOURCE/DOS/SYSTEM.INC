@@ -537,7 +537,7 @@ get_environment_variable:
 	jnz	next_variable
       copy_variable_value:
 	lodsb
-	cmp	edi,[memory_end]
+	cmp	edi,[es:memory_end]
 	jae	out_of_memory
 	stosb
 	or	al,al
@@ -973,6 +973,8 @@ make_timestamp:
 	add	eax,ebx
 	ret
 
+program_base dd ?
+buffer_address dd ?
 psp_segment dw ?
 environment_segment dw ?
 mode dw ?

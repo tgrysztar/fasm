@@ -216,7 +216,7 @@ parse_line:
 	cmp	al,'<'
 	je	less
 	cmp	al,')'
-	je	close_expression
+	je	close_parenthesis
 	or	al,al
 	jz	line_parsed
 	cmp	al,'['
@@ -266,8 +266,10 @@ parse_line:
 	stos	byte [edi]
 	cmp	al,80h
 	je	forced_expression
+	cmp	al,81h
+	je	forced_parenthesis
 	cmp	al,82h
-	je	forced_expression
+	je	parse_from_operator
 	cmp	al,89h
 	je	parse_label_operator
 	jmp	argument_parsed
@@ -332,6 +334,10 @@ parse_line:
 	stos	dword [edi]
 	xor	al,al
 	stos	byte [edi]
+	jmp	argument_parsed
+      parse_from_operator:
+	cmp	byte [esi],22h
+	jne	forced_expression
 	jmp	argument_parsed
       parse_quoted_extrn:
 	inc	esi
@@ -483,10 +489,16 @@ parse_line:
       no_size_prefix:
 	pop	esi
 	jmp	convert_expression
+      forced_parenthesis:
+	cmp	byte [esi],'('
+	jne	argument_parsed
+	inc	esi
+	mov	al,'{'
+	jmp	separator
       unallowed_character:
 	mov	al,0FFh
 	jmp	separator
-      close_expression:
+      close_parenthesis:
 	mov	al,'}'
       separator:
 	stos	byte [edi]
@@ -946,7 +958,7 @@ get_label_id:
 	inc	esi
       label_name_ok:
 	mov	edx,[free_additional_memory]
-	lea	eax,[edx+16]
+	lea	eax,[edx+12]
 	cmp	eax,[additional_memory_end]
 	ja	out_of_memory
 	mov	[free_additional_memory],eax
@@ -992,6 +1004,7 @@ directive_operators:
  db 2,'as',86h
  db 2,'at',80h
  db 7,'defined',88h
+ db 3,'dup',81h
  db 2,'eq',0F0h
  db 6,'eqtype',0F7h
  db 4,'from',82h

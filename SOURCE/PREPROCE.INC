@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2004, Tomasz Grysztar.
+; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -41,6 +41,7 @@ preprocessor:
 	mov	eax,[additional_memory_end]
 	mov	[labels_list],eax
 	xor	eax,eax
+	mov	[display_buffer],eax
 	mov	[hash_tree],eax
 	mov	[macro_status],al
 	mov	esi,[input_file]
@@ -145,10 +146,11 @@ convert_line:
 	neg	ecx
 	cmp	ecx,255
 	ja	name_too_long
-	dec	edi
 	mov	ebx,edi
 	sub	ebx,ecx
-	mov	byte [ebx-1],cl
+	mov	byte [ebx-2],cl
+      found_separator:
+	dec	edi
 	mov	ah,[esi-1]
       convert_separator:
 	xchg	al,ah
@@ -159,7 +161,7 @@ convert_line:
 	cmp	al,3Bh
 	je	ignore_comment
 	cmp	al,5Ch
-	je	concatenation_character
+	je	backslash_character
 	stos	byte [edi]
 	jmp	convert_line_data
       control_character:
@@ -213,8 +215,71 @@ convert_line:
 	sub	eax,ebx
 	mov	[ebx-4],eax
 	jmp	convert_line_data
-      concatenation_character:
+      backslash_character:
 	mov	byte [edi],0
+	lods	byte [esi]
+	cmp	al,20h
+	je	concatenate_lines
+	cmp	al,9
+	je	concatenate_lines
+	cmp	al,1Ah
+	je	unexpected_end_of_file
+	cmp	al,0Ah
+	je	concatenate_lf
+	cmp	al,0Dh
+	je	concatenate_cr
+	cmp	al,3Bh
+	je	find_concatenated_line
+	mov	al,1Ah
+	stos	byte [edi]
+	mov	ecx,edi
+	mov	ax,5C01h
+	stos	word [edi]
+	dec	esi
+      group_backslashes:
+	lods	byte [esi]
+	cmp	al,5Ch
+	jne	backslashed_symbol
+	stos	byte [edi]
+	inc	byte [ecx]
+	jmp	group_backslashes
+      backslashed_symbol:
+	cmp	al,1Ah
+	je	unexpected_end_of_file
+	cmp	al,0Ah
+	je	extra_characters_on_line
+	cmp	al,0Dh
+	je	extra_characters_on_line
+	cmp	al,20h
+	je	extra_characters_on_line
+	cmp	al,9
+	je	extra_characters_on_line
+	cmp	al,22h
+	je	extra_characters_on_line
+	cmp	al,27h
+	je	extra_characters_on_line
+	cmp	al,3Bh
+	je	extra_characters_on_line
+	mov	ah,al
+	mov	ebx,characters
+	xlat	byte [ebx]
+	or	al,al
+	jz	backslashed_symbol_character
+	mov	al,ah
+      convert_backslashed_symbol:
+	stos	byte [edi]
+	xlat	byte [ebx]
+	or	al,al
+	jz	found_separator
+	inc	byte [ecx]
+	jz	name_too_long
+	lods	byte [esi]
+	jmp	convert_backslashed_symbol
+      backslashed_symbol_character:
+	mov	al,ah
+	stos	byte [edi]
+	inc	byte [ecx]
+	jmp	convert_line_data
       concatenate_lines:
 	lods	byte [esi]
 	cmp	al,20h
@@ -271,55 +336,47 @@ convert_line:
 	ret
 
 preprocess_line:
-	push	[struc_name]
 	push	ecx esi
       preprocess_current_line:
-	mov	esi,[current_line]
-	add	esi,16
-	lods	byte [esi]
-	cmp	al,1Ah
-	jne	not_fix_constant
-	xor	eax,eax
-	lods	byte [esi]
-	mov	ebp,esi
-	add	esi,eax
-	lods	word [esi]
-	cmp	ax,031Ah
-	jne	not_fix_constant
-	mov	ebx,characters
-	movzx	eax,byte [esi]
-	xlat	byte [ebx]
-	ror	eax,8
-	mov	al,[esi+1]
-	xlat	byte [ebx]
-	ror	eax,8
-	mov	al,[esi+2]
-	xlat	byte [ebx]
-	ror	eax,16
-	cmp	eax,'fix'
-	je	define_fix_constant
-      not_fix_constant:
 	mov	esi,[current_line]
 	add	esi,16
 	cmp	word [esi],3Bh
 	jne	line_start_ok
 	add	esi,2
       line_start_ok:
-	call	process_fix_constants
-	mov	esi,[current_line]
-	add	esi,16
 	test	[macro_status],0F0h
-	jz	concatenations_ok
-	call	process_concatenations
+	jnz	macro_preprocessing
+	cmp	byte [esi],1Ah
+	jne	not_fix_constant
+	movzx	edx,byte [esi+1]
+	lea	edx,[esi+2+edx]
+	cmp	word [edx],031Ah
+	jne	not_fix_constant
+	mov	ebx,characters
+	movzx	eax,byte [edx+2]
+	xlat	byte [ebx]
+	ror	eax,8
+	mov	al,[edx+3]
+	xlat	byte [ebx]
+	ror	eax,8
+	mov	al,[edx+4]
+	xlat	byte [ebx]
+	ror	eax,16
+	cmp	eax,'fix'
+	je	define_fix_constant
+      not_fix_constant:
+	call	process_fix_constants
+	jmp	initial_preprocessing_ok
+      macro_preprocessing:
+	call	process_macro_operators
+      initial_preprocessing_ok:
 	mov	esi,[current_line]
 	add	esi,16
-      concatenations_ok:
 	mov	al,[macro_status]
-	and	al,0Fh
-	dec	al
-	jz	find_macro_block
-	dec	al
-	jz	skip_macro_block
+	test	al,2
+	jnz	skip_macro_block
+	test	al,1
+	jnz	find_macro_block
       preprocess_instruction:
 	mov	[current_offset],esi
 	lods	byte [esi]
@@ -376,12 +433,14 @@ preprocess_line:
 	jc	not_preprocessor_symbol
 	push	edx esi
 	mov	esi,[struc_name]
+	mov	[struc_label],esi
+	sub	[struc_label],2
 	mov	cl,[esi-1]
 	mov	ch,10b
 	call	get_preprocessor_symbol
 	jc	struc_name_ok
 	mov	ecx,[edx+12]
-	add	ecx,3
+	inc	ecx
 	lea	esi,[edi-1]
 	lea	ebx,[edi+ecx]
 	lea	edi,[ebx-1]
@@ -396,16 +455,15 @@ preprocess_line:
 	mov	esi,[edx+8]
 	mov	ecx,[edx+12]
 	add	[struc_name],ecx
-	add	[struc_name],3
+	inc	[struc_name]
 	call	move_data
 	mov	al,3Ah
 	stos	byte [edi]
-	mov	ax,3Bh
-	stos	word [edi]
+	mov	byte [edi],3Bh
 	mov	edi,ebx
 	pop	esi
 	add	esi,[edx+12]
-	add	esi,3
+	inc	esi
 	pop	edx
 	jmp	use_macro
       struc_name_ok:
@@ -482,7 +540,6 @@ preprocess_line:
 	call	process_equ_constants
       line_preprocessed:
 	pop	esi ecx
-	pop	[struc_name]
 	ret
 
 get_preprocessor_symbol:
@@ -632,8 +689,10 @@ add_preprocessor_symbol:
 	ret
 
 define_fix_constant:
-	add	esi,3
-	push	esi ebp
+	add	edx,5
+	add	esi,2
+	push	edx esi
+	mov	esi,edx
 	call	process_fix_constants
 	xchg	esi,[esp]
 	mov	ch,11b
@@ -724,10 +783,7 @@ define_macro:
 	cmp	al,'{'
 	jne	unexpected_characters
       found_macro_block:
-	mov	al,[macro_status]
-	and	al,0F0h
-	or	al,2
-	mov	[macro_status],al
+	or	[macro_status],2
       skip_macro_block:
 	lods	byte [esi]
 	cmp	al,1Ah
@@ -740,11 +796,12 @@ define_macro:
 	jz	line_preprocessed
 	cmp	al,'}'
 	jne	skip_macro_block
+	mov	al,[macro_status]
 	and	[macro_status],0F0h
-	lods	byte [esi]
-	or	al,al
-	jz	line_preprocessed
-	dec	esi
+	test	al,8
+	jnz	use_instant_macro
+	cmp	byte [esi],0
+	je	line_preprocessed
 	mov	ecx,edi
 	sub	ecx,esi
 	mov	edx,esi
@@ -773,8 +830,83 @@ define_macro:
 	lods	dword [esi]
 	add	esi,eax
 	jmp	skip_macro_block
+rept_directive:
+	mov	[base_code],0
+	jmp	define_instant_macro
+match_directive:
+	mov	[base_code],1
+define_instant_macro:
+	mov	al,[macro_status]
+	and	al,0F0h
+	or	al,8+1
+	mov	[macro_status],al
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[instant_macro_start],esi
+	cmp	[base_code],1
+	je	prepare_match
+      skip_parameters:
+	lods	byte [esi]
+	or	al,al
+	jz	line_preprocessed
+	cmp	al,'{'
+	je	found_macro_block
+	cmp	al,22h
+	je	invalid_macro_arguments
+	cmp	al,1Ah
+	jne	skip_parameters
+	lods	byte [esi]
+	movzx	eax,al
+	add	esi,eax
+	jmp	skip_parameters
+prepare_match:
+	call	skip_pattern
+	mov	[value_type],80h+10b
+	call	process_symbolic_constants
+	dec	esi
+	mov	[match_end],esi
+	lods	byte [esi]
+	cmp	al,'{'
+	je	found_macro_block
+	or	al,al
+	jnz	invalid_macro_arguments
+	jmp	line_preprocessed
+      skip_pattern:
+	lods	byte [esi]
+	or	al,al
+	jz	invalid_macro_arguments
+	cmp	al,','
+	je	pattern_skipped
+	cmp	al,22h
+	je	skip_quoted_string_in_pattern
+	cmp	al,1Ah
+	je	skip_symbol_in_pattern
+	cmp	al,'='
+	jne	skip_pattern
+	mov	al,[esi]
+	cmp	al,1Ah
+	je	skip_pattern
+	cmp	al,22h
+	je	skip_pattern
+	inc	esi
+	jmp	skip_pattern
+      skip_symbol_in_pattern:
+	lods	byte [esi]
+	movzx	eax,al
+	add	esi,eax
+	jmp	skip_pattern
+      skip_quoted_string_in_pattern:
+	lods	dword [esi]
+	add	esi,eax
+	jmp	skip_pattern
+      pattern_skipped:
+	ret
+
 purge_macro:
 	xor	ch,ch
+	jmp	restore_preprocessor_symbol
+purge_struc:
+	mov	ch,1
 	jmp	restore_preprocessor_symbol
 restore_equ_constant:
 	mov	ch,10b
@@ -812,22 +944,30 @@ process_equ_constants:
 	je	check_symbol
 	cmp	al,22h
 	je	ignore_string
+	cmp	al,'{'
+	je	check_brace
 	or	al,al
 	jnz	process_symbolic_constants
-	dec	esi
 	ret
       ignore_string:
 	lods	dword [esi]
 	add	esi,eax
+	jmp	process_symbolic_constants
+      check_brace:
+	test	[value_type],80h
+	jz	process_symbolic_constants
+	ret
+      no_replacing:
+	movzx	ecx,byte [esi-1]
+	add	esi,ecx
 	jmp	process_symbolic_constants
       check_symbol:
 	mov	cl,[esi]
 	inc	esi
 	mov	ch,[value_type]
 	call	get_preprocessor_symbol
-	jnc	replace_symbolic_constant
-	add	esi,ecx
-	jmp	process_symbolic_constants
+	jc	no_replacing
+	mov	[current_section],edi
       replace_symbolic_constant:
 	mov	ecx,[edx+12]
 	mov	edx,[edx+8]
@@ -841,12 +981,15 @@ process_equ_constants:
 	stos	byte [edi]
 	cmp	al,22h
 	je	string_after_replaced
+	cmp	al,'{'
+	je	brace_after_replaced
 	or	al,al
 	jnz	process_after_replaced
 	mov	ecx,edi
 	sub	ecx,esi
 	mov	edi,ebp
 	call	move_data
+	mov	esi,edi
 	ret
       move_data:
 	shr	ecx,1
@@ -865,6 +1008,20 @@ process_equ_constants:
 	mov	ecx,eax
 	call	move_data
 	jmp	process_after_replaced
+      brace_after_replaced:
+	test	[value_type],80h
+	jz	process_after_replaced
+	mov	edx,edi
+	mov	ecx,[current_section]
+	sub	edx,ecx
+	sub	ecx,esi
+	rep	movs byte [edi],[esi]
+	mov	ecx,edi
+	sub	ecx,esi
+	mov	edi,ebp
+	call	move_data
+	lea	esi,[ebp+edx]
+	ret
       symbol_after_replaced:
 	mov	cl,[esi]
 	inc	esi
@@ -877,13 +1034,10 @@ process_equ_constants:
 	stos	word [edi]
 	call	move_data
 	jmp	process_after_replaced
-process_concatenations:
+process_macro_operators:
 	xor	dl,dl
 	mov	ebp,edi
-	cmp	word [esi],3Bh
-	jne	before_concatenations
-	add	esi,2
-      before_concatenations:
+      before_macro_operators:
 	mov	edi,esi
 	lods	byte [esi]
 	cmp	al,'`'
@@ -891,32 +1045,56 @@ process_concatenations:
 	cmp	al,'#'
 	je	concatenation
 	cmp	al,1Ah
-	je	symbol_before_concatenations
+	je	symbol_before_macro_operators
 	cmp	al,3Bh
-	je	no_more_concatenations
+	je	no_more_macro_operators
 	cmp	al,22h
-	je	string_before_concatenations
+	je	string_before_macro_operators
 	xor	dl,dl
 	or	al,al
-	jnz	before_concatenations
+	jnz	before_macro_operators
 	mov	edi,esi
 	ret
-      no_more_concatenations:
+      no_more_macro_operators:
 	mov	edi,ebp
 	ret
-      symbol_before_concatenations:
+      symbol_before_macro_operators:
 	mov	dl,1Ah
 	mov	ebx,esi
 	lods	byte [esi]
 	movzx	ecx,al
+	jecxz	symbol_before_macro_operators_ok
+	mov	edi,esi
+	cmp	byte [esi],'\'
+	je	escaped_symbol
+      symbol_before_macro_operators_ok:
 	add	esi,ecx
-	jmp	before_concatenations
-      string_before_concatenations:
+	jmp	before_macro_operators
+      string_before_macro_operators:
 	mov	dl,22h
 	mov	ebx,esi
 	lods	dword [esi]
 	add	esi,eax
-	jmp	before_concatenations
+	jmp	before_macro_operators
+      escaped_symbol:
+	dec	byte [edi-1]
+	dec	ecx
+	inc	esi
+	cmp	ecx,1
+	rep	movs byte [edi],[esi]
+	jne	after_macro_operators
+	mov	al,[esi-1]
+	mov	ecx,ebx
+	mov	ebx,characters
+	xlat	byte [ebx]
+	mov	ebx,ecx
+	or	al,al
+	jnz	after_macro_operators
+	sub	edi,3
+	mov	al,[esi-1]
+	stos	byte [edi]
+	xor	dl,dl
+	jmp	after_macro_operators
       symbol_conversion:
 	cmp	byte [esi],1Ah
 	jne	unexpected_characters
@@ -933,8 +1111,8 @@ process_concatenations:
 	stos	dword [edi]
 	rep	movs byte [edi],[esi]
 	cmp	edi,esi
-	je	before_concatenations
-	jmp	after_concatenation
+	je	before_macro_operators
+	jmp	after_macro_operators
       shift_line_data:
 	lea	edx,[esi+2]
 	lea	esi,[ebp-1]
@@ -952,7 +1130,7 @@ process_concatenations:
 	mov	ebx,edi
 	mov	[edi],eax
 	lea	esi,[edi+4+eax]
-	jmp	before_concatenations
+	jmp	before_macro_operators
       concatenation:
 	cmp	byte [esi],'#'
 	je	reduce_concatenation_symbol
@@ -962,8 +1140,8 @@ process_concatenations:
 	je	string_concatenation
       no_concatenation:
 	cmp	esi,edi
-	je	before_concatenations
-	jmp	after_concatenation
+	je	before_macro_operators
+	jmp	after_macro_operators
       reduce_concatenation_symbol:
 	movs	byte [edi],[esi]
 	cmp	byte [esi],'#'
@@ -975,10 +1153,16 @@ process_concatenations:
 	inc	esi
 	lods	byte [esi]
 	movzx	ecx,al
+	jecxz	do_symbol_concatenation
+	cmp	byte [esi],'\'
+	jne	do_symbol_concatenation
+	sub	esi,2
+	jmp	no_concatenation
+      do_symbol_concatenation:
 	add	[ebx],al
 	jc	name_too_long
 	rep	movs byte [edi],[esi]
-	jmp	after_concatenation
+	jmp	after_macro_operators
       string_concatenation:
 	cmp	byte [esi],22h
 	je	do_string_concatenation
@@ -992,14 +1176,14 @@ process_concatenations:
 	movzx	ecx,al
 	add	[ebx],ecx
 	rep	movs byte [edi],[esi]
-	jmp	after_concatenation
+	jmp	after_macro_operators
       do_string_concatenation:
 	inc	esi
 	lods	dword [esi]
 	mov	ecx,eax
 	add	[ebx],eax
 	rep	movs byte [edi],[esi]
-      after_concatenation:
+      after_macro_operators:
 	lods	byte [esi]
 	cmp	al,'`'
 	je	symbol_conversion
@@ -1007,42 +1191,40 @@ process_concatenations:
 	je	concatenation
 	stos	byte [edi]
 	cmp	al,1Ah
-	je	symbol_after_concatenation
+	je	symbol_after_macro_operators
 	cmp	al,3Bh
-	je	no_more_concatenations
+	je	no_more_macro_operators
 	cmp	al,22h
-	je	string_after_concatenation
+	je	string_after_macro_operators
 	xor	dl,dl
 	or	al,al
-	jnz	after_concatenation
+	jnz	after_macro_operators
 	ret
-      symbol_after_concatenation:
+      symbol_after_macro_operators:
 	mov	dl,1Ah
 	mov	ebx,edi
 	lods	byte [esi]
 	stos	byte [edi]
 	movzx	ecx,al
+	jecxz	symbol_after_macro_operatorss_ok
+	cmp	byte [esi],'\'
+	je	escaped_symbol
+      symbol_after_macro_operatorss_ok:
 	rep	movs byte [edi],[esi]
-	jmp	after_concatenation
-      string_after_concatenation:
+	jmp	after_macro_operators
+      string_after_macro_operators:
 	mov	dl,22h
 	mov	ebx,edi
 	lods	dword [esi]
 	stos	dword [edi]
 	mov	ecx,eax
 	rep	movs byte [edi],[esi]
-	jmp	after_concatenation
+	jmp	after_macro_operators
 
 use_macro:
 	push	[free_additional_memory]
 	push	[macro_symbols]
-	push	[macro_block]
-	push	[macro_block_line]
-	push	[macro_block_line_number]
-	push	[counter]
 	push	[counter_limit]
-	push	dword [macro_status]
-	or	[macro_status],10h
 	mov	[macro_symbols],0
 	push	dword [edx+4]
 	mov	dword [edx+4],1
@@ -1051,22 +1233,23 @@ use_macro:
 	mov	esi,[edx+8]
 	mov	eax,[edx+12]
 	mov	[macro_line],eax
-	mov	[counter],0
+	mov	[counter_limit],0
       process_macro_arguments:
-	lods	byte [esi]
+	mov	al,[esi]
 	or	al,al
-	jz	find_macro_instructions
+	jz	arguments_end
 	cmp	al,'{'
-	je	macro_instructions_start
+	je	arguments_end
+	inc	esi
 	cmp	al,'['
 	jne	get_macro_argument
 	mov	ebp,esi
 	inc	esi
-	inc	[counter]
+	inc	[counter_limit]
       get_macro_argument:
 	lods	byte [esi]
 	movzx	ecx,al
-	mov	eax,[counter]
+	mov	eax,[counter_limit]
 	call	add_macro_symbol
 	add	esi,ecx
 	xchg	esi,ebx
@@ -1080,8 +1263,6 @@ use_macro:
 	lods	byte [esi]
 	or	al,al
 	jz	invalid_macro_arguments
-	cmp	al,'#'
-	je	invalid_macro_arguments
 	cmp	al,1Ah
 	je	enclosed_symbol
 	cmp	al,22h
@@ -1120,8 +1301,6 @@ use_macro:
 	jz	argument_value_end
 	cmp	al,','
 	je	argument_value_end
-	cmp	al,'#'
-	je	invalid_macro_arguments
 	cmp	al,22h
 	je	argument_string
 	cmp	al,1Ah
@@ -1157,39 +1336,317 @@ use_macro:
 	cmp	byte [ebx],','
 	jne	arguments_end
 	inc	ebx
-	inc	[counter]
+	inc	[counter_limit]
 	mov	esi,ebp
 	jmp	process_macro_arguments
       arguments_end:
+	cmp	byte [ebx],0
+	jne	invalid_macro_arguments
+	mov	eax,[esp+4]
+	dec	eax
+	call	process_macro
+	pop	edx
+	pop	dword [edx+4]
+	pop	[counter_limit]
+	pop	[macro_symbols]
+	pop	[free_additional_memory]
+	jmp	line_preprocessed
+use_instant_macro:
+	push	edi [current_line] esi
+	mov	eax,[error_line]
+	mov	[current_line],eax
+	mov	[macro_line],eax
+	mov	esi,[instant_macro_start]
+	cmp	[base_code],1
+	je	do_match
+	call	get_number
+	jc	invalid_value
+	or	ebp,ebp
+	jnz	invalid_value
+	cmp	dword [edi+4],0
+	jne	value_out_of_range
+	mov	eax,[edi]
+	or	eax,eax
+	jz	instant_macro_done
+	cmp	eax,80000000h
+	jae	value_out_of_range
+	push	[free_additional_memory]
+	push	[macro_symbols]
+	push	[counter_limit]
+	mov	[macro_symbols],0
+	mov	[struc_name],0
+	mov	[counter_limit],eax
+	lods	byte [esi]
+	or	al,al
+	jz	rept_counters_ok
+	cmp	al,'{'
+	je	rept_counters_ok
+	cmp	al,1Ah
+	jne	invalid_macro_arguments
+      add_rept_counter:
+	lods	byte [esi]
+	movzx	ecx,al
+	xor	eax,eax
+	call	add_macro_symbol
+	add	esi,ecx
+	xor	eax,eax
+	mov	dword [edx+12],eax
+	inc	eax
+	mov	dword [edx+8],eax
+	lods	byte [esi]
+	cmp	al,':'
+	jne	rept_counter_added
+	push	edx
+	call	get_number
+	jc	invalid_value
+	or	ebp,ebp
+	jnz	invalid_value
+	cmp	dword [edi+4],0
+	jne	value_out_of_range
+	mov	eax,[edi]
+	mov	edx,eax
+	add	edx,[counter_limit]
+	jc	value_out_of_range
+	pop	edx
+	mov	dword [edx+8],eax
+	lods	byte [esi]
+      rept_counter_added:
+	cmp	al,','
+	jne	rept_counters_ok
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	invalid_macro_arguments
+	jmp	add_rept_counter
+      rept_counters_ok:
+	dec	esi
+	xor	eax,eax
+	call	process_macro
+	pop	[counter_limit]
+	pop	[macro_symbols]
+	pop	[free_additional_memory]
+      instant_macro_done:
+	pop	ebx esi eax
+	cmp	byte [ebx],0
+	je	line_preprocessed
+	mov	[current_line],edi
+	mov	ecx,4
+	rep	movs dword [edi],[esi]
+	mov	esi,ebx
+	sub	eax,ebx
+	mov	ecx,eax
+	call	move_data
+	jmp	preprocess_current_line
+do_match:
+	mov	ebx,esi
+	call	skip_pattern
+	call	exact_match
+	mov	edx,edi
+	mov	al,[ebx]
+	cmp	al,1Ah
+	je	free_match
+	cmp	al,','
+	jne	instant_macro_done
+	cmp	esi,[match_end]
+	je	matched_pattern
+	jmp	instant_macro_done
+      free_match:
+	add	edx,12
+	cmp	edx,[memory_end]
+	ja	out_of_memory
+	mov	[edx-12],ebx
+	mov	[edx-8],esi
+	call	skip_match_element
+	jc	try_different_matching
+	mov	[edx-4],esi
+	movzx	eax,byte [ebx+1]
+	lea	ebx,[ebx+2+eax]
+	cmp	byte [ebx],1Ah
+	je	free_match
+      find_exact_match:
+	call	exact_match
+	cmp	esi,[match_end]
+	je	end_matching
+	cmp	byte [ebx],1Ah
+	je	free_match
+	mov	ebx,[edx-12]
+	movzx	eax,byte [ebx+1]
+	lea	ebx,[ebx+2+eax]
+	mov	esi,[edx-4]
+	jmp	match_more_elements
+      try_different_matching:
+	sub	edx,12
+	cmp	edx,edi
+	je	instant_macro_done
+	mov	ebx,[edx-12]
+	movzx	eax,byte [ebx+1]
+	lea	ebx,[ebx+2+eax]
+	cmp	byte [ebx],1Ah
+	je	try_different_matching
+	mov	esi,[edx-4]
+      match_more_elements:
+	call	skip_match_element
+	jc	try_different_matching
+	mov	[edx-4],esi
+	jmp	find_exact_match
+      skip_match_element:
+	cmp	esi,[match_end]
+	je	cannot_match
+	mov	al,[esi]
+	cmp	al,1Ah
+	je	skip_match_symbol
+	cmp	al,22h
+	je	skip_match_quoted_string
+	add	esi,1
+	ret
+      skip_match_quoted_string:
+	mov	eax,[esi+1]
+	add	esi,5
+	jmp	skip_match_ok
+      skip_match_symbol:
+	movzx	eax,byte [esi+1]
+	add	esi,2
+      skip_match_ok:
+	add	esi,eax
+	ret
+      cannot_match:
+	stc
+	ret
+      exact_match:
+	cmp	esi,[match_end]
+	je	exact_match_complete
+	mov	ah,[esi]
+	mov	al,[ebx]
+	cmp	al,','
+	je	exact_match_complete
+	cmp	al,1Ah
+	je	exact_match_complete
+	cmp	al,'='
+	je	match_verbatim
+	call	match_elements
+	je	exact_match
+      exact_match_complete:
+	ret
+      match_verbatim:
+	inc	ebx
+	call	match_elements
+	je	exact_match
+	dec	ebx
+	ret
+      match_elements:
+	mov	al,[ebx]
+	cmp	al,1Ah
+	je	match_symbols
+	cmp	al,22h
+	je	match_quoted_strings
+	cmp	al,ah
+	je	symbol_characters_matched
+	ret
+      symbol_characters_matched:
+	lea	ebx,[ebx+1]
+	lea	esi,[esi+1]
+	ret
+      match_quoted_strings:
+	mov	ecx,[ebx+1]
+	add	ecx,5
+	jmp	compare_elements
+      match_symbols:
+	movzx	ecx,byte [ebx+1]
+	add	ecx,2
+      compare_elements:
+	mov	eax,esi
+	mov	ebp,edi
+	mov	edi,ebx
+	repe	cmps byte [esi],[edi]
+	jne	elements_mismatch
+	mov	ebx,edi
+	mov	edi,ebp
+	ret
+      elements_mismatch:
+	mov	esi,eax
+	mov	edi,ebp
+	ret
+      end_matching:
+	cmp	byte [ebx],','
+	jne	instant_macro_done
+      matched_pattern:
+	push	[free_additional_memory]
+	push	[macro_symbols]
+	push	[counter_limit]
+	mov	[macro_symbols],0
+	mov	[struc_name],0
+	mov	[counter_limit],0
+	push	esi edi edx
+      add_matched_symbol:
+	cmp	edi,[esp]
+	je	matched_symbols_ok
+	mov	esi,[edi]
+	inc	esi
+	lods	byte [esi]
+	movzx	ecx,al
+	xor	eax,eax
+	call	add_macro_symbol
+	mov	eax,[edi+4]
+	mov	dword [edx+12],eax
+	mov	ecx,[edi+8]
+	sub	ecx,eax
+	mov	dword [edx+8],ecx
+	add	edi,12
+	jmp	add_matched_symbol
+      matched_symbols_ok:
+	pop	edx edi esi
+	xor	eax,eax
+	call	process_macro
+	pop	[counter_limit]
+	pop	[macro_symbols]
+	pop	[free_additional_memory]
+	jmp	instant_macro_done
+
+process_macro:
+	push	dword [macro_status]
+	or	[macro_status],10h
+	push	[counter]
+	push	[macro_block]
+	push	[macro_block_line]
+	push	[macro_block_line_number]
+	push	[struc_label]
+	push	[struc_name]
+	push	eax
+	push	[current_line]
 	lods	byte [esi]
 	cmp	al,'{'
 	je	macro_instructions_start
+	or	al,al
+	jnz	unexpected_characters
       find_macro_instructions:
 	mov	[macro_line],esi
-	add	esi,18
+	add	esi,16+2
 	lods	byte [esi]
 	or	al,al
 	jz	find_macro_instructions
 	cmp	al,'{'
+	je	macro_instructions_start
+	cmp	al,3Bh
 	jne	unexpected_characters
+	call	skip_foreign_symbol
+	jmp	find_macro_instructions
       macro_instructions_start:
-	cmp	byte [ebx],0
-	jne	invalid_macro_arguments
 	mov	ecx,80000000h
-	push	[current_line]
 	mov	[macro_block],esi
 	mov	eax,[macro_line]
 	mov	[macro_block_line],eax
 	mov	[macro_block_line_number],ecx
-	mov	eax,[counter]
-	mov	[counter_limit],eax
-	or	eax,eax
-	jz	process_macro_line
-	mov	[counter],1
+	xor	eax,eax
+	mov	[counter],eax
+	cmp	[counter_limit],eax
+	je	process_macro_line
+	inc	[counter]
       process_macro_line:
 	mov	[current_line],edi
-	mov	eax,[esp+8]
-	dec	eax
+	cmp	edi,[memory_end]
+	jae	out_of_memory
+	mov	eax,[esp+4]
+	or	eax,eax
+	jz	instant_macro_line_header
 	stos	dword [edi]
 	mov	eax,ecx
 	stos	dword [edi]
@@ -1197,13 +1654,25 @@ use_macro:
 	stos	dword [edi]
 	mov	eax,[macro_line]
 	stos	dword [edi]
+	jmp	macro_line_header_ok
+      instant_macro_line_header:
+	mov	edx,[macro_line]
+	mov	eax,[edx]
+	stos	dword [edi]
+	mov	eax,[edx+4]
+	stos	dword [edi]
+	mov	eax,[edx+8]
+	stos	dword [edi]
+	mov	eax,[edx+12]
+	stos	dword [edi]
+      macro_line_header_ok:
 	or	[macro_status],20h
 	push	ebx ecx
 	test	[macro_status],0Fh
-	jz	process_macro
+	jz	process_macro_line_element
 	mov	ax,3Bh
 	stos	word [edi]
-      process_macro:
+      process_macro_line_element:
 	lods	byte [esi]
 	cmp	al,'}'
 	je	macro_line_processed
@@ -1212,16 +1681,16 @@ use_macro:
 	cmp	al,1Ah
 	je	process_macro_symbol
 	cmp	al,3Bh
-	je	macro_internal_symbol
+	je	macro_foreign_line
 	and	[macro_status],not 20h
 	stos	byte [edi]
 	cmp	al,22h
-	jne	process_macro
+	jne	process_macro_line_element
       copy_macro_string:
 	mov	ecx,[esi]
 	add	ecx,4
 	rep	movs byte [edi],[esi]
-	jmp	process_macro
+	jmp	process_macro_line_element
       process_macro_symbol:
 	push	esi edi
 	test	[macro_status],20h
@@ -1257,10 +1726,12 @@ use_macro:
 	pop	edi eax
 	mov	ecx,[edx+8]
 	mov	edx,[edx+12]
+	or	edx,edx
+	jz	replace_macro_counter
 	xchg	esi,edx
 	rep	movs byte [edi],[esi]
 	mov	esi,edx
-	jmp	process_macro
+	jmp	process_macro_line_element
       group_macro_symbol:
 	xor	eax,eax
 	cmp	[counter],eax
@@ -1296,6 +1767,63 @@ use_macro:
 	push	edi
 	sub	esi,ecx
 	jmp	multiple_macro_symbol_values
+      replace_macro_counter:
+	mov	eax,[counter]
+	and	eax,not 80000000h
+	jz	group_macro_counter
+	add	ecx,eax
+	dec	ecx
+	call	store_number_symbol
+	jmp	process_macro_line_element
+      group_macro_counter:
+	mov	edx,ecx
+	xor	ecx,ecx
+      multiple_macro_counter_values:
+	push	ecx edx
+	add	ecx,edx
+	call	store_number_symbol
+	pop	edx ecx
+	inc	ecx
+	cmp	ecx,[counter_limit]
+	je	process_macro_line_element
+	mov	byte [edi],','
+	inc	edi
+	jmp	multiple_macro_counter_values
+      store_number_symbol:
+	mov	ax,1Ah
+	stos	word [edi]
+	push	edi
+	mov	eax,ecx
+	mov	ecx,1000000000
+	xor	edx,edx
+	xor	bl,bl
+      store_number_digits:
+	div	ecx
+	push	edx
+	or	bl,bl
+	jnz	store_number_digit
+	cmp	ecx,1
+	je	store_number_digit
+	or	al,al
+	jz	number_digit_ok
+	not	bl
+      store_number_digit:
+	add	al,30h
+	stos	byte [edi]
+      number_digit_ok:
+	mov	eax,ecx
+	xor	edx,edx
+	mov	ecx,10
+	div	ecx
+	mov	ecx,eax
+	pop	eax
+	or	ecx,ecx
+	jnz	store_number_digits
+	pop	ebx
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[ebx-1],al
+	ret
       not_macro_symbol:
 	pop	edi esi
 	mov	al,1Ah
@@ -1305,9 +1833,11 @@ use_macro:
 	stos	byte [edi]
 	cmp	byte [esi],'.'
 	jne	copy_raw_symbol
-	mov	ebx,[struc_name]
+	mov	ebx,[esp+8+8]
 	or	ebx,ebx
 	jz	copy_raw_symbol
+	cmp	al,1
+	je	copy_struc_name
 	xchg	esi,ebx
 	movzx	ecx,byte [esi-1]
 	add	[edi-1],cl
@@ -1317,26 +1847,38 @@ use_macro:
       copy_raw_symbol:
 	movzx	ecx,al
 	rep	movs byte [edi],[esi]
-	jmp	process_macro
-      macro_internal_symbol:
+	jmp	process_macro_line_element
+      copy_struc_name:
+	inc	esi
+	xchg	esi,ebx
+	movzx	ecx,byte [esi-1]
+	mov	[edi-1],cl
+	rep	movs byte [edi],[esi]
+	xchg	esi,ebx
+	mov	eax,[esp+8+12]
+	mov	byte [eax],3Bh
+	jmp	process_macro_line_element
+      skip_foreign_symbol:
 	lods	byte [esi]
 	movzx	eax,al
 	add	esi,eax
-      more_internal_symbols:
+      skip_foreign_line:
 	lods	byte [esi]
-	or	al,al
-	jz	macro_line_processed
 	cmp	al,1Ah
-	je	macro_internal_symbol
+	je	skip_foreign_symbol
 	cmp	al,3Bh
-	je	macro_internal_symbol
+	je	skip_foreign_symbol
 	cmp	al,22h
-	je	macro_internal_string
-	jmp	more_internal_symbols
-      macro_internal_string:
+	je	skip_foreign_string
+	or	al,al
+	jnz	skip_foreign_line
+	ret
+      skip_foreign_string:
 	lods	dword [esi]
 	add	esi,eax
-	jmp	more_internal_symbols
+	jmp	skip_foreign_line
+      macro_foreign_line:
+	call	skip_foreign_symbol
       macro_line_processed:
 	mov	byte [edi],0
 	inc	edi
@@ -1355,20 +1897,17 @@ use_macro:
 	call	close_macro_block
 	jc	process_macro_line
 	pop	[current_line]
-	pop	edx
-	pop	dword [edx+4]
+	add	esp,12
+	pop	[macro_block_line_number]
+	pop	[macro_block_line]
+	pop	[macro_block]
+	pop	[counter]
 	pop	eax
 	and	al,0F0h
 	and	[macro_status],0Fh
 	or	[macro_status],al
-	pop	[counter_limit]
-	pop	[counter]
-	pop	[macro_block_line_number]
-	pop	[macro_block_line]
-	pop	[macro_block]
-	pop	[macro_symbols]
-	pop	[free_additional_memory]
-	jmp	line_preprocessed
+	ret
+
 local_symbols:
 	lods	byte [esi]
 	cmp	al,1Ah
@@ -1672,7 +2211,11 @@ include_file:
 	lea	ecx,[edi-1]
 	sub	ecx,esi
 	mov	[esi-4],ecx
+	push	dword [macro_status]
+	and	[macro_status],0Fh
 	call	preprocess_file
+	pop	eax
+	mov	[macro_status],al
 	jmp	line_preprocessed
       preprocess_path:
 	lods	byte [esi]
@@ -1708,17 +2251,23 @@ include_file:
 include_variable db 'INCLUDE',0
 
 symbol_characters db 27
- db 9,0Ah,0Dh,1Ah,20h,'+-/*:=|&~()[]<>{},;\#`'
+ db 9,0Ah,0Dh,1Ah,20h,'+-/*=<>()[]{}:,|&~#`;\'
 
 preprocessor_directives:
  db 7,'include'
  dw include_file-preprocessor
  db 5,'macro'
  dw define_macro-preprocessor
+ db 5,'match'
+ dw match_directive-preprocessor
  db 5,'purge'
  dw purge_macro-preprocessor
+ db 4,'rept'
+ dw rept_directive-preprocessor
  db 7,'restore'
  dw restore_equ_constant-preprocessor
+ db 7,'restruc'
+ dw purge_struc-preprocessor
  db 5,'struc'
  dw define_struc-preprocessor
  db 0

@@ -695,8 +695,6 @@ store_directive:
 	jmp	instruction_assembled
 
 display_directive:
-	push	esi edi
-      prepare_display:
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
@@ -705,36 +703,33 @@ display_directive:
 	inc	esi
 	lods	dword [esi]
 	mov	ecx,eax
+	push	edi
+	mov	edi,[display_buffer]
+	sub	edi,4
+	sub	edi,eax
+	mov	[display_buffer],edi
 	rep	movs byte [edi],[esi]
+	stos	dword [edi]
+	pop	edi
 	inc	esi
 	jmp	display_next
       display_byte:
 	call	get_byte_value
+	push	edi
+	mov	edi,[display_buffer]
+	sub	edi,4+1
+	mov	[display_buffer],edi
 	stos	byte [edi]
+	mov	eax,1
+	stos	dword [edi]
+	pop	edi
       display_next:
 	cmp	edi,[display_buffer]
 	ja	out_of_memory
 	lods	byte [esi]
 	cmp	al,','
-	je	prepare_display
-      do_display:
+	je	display_directive
 	dec	esi
-	mov	ebp,edi
-	pop	edi ebx
-	push	esi edi
-	mov	esi,edi
-	mov	ecx,ebp
-	sub	ecx,esi
-	mov	edi,[display_buffer]
-	sub	edi,ecx
-	sub	edi,4
-	cmp	edi,esi
-	jbe	out_of_memory
-	mov	[display_buffer],edi
-	mov	eax,ecx
-	rep	movs byte [edi],[esi]
-	stos	dword [edi]
-	pop	edi esi
 	jmp	instruction_assembled
 flush_display_buffer:
 	mov	eax,[display_buffer]
@@ -1157,6 +1152,7 @@ end_directive:
 	jmp	invalid_argument
 
 data_bytes:
+	call	define_data
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_byte
@@ -1165,26 +1161,13 @@ data_bytes:
 	mov	eax,edi
 	mov	byte [edi],0
 	inc	edi
-	call	undefined_data
-	jmp	byte_ok
+	jmp	undefined_data
       get_byte:
 	cmp	byte [esi],0
 	je	get_string
 	call	get_byte_value
 	stos	byte [edi]
-      byte_ok:
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	lods	byte [esi]
-	or	al,al
-	jz	data_end
-	cmp	al,0Fh
-	je	data_end
-	cmp	al,','
-	je	data_bytes
-      data_end:
-	dec	esi
-	jmp	instruction_assembled
+	ret
       get_string:
 	inc	esi
 	lods	dword [esi]
@@ -1194,7 +1177,7 @@ data_bytes:
 	ja	out_of_memory
 	rep	movs byte [edi],[esi]
 	inc	esi
-	jmp	byte_ok
+	ret
       undefined_data:
 	cmp	[virtual_data],0
 	je	mark_undefined_data
@@ -1206,12 +1189,72 @@ data_bytes:
       undefined_data_ok:
 	mov	[undefined_data_end],edi
 	ret
+      define_data:
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	cmp	byte [esi],'('
+	jne	simple_data_value
+	mov	ebx,esi
+	inc	esi
+	call	skip_expression
+	xchg	esi,ebx
+	cmp	byte [ebx],81h
+	jne	simple_data_value
+	inc	esi
+	call	get_dword_value
+	or	eax,eax
+	jz	invalid_value
+	cmp	[next_pass_needed],0
+	jne	dup_value_ok
+	cmp	[value_type],0
+	jne	invalid_use_of_symbol
+      dup_value_ok:
+	inc	esi
+	cmp	byte [esi],'{'
+	jne	duplicate_single_data_value
+	inc	esi
+      duplicate_data:
+	push	eax esi
+      duplicated_values:
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	call	near dword [esp+8]
+	lods	byte [esi]
+	cmp	al,','
+	je	duplicated_values
+	cmp	al,'}'
+	jne	invalid_argument
+	pop	ebx eax
+	dec	eax
+	jz	data_defined
+	mov	esi,ebx
+	jmp	duplicate_data
+      duplicate_single_data_value:
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	push	eax esi
+	call	near dword [esp+8]
+	pop	ebx eax
+	dec	eax
+	jz	data_defined
+	mov	esi,ebx
+	jmp	duplicate_single_data_value
+      simple_data_value:
+	call	near dword [esp]
+      data_defined:
+	lods	byte [esi]
+	cmp	al,','
+	je	define_data
+	dec	esi
+	add	esp,4
+	jmp	instruction_assembled
 data_unicode:
 	or	[base_code],-1
-	jmp	get_words_data
+	jmp	define_words
 data_words:
 	mov	[base_code],0
-      get_words_data:
+      define_words:
+	call	define_data
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_word
@@ -1220,8 +1263,8 @@ data_words:
 	mov	eax,edi
 	mov	word [edi],0
 	scas	word [edi]
-	call	undefined_data
-	jmp	word_ok
+	jmp	undefined_data
+	ret
       get_word:
 	cmp	[base_code],0
 	je	word_data_value
@@ -1231,17 +1274,7 @@ data_words:
 	call	get_word_value
 	call	mark_relocation
 	stos	word [edi]
-      word_ok:
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	lods	byte [esi]
-	or	al,al
-	jz	data_end
-	cmp	al,0Fh
-	je	data_end
-	cmp	al,','
-	je	get_words_data
-	jmp	data_end
+	ret
       word_string:
 	inc	esi
 	lods	dword [esi]
@@ -1257,8 +1290,9 @@ data_words:
 	loop	copy_word_string
       word_string_ok:
 	inc	esi
-	jmp	word_ok
+	ret
 data_dwords:
+	call	define_data
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_dword
@@ -1267,8 +1301,7 @@ data_dwords:
 	mov	eax,edi
 	mov	dword [edi],0
 	scas	dword [edi]
-	call	undefined_data
-	jmp	dword_ok
+	jmp	undefined_data
       get_dword:
 	push	esi
 	call	get_dword_value
@@ -1277,7 +1310,7 @@ data_dwords:
 	je	complex_dword
 	call	mark_relocation
 	stos	dword [edi]
-	jmp	dword_ok
+	ret
       complex_dword:
 	mov	esi,ebx
 	cmp	byte [esi],'.'
@@ -1300,18 +1333,9 @@ data_dwords:
 	pop	eax
 	call	mark_relocation
 	stos	word [edi]
-      dword_ok:
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	lods	byte [esi]
-	or	al,al
-	jz	data_end
-	cmp	al,0Fh
-	je	data_end
-	cmp	al,','
-	je	data_dwords
-	jmp	data_end
+	ret
 data_pwords:
+	call	define_data
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_pword
@@ -1322,8 +1346,7 @@ data_pwords:
 	scas	dword [edi]
 	mov	word [edi],0
 	scas	word [edi]
-	call	undefined_data
-	jmp	pword_ok
+	jmp	undefined_data
       get_pword:
 	push	esi
 	call	get_pword_value
@@ -1334,7 +1357,7 @@ data_pwords:
 	stos	dword [edi]
 	mov	ax,dx
 	stos	word [edi]
-	jmp	pword_ok
+	ret
       complex_pword:
 	mov	esi,ebx
 	cmp	byte [esi],'.'
@@ -1357,18 +1380,9 @@ data_pwords:
 	pop	eax
 	call	mark_relocation
 	stos	word [edi]
-      pword_ok:
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	lods	byte [esi]
-	or	al,al
-	jz	data_end
-	cmp	al,0Fh
-	je	data_end
-	cmp	al,','
-	je	data_pwords
-	jmp	data_end
+	ret
 data_qwords:
+	call	define_data
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_qword
@@ -1379,26 +1393,16 @@ data_qwords:
 	scas	dword [edi]
 	mov	dword [edi],0
 	scas	dword [edi]
-	call	undefined_data
-	jmp	qword_ok
+	jmp	undefined_data
       get_qword:
 	call	get_qword_value
 	call	mark_relocation
 	stos	dword [edi]
 	mov	eax,edx
 	stos	dword [edi]
-      qword_ok:
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	lods	byte [esi]
-	or	al,al
-	jz	data_end
-	cmp	al,0Fh
-	je	data_end
-	cmp	al,','
-	je	data_qwords
-	jmp	data_end
+	ret
 data_twords:
+	call	define_data
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_tword
@@ -1411,8 +1415,7 @@ data_twords:
 	scas	dword [edi]
 	mov	word [edi],0
 	scas	word [edi]
-	call	undefined_data
-	jmp	tword_ok
+	jmp	undefined_data
       get_tword:
 	cmp	byte [esi],'.'
 	jne	complex_tword
@@ -1432,7 +1435,7 @@ data_twords:
 	or	ax,bx
 	stos	word [edi]
 	add	esi,13
-	jmp	tword_ok
+	ret
       fp_zero_tword:
 	xor	eax,eax
 	stos	dword [edi]
@@ -1441,7 +1444,7 @@ data_twords:
 	shl	ax,15
 	stos	word [edi]
 	add	esi,13
-	jmp	tword_ok
+	ret
       complex_tword:
 	call	get_word_value
 	push	eax
@@ -1463,17 +1466,7 @@ data_twords:
 	pop	eax
 	call	mark_relocation
 	stos	word [edi]
-      tword_ok:
-	cmp	edi,[display_buffer]
-	ja	out_of_memory
-	lods	byte [esi]
-	or	al,al
-	jz	data_end
-	cmp	al,0Fh
-	je	data_end
-	cmp	al,','
-	je	data_twords
-	jmp	data_end
+	ret
 data_file:
 	lods	word [esi]
 	cmp	ax,'('

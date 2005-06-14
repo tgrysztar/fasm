@@ -36,6 +36,9 @@ macro_block_line dd ?
 macro_block_line_number dd ?
 macro_symbols dd ?
 struc_name dd ?
+struc_label dd ?
+instant_macro_start dd ?
+match_end dd ?
 locals_counter rb 8
 current_locals_prefix dd ?
 anonymous_reverse dd ?

@@ -94,15 +94,6 @@ information:
 include 'system.inc'
 
 include '..\version.inc'
-include '..\errors.inc'
-include '..\expressi.inc'
-include '..\preproce.inc'
-include '..\parser.inc'
-include '..\assemble.inc'
-include '..\formats.inc'
-include '..\x86_64.inc'
-
-section readable writeable
 
 _copyright db 'Copyright (c) 1999-2005, Tomasz Grysztar',0xA,0
 
@@ -112,6 +103,16 @@ _usage db 'usage: fasm source [output]',0xA,0
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0xA,0
+
+include '..\errors.inc'
+include '..\expressi.inc'
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\assemble.inc'
+include '..\formats.inc'
+include '..\x86_64.inc'
+
+section readable writeable
 
 align 4
 
