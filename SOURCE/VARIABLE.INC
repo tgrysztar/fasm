@@ -11,6 +11,8 @@ memory_end dd ?
 additional_memory dd ?
 additional_memory_end dd ?
 
+stack_limit dd ?
+
 input_file dd ?
 output_file dd ?
 
@@ -38,7 +40,7 @@ macro_symbols dd ?
 struc_name dd ?
 struc_label dd ?
 instant_macro_start dd ?
-match_end dd ?
+parameters_end dd ?
 locals_counter rb 8
 current_locals_prefix dd ?
 anonymous_reverse dd ?
@@ -88,7 +90,7 @@ parenthesis_stack db ?
 output_format db ?
 code_type db ?
 labels_type db ?
-times_working db ?
+prefixed_instruction db ?
 virtual_data db ?
 fp_sign db ?
 fp_format db ?

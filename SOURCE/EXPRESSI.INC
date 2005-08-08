@@ -111,6 +111,11 @@ convert_number:
 	scas	word [edi]
 	ret
       expression_value:
+	mov	eax,esp
+	sub	eax,100h
+	jc	stack_overflow
+	cmp	eax,[stack_limit]
+	jb	stack_overflow
 	inc	esi
 	call	convert_expression
 	lods	byte [esi]
@@ -168,16 +173,15 @@ get_number:
 	mov	ebx,esi
 	add	esi,ecx
 	push	esi
-	sub	esi,2
+	dec	esi
 	mov	dword [edi],0
 	mov	dword [edi+4],0
-	inc	esi
 	cmp	byte [ebx],'$'
 	je	pascal_hex_number
 	cmp	word [ebx],'0x'
 	je	get_hex_number
+	mov	al,[esi]
 	dec	esi
-	mov	al,[esi+1]
 	cmp	al,'h'
 	je	get_hex_number
 	cmp	al,'b'
@@ -207,17 +211,17 @@ get_number:
 	shl	eax,2
 	add	eax,[edi]
 	adc	edx,0
-	shld	edx,eax,1
-	shl	eax,1
+	add	eax,eax
+	adc	edx,edx
 	mov	[edi],eax
 	mov	eax,[edi+4]
-	shl	eax,1
+	add	eax,eax
 	jc	dec_out_of_range
-	shl	eax,1
+	add	eax,eax
 	jc	dec_out_of_range
 	add	eax,[edi+4]
 	jc	dec_out_of_range
-	shl	eax,1
+	add	eax,eax
 	jc	dec_out_of_range
 	add	eax,edx
 	jc	dec_out_of_range
@@ -699,10 +703,10 @@ get_fp_value:
 	shld	[edi+4],eax,1
 	mov	eax,[edi+12]
 	shld	[edi],eax,1
-	shl	eax,1
+	add	eax,eax
 	mov	[edi+12],eax
 	dec	dword [edi+8]
-	shl	edx,1
+	add	edx,edx
 	jmp	.loop
       .exp_ok:
 	mov	eax,edx
@@ -1233,6 +1237,8 @@ calculate_expression:
 	mul	dword [edi]
 	add	edx,ecx
 	jc	value_out_of_range
+	test	edx,1 shl 31
+	jnz	value_out_of_range
 	mov	[esi],eax
 	mov	[esi+4],edx
 	or	bl,bl
@@ -1495,6 +1501,8 @@ calculate_expression:
 	jne	invalid_expression
 	cmp	word [edi+8],0
 	jne	invalid_expression
+	test	[format_flags],8
+	jnz	pe64_rva
 	cmp	byte [edi+12],2
 	je	rva_ok
 	cmp	[error_line],0
@@ -1508,7 +1516,24 @@ calculate_expression:
 	mov	eax,[eax+34h]
 	cdq
 	sub	[edi],eax
-	sbb	dword [edi+4],edx
+	sbb	[edi+4],edx
+	add	edi,14h
+	jmp	calculation_loop
+      pe64_rva:
+	cmp	byte [edi+12],4
+	je	pe64_rva_ok
+	cmp	[error_line],0
+	jne	pe64_rva_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
+      pe64_rva_ok:
+	mov	byte [edi+12],0
+	mov	eax,[code_start]
+	mov	edx,[eax+34h]
+	mov	eax,[eax+30h]
+	sub	[edi],eax
+	sbb	[edi+4],edx
 	add	edi,14h
 	jmp	calculation_loop
       div_64:
@@ -1660,8 +1685,8 @@ calculate_expression:
 	mov	bx,[esi+8]
 	mov	eax,[esi]
 	mov	edx,[esi+4]
-	shl	eax,1
-	rcl	edx,1
+	add	eax,eax
+	adc	edx,edx
 	mov	ecx,edx
 	shr	edx,12
 	shrd	eax,ecx,12

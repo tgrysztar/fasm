@@ -38,6 +38,8 @@ parser:
 	mov	[current_line],eax
 	cmp	[anonymous_forward],0
 	jne	invalid_value
+	add	edi,0Fh
+	and	edi,not 0Fh
 	mov	[code_start],edi
 	pop	[memory_end]
 	ret
@@ -145,7 +147,7 @@ parse_line:
 	jne	argument_parsed
 	inc	esi
 	movzx	ecx,byte [esi]
-	lods	byte [esi]
+	inc	esi
 	mov	al,2
 	stos	byte [edi]
 	call	identify_label
@@ -158,7 +160,7 @@ parse_line:
 	jne	argument_parsed
 	inc	esi
 	movzx	ecx,byte [esi]
-	lods	byte [esi]
+	inc	esi
 	mov	al,2
 	stos	byte [edi]
 	call	get_label_id
@@ -279,7 +281,7 @@ parse_line:
 	inc	esi
 	push	esi
 	movzx	ecx,byte [esi]
-	lods	byte [esi]
+	inc	esi
 	mov	al,2
 	stos	byte [edi]
 	call	get_label_id
@@ -327,7 +329,7 @@ parse_line:
 	jne	argument_parsed
 	inc	esi
 	movzx	ecx,byte [esi]
-	lods	byte [esi]
+	inc	esi
 	mov	al,2
 	stos	byte [edi]
 	call	get_label_id
@@ -416,6 +418,11 @@ parse_line:
       not_string:
 	cmp	byte [esi],'('
 	jne	expression
+	mov	eax,esp
+	sub	eax,100h
+	jc	stack_overflow
+	cmp	eax,[stack_limit]
+	jb	stack_overflow
 	push	esi edi
 	inc	esi
 	mov	al,'{'

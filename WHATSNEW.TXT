@@ -2,6 +2,30 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.64 (Aug 8, 2005)
+
+[+] Output of PE executables for Win64 architecture (with "format PE64" setting).
+
+[+] Added "while" and "break" directives.
+
+[+] Added "irp" and "irps" directives.
+
+[+] The macro arguments can be marked as required witht the "*" character.
+
+[-] Fixed checking for overflow when multiplying 64-bit values - the result must
+    always fit in the range of signed 64 integer now.
+
+[-] Segment prefixes were generated incorrectly in 16-bit mode when BP was used
+    as a second addressing register - fixed.
+
+[-] The "local" directive was not creating unique labels in some cases - fixed.
+
+[-] The "not encodable with long immediate" error in 64-bit mode was sometimes wrongly
+    signaled - fixed.
+
+[-] Other minor fixes and corrections.
+
+
 version 1.62 (Jun 14, 2005)
 
 [+] Escaping of symbols inside macroinstructions with backslash.
@@ -11,14 +35,11 @@ version 1.62 (Jun 14, 2005)
 
 [+] New preprocessor directives: "restruc", "rept" and "match"
 
-[+] VMX instructions support (not documented yet).
+[+] VMX instructions support (not documented).
 
 [+] Extended data directives to allow use of the "dup" operator.
 
 [+] Extended "struc" features to allow custom definitions of main structure's label.
-
-[+] Updated Win32 includes and examples with improved macroinstructions.
-    The "struct" and "proc" have now syntax more similar to TASM.
 
 [-] When building resources from the the .RES file that contained more
     than one resource of the same string name, the separate resource

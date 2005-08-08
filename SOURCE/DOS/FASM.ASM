@@ -5,6 +5,7 @@
 
 	format	MZ
 	heap	0
+	stack	8000h
 	entry	main:start
 
 include 'modes.inc'
@@ -93,6 +94,160 @@ information:
 	call	dos_int
 	mov	al,1
 	jmp	exit_program
+
+get_params:
+	mov	[memory_setting],0
+	mov	[passes_limit],100
+	push	ds
+	mov	ds,[psp_segment]
+	mov	esi,81h
+	mov	edi,params
+    find_param:
+	lodsb
+	cmp	al,20h
+	je	find_param
+	cmp	al,22h
+	je	string_param
+	cmp	al,'-'
+	je	option_param
+	cmp	al,0Dh
+	je	all_params
+	or	al,al
+	jz	all_params
+	inc	edi
+	mov	ebx,edi
+    copy_param:
+	stosb
+	lodsb
+	cmp	al,20h
+	je	param_end
+	cmp	al,0Dh
+	je	param_end
+	or	al,al
+	jz	param_end
+	jmp	copy_param
+    string_param:
+	inc	edi
+	mov	ebx,edi
+    copy_string_param:
+	lodsb
+	cmp	al,22h
+	je	string_param_end
+	cmp	al,0Dh
+	je	param_end
+	or	al,al
+	jz	param_end
+	stosb
+	jmp	copy_string_param
+    option_param:
+	lodsb
+	cmp	al,'m'
+	je	memory_option
+	cmp	al,'M'
+	je	memory_option
+	cmp	al,'p'
+	je	passes_option
+	cmp	al,'P'
+	je	passes_option
+    invalid_option:
+	pop	ds
+	stc
+	ret
+    get_option_value:
+	xor	eax,eax
+	mov	edx,eax
+    get_option_digit:
+	lodsb
+	cmp	al,20h
+	je	option_value_ok
+	cmp	al,0Dh
+	je	option_value_ok
+	or	al,al
+	jz	option_value_ok
+	sub	al,30h
+	jc	bad_params_value
+	cmp	al,9
+	ja	bad_params_value
+	imul	edx,10
+	jo	bad_params_value
+	add	edx,eax
+	jc	bad_params_value
+	jmp	get_option_digit
+    option_value_ok:
+	dec	esi
+	clc
+	ret
+    bad_params_value:
+	stc
+	ret
+    memory_option:
+	lodsb
+	cmp	al,20h
+	je	memory_option
+	cmp	al,0Dh
+	je	invalid_option
+	or	al,al
+	jz	invalid_option
+	dec	esi
+	call	get_option_value
+	jc	invalid_option
+	or	edx,edx
+	jz	invalid_option
+	cmp	edx,1 shl (32-10)
+	jae	invalid_option
+	mov	[es:memory_setting],edx
+	jmp	find_param
+    passes_option:
+	lodsb
+	cmp	al,20h
+	je	passes_option
+	cmp	al,0Dh
+	je	invalid_option
+	or	al,al
+	jz	invalid_option
+	dec	esi
+	call	get_option_value
+	jc	bad_params
+	or	edx,edx
+	jz	invalid_option
+	cmp	edx,10000h
+	ja	invalid_option
+	mov	[es:passes_limit],dx
+	jmp	find_param
+    param_end:
+	dec	esi
+    string_param_end:
+	xor	al,al
+	stosb
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[es:ebx-1],al
+	jmp	find_param
+    all_params:
+	xor	al,al
+	stosb
+	pop	ds
+	cmp	[params],0
+	je	bad_params
+	lea	eax,[params+1]
+	mov	[input_file],eax
+	mov	[output_file],0
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	je	params_ok
+	inc	eax
+	mov	[output_file],eax
+	movzx	ecx,byte [eax-1]
+	add	eax,ecx
+	cmp	byte [eax],0
+	jne	bad_params
+    params_ok:
+	clc
+	ret
+    bad_params:
+	stc
+	ret
 
 include 'system.inc'
 

@@ -42,13 +42,18 @@ PAGE_GUARD	       = 100h
 PAGE_NOCACHE	       = 200h
 
 init_memory:
+	mov	eax,esp
+	and	eax,not 0FFFh
+	add	eax,1000h-10000h
+	mov	[stack_limit],eax
 	mov	eax,[memory_setting]
 	shl	eax,10
 	jnz	allocate_memory
 	push	buffer
 	call	[GlobalMemoryStatus]
-	mov	eax,dword [buffer+8]
-	shr	eax,1
+	mov	eax,dword [buffer+20]
+	shr	eax,2
+	add	eax,dword [buffer+12]
     allocate_memory:
 	mov	edx,eax
 	shr	edx,3
@@ -81,172 +86,6 @@ exit_program:
 	movzx	eax,al
 	push	eax
 	call	[ExitProcess]
-
-get_params:
-	mov	[memory_setting],0
-	mov	[passes_limit],100
-	call	[GetCommandLine]
-	mov	esi,eax
-	mov	edi,params
-    find_command_start:
-	lodsb
-	cmp	al,20h
-	je	find_command_start
-	cmp	al,22h
-	je	skip_quoted_name
-    skip_name:
-	lodsb
-	cmp	al,20h
-	je	find_param
-	or	al,al
-	jz	all_params
-	jmp	skip_name
-    skip_quoted_name:
-	lodsb
-	cmp	al,22h
-	je	find_param
-	or	al,al
-	jz	all_params
-	jmp	skip_quoted_name
-    find_param:
-	lodsb
-	cmp	al,20h
-	je	find_param
-	cmp	al,22h
-	je	string_param
-	cmp	al,'-'
-	je	option_param
-	cmp	al,0Dh
-	je	all_params
-	or	al,al
-	jz	all_params
-	inc	edi
-	mov	ebx,edi
-    copy_param:
-	stosb
-	lodsb
-	cmp	al,20h
-	je	param_end
-	cmp	al,0Dh
-	je	param_end
-	or	al,al
-	jz	param_end
-	jmp	copy_param
-    string_param:
-	inc	edi
-	mov	ebx,edi
-    copy_string_param:
-	lodsb
-	cmp	al,22h
-	je	string_param_end
-	cmp	al,0Dh
-	je	param_end
-	or	al,al
-	jz	param_end
-	stosb
-	jmp	copy_string_param
-    option_param:
-	lodsb
-	cmp	al,'m'
-	je	memory_option
-	cmp	al,'M'
-	je	memory_option
-	cmp	al,'p'
-	je	passes_option
-	cmp	al,'P'
-	je	passes_option
-    bad_params:
-	stc
-	ret
-    get_option_value:
-	xor	eax,eax
-	mov	edx,eax
-    get_option_digit:
-	lodsb
-	cmp	al,20h
-	je	option_value_ok
-	cmp	al,0Dh
-	je	option_value_ok
-	or	al,al
-	jz	option_value_ok
-	sub	al,30h
-	jc	invalid_option_value
-	cmp	al,9
-	ja	invalid_option_value
-	imul	edx,10
-	jo	invalid_option_value
-	add	edx,eax
-	jc	invalid_option_value
-	jmp	get_option_digit
-    option_value_ok:
-	dec	esi
-	clc
-	ret
-    invalid_option_value:
-	stc
-	ret
-    memory_option:
-	lodsb
-	cmp	al,20h
-	je	memory_option
-	cmp	al,0Dh
-	je	bad_params
-	or	al,al
-	jz	bad_params
-	dec	esi
-	call	get_option_value
-	or	edx,edx
-	jz	bad_params
-	cmp	edx,1 shl (32-10)
-	jae	bad_params
-	mov	[memory_setting],edx
-	jmp	find_param
-    passes_option:
-	lodsb
-	cmp	al,20h
-	je	passes_option
-	cmp	al,0Dh
-	je	bad_params
-	or	al,al
-	jz	bad_params
-	dec	esi
-	call	get_option_value
-	or	edx,edx
-	jz	bad_params
-	cmp	edx,10000h
-	ja	bad_params
-	mov	[passes_limit],dx
-	jmp	find_param
-    param_end:
-	dec	esi
-    string_param_end:
-	xor	al,al
-	stosb
-	mov	eax,edi
-	sub	eax,ebx
-	mov	[ebx-1],al
-	jmp	find_param
-    all_params:
-	xor	al,al
-	stosb
-	cmp	[params],0
-	je	bad_params
-	lea	eax,[params+1]
-	mov	[input_file],eax
-	mov	[output_file],0
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	je	params_ok
-	inc	eax
-	mov	[output_file],eax
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	jne	bad_params
-    params_ok:
-	clc
-	ret
 
 get_environment_variable:
 	mov	ecx,[memory_end]
@@ -643,5 +482,3 @@ error_suffix db '.'
 cr_lf db 0Dh,0Ah,0
 line_number_start db ' [',0
 line_data_start db ':',0Dh,0Ah,0
-
-macro dm string { db string,0 }

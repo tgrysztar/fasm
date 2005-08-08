@@ -26,6 +26,44 @@ real32:
 	smsw	ax
 	test	al,1
 	jnz	dpmi
+	mov	eax,cs			; calculate linear address of GDT
+	shl	eax,4
+	or	dword [cs:real32_GDT+10],eax
+	or	dword [cs:real16_GDT+10],eax
+	add	[cs:real32_GDT_address],eax
+	add	[cs:real16_GDT_address],eax
+	cli
+	lgdt	[cs:real32_GDTR]
+	mov	eax,cr0
+	or	al,1
+	mov	cr0,eax
+	jmp	1 shl 3:test_pm32
+    no_rm32:
+	sti
+	jmp	dpmi
+    test_pm32:
+	use32
+	mov	eax,cr0
+	and	al,not 1
+	mov	cr0,eax
+	mov	ebx,0FFFFh
+	jmp	modes:test_rm32
+    test_rm32:
+	inc	ebx
+	jz	byte no_rm32
+	lgdt	[cs:real16_GDTR]
+	mov	eax,cr0
+	or	al,1
+	mov	cr0,eax
+	jmp	1 shl 3:test_pm16
+    test_pm16:
+	use16
+	mov	eax,cr0
+	and	al,not 1
+	mov	cr0,eax
+	jmp	modes:test_rm16
+    test_rm16:
+	sti
 	mov	bx,(400h+(100h*interrupt.size)) shr 4
 	mov	ah,48h
 	int	21h
@@ -54,12 +92,6 @@ real32:
 	add	bx,4
 	dec	dx
 	jnz	init_interrupts
-	mov	eax,cs			; calculate linear address of GDT
-	shl	eax,4
-	or	dword [real32_GDT+10],eax
-	or	dword [real16_GDT+10],eax
-	add	[real32_GDT_address],eax
-	add	[real16_GDT_address],eax
 	pop	es ds
 	mov	[mode],real32
 	call	modes:switch_real32
@@ -89,8 +121,8 @@ switch_real32:
 	cli
 	mov	eax,ss
 	mov	cr3,eax
-	lgdt	[cs:real32_GDTR]	; load GDT register
-	mov	eax,cr0 		; switch to protected modes
+	lgdt	[cs:real32_GDTR]
+	mov	eax,cr0 		; switch to protected mode
 	or	al,1
 	mov	cr0,eax
 	jmp	1 shl 3:pm32_start
@@ -102,7 +134,7 @@ switch_real32:
 	mov	fs,ax
 	mov	gs,ax
 	mov	ss,ax
-	mov	eax,cr0 		; switch back to real modes
+	mov	eax,cr0 		; switch back to real mode
 	and	al,not 1
 	mov	cr0,eax
 	jmp	modes:pm32_end
@@ -122,14 +154,14 @@ switch_real16:
 	pushfw
 	push	eax
 	cli
-	lgdt	[cs:real16_GDTR]	; load GDT register
-	mov	eax,cr0 		; switch to protected modes
+	lgdt	[cs:real16_GDTR]
+	mov	eax,cr0 		; switch to protected mode
 	or	al,1
 	mov	cr0,eax
 	jmp	1 shl 3:pm16_start
     pm16_start:
 	use16
-	mov	eax,cr0 		; switch back to real modes
+	mov	eax,cr0 		; switch back to real mode
 	and	al,not 1
 	mov	cr0,eax
 	jmp	modes:pm16_end
@@ -256,7 +288,13 @@ dpmi:
 	retfd
 
 no_dpmi:
+	smsw	ax
+	test	al,1
+	jz	no_real32
 	call	init_error
 	db	'system is in protected mode without DPMI services',24h
+no_real32:
+	call	init_error
+	db	'processor is not able to enter 32-bit real mode',24h
 
 mode_switch dd ?

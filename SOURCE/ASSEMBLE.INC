@@ -15,7 +15,6 @@ assembler:
 	mov	[stub_size],eax
 	mov	[number_of_sections],eax
 	mov	[current_pass],ax
-	mov	[times_working],al
       assembler_loop:
 	mov	eax,[labels_list]
 	mov	[display_buffer],eax
@@ -158,6 +157,7 @@ assemble_line:
       new_line:
 	lods	dword [esi]
 	mov	[current_line],eax
+	mov	[prefixed_instruction],0
       continue_line:
 	cmp	byte [esi],0Fh
 	je	line_assembled
@@ -220,6 +220,7 @@ assemble_line:
       label_symbol_ok:
 	mov	cx,[current_pass]
 	xchg	[ebx+16],cx
+	and	byte [ebx+8],not 2
 	test	byte [ebx+8],1
 	jz	new_label
 	cmp	cx,[ebx+16]
@@ -311,25 +312,25 @@ assemble_line:
 	test	byte [ebx+8],2
 	jz	symbol_already_defined
 	or	byte [ebx+8],4
-	jmp	continue_line
+	jmp	instruction_assembled
       redeclare_constant:
 	inc	cx
 	sub	cx,[ebx+16]
 	setnz	al
 	or	ah,al
-	jz	continue_line
+	jz	instruction_assembled
 	test	byte [ebx+8],4
-	jnz	continue_line
+	jnz	instruction_assembled
 	test	byte [ebx+8],8
-	jz	continue_line
+	jz	instruction_assembled
 	mov	cx,[current_pass]
 	cmp	cx,[ebx+18]
-	jne	continue_line
+	jne	instruction_assembled
 	or	[next_pass_needed],-1
-	jmp	continue_line
+	jmp	instruction_assembled
       new_constant:
 	or	byte [ebx+8],1+2
-	jmp	continue_line
+	jmp	instruction_assembled
       assemble_instruction:
 	mov	[operand_size],0
 	mov	[size_override],0
@@ -494,7 +495,7 @@ label_directive:
 	je	get_free_label_value
 	mov	ch,[labels_type]
 	push	[org_symbol]
-	pop	[symbol_identifier]
+	pop	[address_symbol]
 	cmp	[virtual_data],0
 	jne	make_free_label
 	or	byte [ebx+9],1
@@ -557,7 +558,7 @@ label_directive:
 	or	ah,al
 	or	ch,ch
 	jz	free_label_symbol_ok
-	mov	edx,[symbol_identifier]
+	mov	edx,[address_symbol]
 	cmp	edx,[ebx+20]
 	mov	[ebx+20],edx
 	setne	al
@@ -565,6 +566,7 @@ label_directive:
       free_label_symbol_ok:
 	mov	cx,[current_pass]
 	xchg	[ebx+16],cx
+	and	byte [ebx+8],not 2
 	test	byte [ebx+8],1
 	jz	new_free_label
 	cmp	cx,[ebx+16]
@@ -631,8 +633,11 @@ load_directive:
 	rep	movs byte [edi],[esi]
 	jmp	value_loaded
       bad_load_address:
-	cmp	[next_pass_needed],0
-	je	value_out_of_range
+	cmp	[error_line],0
+	jne	value_loaded
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],value_out_of_range
       value_loaded:
 	pop	edi esi
 	mov	eax,dword [value]
@@ -689,9 +694,12 @@ store_directive:
 	mov	[undefined_data_start],eax
 	jmp	instruction_assembled
       bad_store_address:
-	cmp	[next_pass_needed],0
-	je	value_out_of_range
 	pop	edi esi
+	cmp	[error_line],0
+	jne	instruction_assembled
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],value_out_of_range
 	jmp	instruction_assembled
 
 display_directive:
@@ -775,8 +783,13 @@ times_directive:
 	mov	[counter_limit],eax
 	mov	[counter],1
       times_loop:
+	mov	eax,esp
+	sub	eax,100h
+	jc	stack_overflow
+	cmp	eax,[stack_limit]
+	jb	stack_overflow
 	push	esi
-	or	[times_working],-1
+	or	[prefixed_instruction],-1
 	call	continue_line
 	mov	eax,[counter_limit]
 	cmp	[counter],eax
@@ -785,7 +798,6 @@ times_directive:
 	pop	esi
 	jmp	times_loop
       times_done:
-	mov	[times_working],0
 	pop	eax
 	pop	[counter_limit]
 	pop	[counter]
@@ -810,7 +822,7 @@ virtual_directive:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_address_value
-	mov	ebp,[symbol_identifier]
+	mov	ebp,[address_symbol]
 	xor	ch,ch
 	or	bh,bh
 	jz	set_virtual
@@ -825,8 +837,10 @@ virtual_directive:
 	xor	edx,edx
 	sub	eax,dword [org_origin]
 	sbb	edx,dword [org_origin+4]
-	xor	bx,bx
-	xor	cx,cx
+	mov	bx,word [org_registers]
+	mov	cx,word [org_registers+2]
+	xchg	bh,bl
+	xchg	ch,cl
       set_virtual:
 	push	[org_registers]
 	mov	byte [org_registers],bh
@@ -882,16 +896,21 @@ virtual_directive:
 	clc
 	ret
       next_structure:
+	cmp	ax,if_directive-assembler
+	je	check_structure_overlapping
 	cmp	ax,repeat_directive-assembler
-	jne	if_structure_ok
+	je	check_structure_overlapping
+	cmp	ax,while_directive-assembler
+	je	check_structure_overlapping
+	add	ebx,20h
+	jmp	scan_structures
+      check_structure_overlapping:
 	cmp	word [ebx],if_directive-assembler
 	je	no_such_structure
-      if_structure_ok:
-	cmp	ax,if_directive-assembler
-	jne	repeat_structure_ok
 	cmp	word [ebx],repeat_directive-assembler
 	je	no_such_structure
-      repeat_structure_ok:
+	cmp	word [ebx],while_directive-assembler
+	je	no_such_structure
 	add	ebx,20h
 	jmp	scan_structures
       no_such_structure:
@@ -925,9 +944,9 @@ virtual_directive:
 	shr	ecx,2
 	rep	movs dword [edi],[esi]
 	pop	edi esi
-	jmp	instruction_assembled
+	ret
 repeat_directive:
-	cmp	[times_working],0
+	cmp	[prefixed_instruction],0
 	jne	unexpected_instruction
 	lods	byte [esi]
 	cmp	al,'('
@@ -955,7 +974,7 @@ repeat_directive:
 	mov	[ebx+4],eax
 	jmp	instruction_assembled
       end_repeat:
-	cmp	[times_working],0
+	cmp	[prefixed_instruction],0
 	jne	unexpected_instruction
 	call	find_structure_data
 	jc	unexpected_instruction
@@ -963,11 +982,13 @@ repeat_directive:
 	inc	[counter]
 	cmp	[counter],eax
 	jbe	continue_repeating
+      stop_repeat:
 	mov	eax,[ebx+10h]
 	mov	[counter_limit],eax
 	mov	eax,[ebx+14h]
 	mov	[counter],eax
-	jmp	remove_structure_data
+	call	remove_structure_data
+	jmp	instruction_assembled
       continue_repeating:
 	mov	esi,[ebx+8]
 	jmp	instruction_assembled
@@ -990,69 +1011,55 @@ repeat_directive:
 	cmp	ax,repeat_directive-assembler
 	jne	unexpected_instruction
 	ret
-      find_structure_end:
-	push	[error_line]
+while_directive:
+	cmp	[prefixed_instruction],0
+	jne	unexpected_instruction
+	call	allocate_structure_data
+	mov	word [ebx],while_directive-assembler
+	mov	eax,1
+	xchg	eax,[counter]
+	mov	[ebx+10h],eax
+	mov	[ebx+8],esi
 	mov	eax,[current_line]
-	mov	[error_line],eax
-      find_end_directive:
-	call	skip_line
-	lods	byte [esi]
+	mov	[ebx+4],eax
+      do_while:
+	push	ebx
+	call	calculate_logical_expression
+	or	al,al
+	jnz	while_true
+	mov	al,[esi]
+	or	al,al
+	jz	missing_end_directive
 	cmp	al,0Fh
-	jne	no_end_directive
-	lods	dword [esi]
+	jne	extra_characters_on_line
+      stop_while:
+	call	find_end_while
+	pop	ebx
+	mov	eax,[ebx+10h]
+	mov	[counter],eax
+	call	remove_structure_data
+	jmp	instruction_assembled
+      while_true:
+	pop	ebx
+	jmp	instruction_assembled
+      end_while:
+	cmp	[prefixed_instruction],0
+	jne	unexpected_instruction
+	call	find_structure_data
+	jc	unexpected_instruction
+	mov	eax,[ebx+4]
 	mov	[current_line],eax
-      skip_labels:
-	cmp	byte [esi],2
-	jne	labels_ok
-	add	esi,6
-	jmp	skip_labels
-      labels_ok:
-	cmp	byte [esi],1
-	jne	find_end_directive
-	mov	ax,[esi+1]
-	cmp	ax,prefix_instruction-assembler
-	je	find_end_directive
-	add	esi,4
-	cmp	ax,repeat_directive-assembler
-	je	skip_repeat
-	cmp	ax,if_directive-assembler
-	je	skip_if
-	cmp	ax,else_directive-assembler
-	je	structure_end
-	cmp	ax,end_directive-assembler
-	jne	find_end_directive
-	cmp	byte [esi],1
-	jne	find_end_directive
-	mov	ax,[esi+1]
-	add	esi,4
-	cmp	ax,repeat_directive-assembler
-	je	structure_end
-	cmp	ax,if_directive-assembler
-	jne	find_end_directive
-      structure_end:
-	pop	[error_line]
+	inc	[counter]
+	jz	too_many_repeats
+	mov	esi,[ebx+8]
+	jmp	do_while
+      find_end_while:
+	call	find_structure_end
+	cmp	ax,while_directive-assembler
+	jne	unexpected_instruction
 	ret
-      no_end_directive:
-	mov	eax,[error_line]
-	mov	[current_line],eax
-	jmp	missing_end_directive
-      skip_repeat:
-	call	find_end_repeat
-	jmp	find_end_directive
-      skip_if:
-	call	find_else
-	jc	find_end_directive
-	cmp	byte [esi],1
-	jne	skip_after_else
-	cmp	word [esi+1],if_directive-assembler
-	jne	skip_after_else
-	add	esi,4
-	jmp	skip_if
-      skip_after_else:
-	call	find_end_if
-	jmp	find_end_directive
 if_directive:
-	cmp	[times_working],0
+	cmp	[prefixed_instruction],0
 	jne	unexpected_instruction
 	call	calculate_logical_expression
 	mov	dl,al
@@ -1089,7 +1096,7 @@ if_directive:
 	or	al,-1
 	jmp	make_if_structure
       else_directive:
-	cmp	[times_working],0
+	cmp	[prefixed_instruction],0
 	jne	unexpected_instruction
 	mov	ax,if_directive-assembler
 	call	find_structure_data
@@ -1105,20 +1112,23 @@ if_directive:
 	add	esi,4
 	call	find_else
 	jnc	found_else
-	jmp	remove_structure_data
+	call	remove_structure_data
+	jmp	instruction_assembled
       skip_else:
 	or	al,al
 	jz	missing_end_directive
 	cmp	al,0Fh
 	jne	extra_characters_on_line
 	call	find_end_if
-	jmp	remove_structure_data
+	call	remove_structure_data
+	jmp	instruction_assembled
       end_if:
-	cmp	[times_working],0
+	cmp	[prefixed_instruction],0
 	jne	unexpected_instruction
 	call	find_structure_data
 	jc	unexpected_instruction
-	jmp	remove_structure_data
+	call	remove_structure_data
+	jmp	instruction_assembled
       find_else:
 	call	find_structure_end
 	cmp	ax,else_directive-assembler
@@ -1135,6 +1145,78 @@ if_directive:
 	cmp	ax,if_directive-assembler
 	jne	unexpected_instruction
 	ret
+      find_structure_end:
+	push	[error_line]
+	mov	eax,[current_line]
+	mov	[error_line],eax
+      find_end_directive:
+	call	skip_line
+	lods	byte [esi]
+	cmp	al,0Fh
+	jne	no_end_directive
+	lods	dword [esi]
+	mov	[current_line],eax
+      skip_labels:
+	cmp	byte [esi],2
+	jne	labels_ok
+	add	esi,6
+	jmp	skip_labels
+      labels_ok:
+	cmp	byte [esi],1
+	jne	find_end_directive
+	mov	ax,[esi+1]
+	cmp	ax,prefix_instruction-assembler
+	je	find_end_directive
+	add	esi,4
+	cmp	ax,repeat_directive-assembler
+	je	skip_repeat
+	cmp	ax,while_directive-assembler
+	je	skip_while
+	cmp	ax,if_directive-assembler
+	je	skip_if
+	cmp	ax,else_directive-assembler
+	je	structure_end
+	cmp	ax,end_directive-assembler
+	jne	find_end_directive
+	cmp	byte [esi],1
+	jne	find_end_directive
+	mov	ax,[esi+1]
+	add	esi,4
+	cmp	ax,repeat_directive-assembler
+	je	structure_end
+	cmp	ax,while_directive-assembler
+	je	structure_end
+	cmp	ax,if_directive-assembler
+	jne	find_end_directive
+      structure_end:
+	pop	[error_line]
+	ret
+      no_end_directive:
+	mov	eax,[error_line]
+	mov	[current_line],eax
+	jmp	missing_end_directive
+      skip_repeat:
+	call	find_end_repeat
+	jmp	find_end_directive
+      skip_while:
+	call	find_end_while
+	jmp	find_end_directive
+      skip_if:
+	call	skip_if_block
+	jmp	find_end_directive
+      skip_if_block:
+	call	find_else
+	jc	if_block_skipped
+	cmp	byte [esi],1
+	jne	skip_after_else
+	cmp	word [esi+1],if_directive-assembler
+	jne	skip_after_else
+	add	esi,4
+	jmp	skip_if_block
+      skip_after_else:
+	call	find_end_if
+      if_block_skipped:
+	ret
 end_directive:
 	lods	byte [esi]
 	cmp	al,1
@@ -1145,11 +1227,49 @@ end_directive:
 	je	end_virtual
 	cmp	ax,repeat_directive-assembler
 	je	end_repeat
+	cmp	ax,while_directive-assembler
+	je	end_while
 	cmp	ax,if_directive-assembler
 	je	end_if
 	cmp	ax,data_directive-assembler
 	je	end_data
 	jmp	invalid_argument
+break_directive:
+	mov	ebx,[structures_buffer]
+	mov	al,[esi]
+	or	al,al
+	jz	find_breakable_structure
+	cmp	al,0Fh
+	jne	extra_characters_on_line
+      find_breakable_structure:
+	cmp	ebx,[additional_memory_end]
+	je	unexpected_instruction
+	mov	ax,[ebx]
+	cmp	ax,repeat_directive-assembler
+	je	break_repeat
+	cmp	ax,while_directive-assembler
+	je	break_while
+	cmp	ax,if_directive-assembler
+	je	break_if
+	add	ebx,20h
+	jmp	find_breakable_structure
+      break_if:
+	push	[current_line]
+	mov	eax,[ebx+4]
+	mov	[current_line],eax
+	call	remove_structure_data
+	call	skip_if_block
+	pop	[current_line]
+	mov	ebx,[structures_buffer]
+	jmp	find_breakable_structure
+      break_repeat:
+	push	ebx
+	call	find_end_repeat
+	pop	ebx
+	jmp	stop_repeat
+      break_while:
+	push	ebx
+	jmp	stop_while
 
 data_bytes:
 	call	define_data
@@ -1202,14 +1322,22 @@ data_bytes:
 	jne	simple_data_value
 	inc	esi
 	call	get_dword_value
-	or	eax,eax
-	jz	invalid_value
 	cmp	[next_pass_needed],0
 	jne	dup_value_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
       dup_value_ok:
 	inc	esi
+	cmp	eax,0
+	jg	dup_positive
+	cmp	[error_line],0
+	jne	dup_invalid
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_value
+      dup_invalid:
+	mov	eax,1
+      dup_positive:
 	cmp	byte [esi],'{'
 	jne	duplicate_single_data_value
 	inc	esi
@@ -1240,6 +1368,8 @@ data_bytes:
 	mov	esi,ebx
 	jmp	duplicate_single_data_value
       simple_data_value:
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
 	call	near dword [esp]
       data_defined:
 	lods	byte [esi]

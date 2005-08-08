@@ -1,31 +1,43 @@
 
-; flat assembler interface for Linux
+; flat assembler interface for Unix/libc
 ; Copyright (c) 1999-2005, Tomasz Grysztar.
 ; All rights reserved.
 
-	format	ELF executable
-	entry	start
+	format	ELF
+	public	main
 
-section readable executable
+macro ccall proc,[arg]
+ { common
+    local size
+    size = 0
+   reverse
+    pushd arg
+    size = size+4
+   common
+    call proc
+    add esp,size }
 
-start:
+extrn gettimeofday
+
+section '.text' executable align 16
+
+main:
+	mov	ecx,[esp+4]
+	mov	[argc],ecx
+	mov	ebx,[esp+8]
+	mov	[argv],ebx
+	push	ebp
+	mov	[stack_frame],esp
+
 	mov	esi,_logo
 	call	display_string
 
-	mov	[command_line],esp
-	pop	eax
-	lea	esp,[esp+eax*4]
-	pop	eax
-	pop	[environment]
 	call	get_params
 	jc	information
 
 	call	init_memory
 
-	mov	eax,78
-	mov	ebx,buffer
-	xor	ecx,ecx
-	int	0x80
+	ccall	gettimeofday,buffer,0
 	mov	eax,dword [buffer]
 	mov	ecx,1000
 	mul	ecx
@@ -46,10 +58,7 @@ start:
 	call	display_number
 	mov	esi,_passes_suffix
 	call	display_string
-	mov	eax,78
-	mov	ebx,buffer
-	xor	ecx,ecx
-	int	0x80
+	ccall	gettimeofday,buffer,0
 	mov	eax,dword [buffer]
 	mov	ecx,1000
 	mul	ecx
@@ -92,13 +101,13 @@ information:
 	jmp	exit_program
 
 get_params:
-	mov	ebx,[command_line]
 	mov	[input_file],0
 	mov	[output_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
-	mov	ecx,[ebx]
-	add	ebx,8
+	mov	ecx,[argc]
+	mov	ebx,[argv]
+	add	ebx,4
 	dec	ecx
 	jz	bad_params
       get_param:
@@ -215,18 +224,17 @@ include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
 
-section readable writeable
-
-align 4
+section '.bss' writeable align 4
 
 include '..\variable.inc'
 
-command_line dd ?
+argc dd ?
+argv dd ?
+stack_frame dd ?
 memory_setting dd ?
-environment dd ?
 start_time dd ?
+timestamp dd ?
 displayed_count dd ?
 last_displayed db ?
-character db ?
 
 buffer rb 1000h

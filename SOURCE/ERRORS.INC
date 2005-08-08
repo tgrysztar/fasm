@@ -5,121 +5,127 @@
 
 out_of_memory:
 	call	fatal_error
-	dm	"out of memory"
+	db	'out of memory',0
+stack_overflow:
+	call	fatal_error
+	db	'out of stack space',0
 main_file_not_found:
 	call	fatal_error
-	dm	"source file not found"
+	db	'source file not found',0
 unexpected_end_of_file:
 	call	fatal_error
-	dm	"unexpected end of file"
+	db	'unexpected end of file',0
 code_cannot_be_generated:
 	call	fatal_error
-	dm	"code cannot be generated"
+	db	'code cannot be generated',0
 format_limitations_exceeded:
 	call	fatal_error
-	dm	"format limitations exceeded"
+	db	'format limitations exceeded',0
 write_failed:
 	call	fatal_error
-	dm	"write failed"
+	db	'write failed',0
 file_not_found:
 	call	assembler_error
-	dm	"file not found"
+	db	'file not found',0
 error_reading_file:
 	call	assembler_error
-	dm	"error reading file"
+	db	'error reading file',0
 invalid_file_format:
 	call	assembler_error
-	dm	"invalid file format"
+	db	'invalid file format',0
 invalid_macro_arguments:
 	call	assembler_error
-	dm	"invalid macro arguments"
+	db	'invalid macro arguments',0
 incomplete_macro:
 	call	assembler_error
-	dm	"incomplete macro"
+	db	'incomplete macro',0
 unexpected_characters:
 	call	assembler_error
-	dm	"unexpected characters"
+	db	'unexpected characters',0
 invalid_argument:
 	call	assembler_error
-	dm	"invalid argument"
+	db	'invalid argument',0
 illegal_instruction:
 	call	assembler_error
-	dm	"illegal instruction"
+	db	'illegal instruction',0
 invalid_operand:
 	call	assembler_error
-	dm	"invalid operand"
+	db	'invalid operand',0
 invalid_operand_size:
 	call	assembler_error
-	dm	"invalid size of operand"
+	db	'invalid size of operand',0
 operand_size_not_specified:
 	call	assembler_error
-	dm	"operand size not specified"
+	db	'operand size not specified',0
 operand_sizes_do_not_match:
 	call	assembler_error
-	dm	"operand sizes do not match"
+	db	'operand sizes do not match',0
 invalid_address_size:
 	call	assembler_error
-	dm	"invalid size of address value"
+	db	'invalid size of address value',0
 address_sizes_do_not_agree:
 	call	assembler_error
-	dm	"address sizes do not agree"
+	db	'address sizes do not agree',0
 prefix_conflict:
 	call	assembler_error
-	dm	"disallowed combination of registers"
+	db	'disallowed combination of registers',0
 long_immediate_not_encodable:
 	call	assembler_error
-	dm	"not encodable with long immediate"
+	db	'not encodable with long immediate',0
 relative_jump_out_of_range:
 	call	assembler_error
-	dm	"relative jump out of range"
+	db	'relative jump out of range',0
 invalid_expression:
 	call	assembler_error
-	dm	"invalid expression"
+	db	'invalid expression',0
 invalid_address:
 	call	assembler_error
-	dm	"invalid address"
+	db	'invalid address',0
 invalid_value:
 	call	assembler_error
-	dm	"invalid value"
+	db	'invalid value',0
 value_out_of_range:
 	call	assembler_error
-	dm	"value out of range"
+	db	'value out of range',0
 undefined_symbol:
 	call	assembler_error
-	dm	"undefined symbol"
+	db	'undefined symbol',0
 invalid_use_of_symbol:
 	call	assembler_error
-	dm	"invalid use of symbol"
+	db	'invalid use of symbol',0
 name_too_long:
 	call	assembler_error
-	dm	"name too long"
+	db	'name too long',0
 invalid_name:
 	call	assembler_error
-	dm	"invalid name"
+	db	'invalid name',0
 reserved_word_used_as_symbol:
 	call	assembler_error
-	dm	"reserved word used as symbol"
+	db	'reserved word used as symbol',0
 symbol_already_defined:
 	call	assembler_error
-	dm	"symbol already defined"
+	db	'symbol already defined',0
 missing_end_quote:
 	call	assembler_error
-	dm	"missing end quote"
+	db	'missing end quote',0
 missing_end_directive:
 	call	assembler_error
-	dm	"missing end directive"
+	db	'missing end directive',0
 unexpected_instruction:
 	call	assembler_error
-	dm	"unexpected instruction"
+	db	'unexpected instruction',0
 extra_characters_on_line:
 	call	assembler_error
-	dm	"extra characters on line"
+	db	'extra characters on line',0
 section_not_aligned_enough:
 	call	assembler_error
-	dm	"section is not aligned enough"
+	db	'section is not aligned enough',0
 setting_already_specified:
 	call	assembler_error
-	dm	"setting already specified"
+	db	'setting already specified',0
 data_already_defined:
 	call	assembler_error
-	dm	"data already defined"
+	db	'data already defined',0
+too_many_repeats:
+	call	assembler_error
+	db	'too many repeats',0

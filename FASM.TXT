@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.62
+                              flat assembler 1.64
                               Programmer's Manual
 
 
@@ -52,10 +52,11 @@ Chapter 2  Instruction set
         2.1.19  The x86-64 long mode instructions
 
         2.2  Control directives
-        2.2.1  Repeating blocks of instructions
-        2.2.2  Conditional assembly
+        2.2.1  Conditional assembly
+        2.2.2  Repeating blocks of instructions
         2.2.3  Addressing spaces
         2.2.4  Other directives
+        2.2.5  Multiple passes
 
         2.3  Preprocessor directives
         2.3.1  Including source files
@@ -94,8 +95,9 @@ command line and they should not differ in behavior.
 
 All versions require the x86 architecture 32-bit processor (at least 80386),
 although they can produce programs for the x86 architecture 16-bit processors,
-too. DOS version requires an OS compatible with MS DOS 2.0, Windows version
-requires a Win32 console compatible with 3.1 version.
+too. DOS version requires an OS compatible with MS DOS 2.0 and either true
+real mode environment or DPMI. Windows version requires a Win32 console
+compatible with 3.1 version.
 
 
 1.1.2  Executing compiler from command line
@@ -136,21 +138,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.62
+flat assembler  version 1.64
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.62
+flat assembler  version 1.64
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.62
+flat assembler  version 1.64
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -160,7 +162,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.62
+flat assembler  version 1.64
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -1243,8 +1245,9 @@ the stack before adjusting the stack pointer.
 
 "lmsw" loads the operand into the machine status word (bits 0 through 15 of
 CR0 register), while "smsw" stores the machine status word into the
-destination operand. The operand can be a 16-bit or 32-bit general register
-or the word in memory.
+destination operand. The operand for both those instructions can be 16-bit
+general register or memory, for "smsw" it can also be 32-bit general 
+register.
 
     lmsw ax          ; load machine status from register
     smsw [bx]        ; store machine status to memory
@@ -1346,7 +1349,7 @@ registers are shifted, so ST0 is always the value on the top of FPU stack, ST1
 is the first value below the top, etc. The ST0 name has also the synonym ST.
   "fld" pushes the floating-point value onto the FPU register stack. The
 operand can be 32-bit, 64-bit or 80-bit memory location or the FPU register,
-it's value is then loaded onto the top of FPU register stack (the ST0
+its value is then loaded onto the top of FPU register stack (the ST0
 register) and is automatically converted into the double extended precision
 format.
 
@@ -1433,7 +1436,7 @@ register stack. "fptan" computes the tangent of the value in ST0, stores the
 result in ST0 and pushes a 1.0 onto the FPU register stack. "fpatan" computes
 the arctangent of the value in ST1 divided by the value in ST0, stores the
 result in ST1 and pops the FPU register stack. "fyl2x" computes the binary
-logarithm of ST0, multiplies it by ST1, stores the result in ST1 and pop the
+logarithm of ST0, multiplies it by ST1, stores the result in ST1 and pops the
 FPU register stack; "fyl2xp1" performs the same operation but it adds 1.0 to
 ST0 before computing the logarithm. "fprem" computes the remainder obtained
 from dividing the value in ST0 by the value in ST1, and stores the result
@@ -1448,7 +1451,7 @@ should be an FPU register, if no operand is specified, the contents of ST0 and
 ST1 are exchanged.
   "fcom" and "fcomp" compare the contents of ST0 and the source operand and
 set flags in the FPU status word according to the results. "fcomp"
-additionally pops the register stack after performing the comparision. The
+additionally pops the register stack after performing the comparison. The
 operand can be a single or double precision value in memory or the FPU
 register. When no operand is specified, ST1 is used as a source operand.
 
@@ -1458,22 +1461,22 @@ register. When no operand is specified, ST1 is used as a source operand.
   "fcompp" compares the contents of ST0 and ST1, sets flags in the FPU status
 word according to the results and pops the register stack twice. This
 instruction has no operands.
-  "fucom", "fucomp" and "fucompp" performs an unordered comparision of two FPU
+  "fucom", "fucomp" and "fucompp" performs an unordered comparison of two FPU
 registers. Rules for operands are the same as for the "fcom", "fcomp" and
 "fcompp", but the source operand must be an FPU register.
   "ficom" and "ficomp" compare the value in ST0 with an integer source operand
 and set the flags in the FPU status word according to the results. "ficomp"
-additionally pops the register stack after performing the comparision. The
+additionally pops the register stack after performing the comparison. The
 integer value is converted to double extended precision floating-point format
-before the comparision is made. The operand should be a 16-bit or 32-bit
+before the comparison is made. The operand should be a 16-bit or 32-bit
 memory location.
 
     ficom word [bx]  ; compare st0 with 16-bit integer
 
-  "fcomi", "fcomip", "fucomi", "fucomip" perform the comparision of ST0 with
+  "fcomi", "fcomip", "fucomi", "fucomip" perform the comparison of ST0 with
 another FPU register and set the ZF, PF and CF flags according to the results.
 "fcomip" and "fucomip" additionaly pop the register stack after performing the
-comparision. The instructions obtained by attaching the FPU condition mnemonic
+comparison. The instructions obtained by attaching the FPU condition mnemonic
 (see table 2.2) to the "fcmov" mnemonic transfer the specified FPU register
 into ST0 register if the fiven test condition is true. These instruction
 allow two different syntaxes, one with single operand specifying the source
@@ -2068,7 +2071,7 @@ second final step in the Newton-Raphson iteration to refine the reciprocal
 approximation or the reciprocal square root approximation. "pfcmpeq",
 "pfcmpge" and "pfcmpgt" compare the packed floating point values and sets
 all bits or zeroes all bits of the correspoding data element in the
-destination operand according to the result of comparision, first checks
+destination operand according to the result of comparison, first checks
 whether values are equal, second checks whether destination value is greater
 or equal to source value, third checks whether destination value is greater
 than source value.
@@ -2170,7 +2173,7 @@ rule, can be used with 64-bit destination operand, allowing extension of byte
 or word values into quad words.
   All the binary arithmetic and logical instruction are promoted to allow
 64-bit operands in long mode. The use of decimal arithmetic instructions in
-long mode prohibited.
+long mode is prohibited.
   The stack operations, like "push" and "pop" in long mode default to 64-bit
 operands and it's not possible to use 32-bit operands with them. The "pusha"
 and "popa" are disallowed in long mode.
@@ -2192,8 +2195,6 @@ memory operand with 64-bit destination register (though only EM64T seems to
 implement such variant). The "lds" and "les" are disallowed in long mode.
   The system instructions like "lgdt" which required the 48-bit memory operand,
 in long mode require the 80-bit memory operand.
-  The instructions that are not allowed in long mode include also "lahf",
-"sahf" and "arpl".
   The "cmpxchg16b" is the 64-bit equivalent of "cmpxchg8b" instruction, it uses
 the double quad word memory operand and 64-bit registers to perform the
 analoguous operation.
@@ -2211,7 +2212,90 @@ are processed during the assembly and may cause some blocks of instructions
 to be assembled differently or not assembled at all.
 
 
-2.2.1  Repeating blocks of instructions
+2.2.1  Conditional assembly
+
+"if" directive causes come block of instructions to be assembled only under
+certain condition. It should be followed by logical expression specifying the
+condition, instructions in next lines will be assembled only when this
+condition is met, otherwise they will be skipped. The optional "else if"
+directive followed with logical expression specifying additional condition
+begins the next block of instructions that will be assembled if previous
+conditions were not met, and the additional condition is met. The optional
+"else" directive begins the block of instructions that will be assembled if
+all the conditions were not met. The "end if" directive ends the last block of
+instructions.
+  You should note that "if" directive is processed at assembly stage and
+therefore it doesn't affect any preprocessor directives, like the definitions
+of symbolic constants and macroinstructions - when the assembler recognizes the
+"if" directive, all the preprocessing has been already finished.
+  The logical expression consist of logical values and logical operators. The
+logical operators are "~" for logical negation, "&" for logical and, "|" for
+logical or. The negation has the highest priority. Logical value can be a
+numerical expression, it will be false if it is equal to zero, otherwise it
+will be true. Two numerical expression can be compared using one of the
+following operators to make the logical value: "=" (equal), "<" (less),
+">" (greater), "<=" (less or equal), ">=" (greater or equal),
+"<>" (not equal).
+  The "used" operator followed by a symbol name, is the logical value that
+checks whether the given symbol is used somewhere (it returns correct result
+even if symbol is used only after this check). The "defined" operator can be
+followed by any expression, usually just by a single symbol name; it checks
+whether the given expression contains only symbols that are defined in the
+source and accessible from the current position.
+  The following simple example uses the "count" constant that should be
+defined somewhere in source:
+
+    if count>0
+        mov cx,count
+        rep movsb
+    end if
+
+These two assembly instructions will be assembled only if the "count" constant
+is greater than 0. The next sample shows more complex conditional structure:
+
+    if count & ~ count mod 4
+        mov cx,count/4
+        rep movsd
+    else if count>4
+        mov cx,count/4
+        rep movsd
+        mov cx,count mod 4
+        rep movsb
+    else
+        mov cx,count
+        rep movsb
+    end if
+
+The first block of instructions gets assembled when the "count" is non zero and
+divisible by four, if this condition is not met, the second logical expression,
+which follows the "else if", is evaluated and if it's true, the second block
+of instructions get assembled, otherwise the last block of instructions, which
+follows the line containing only "else", is assembled.
+  There are also operators that allow comparison of values being any chains of
+symbols. The "eq" compares two such values whether they are exactly the same.
+The "in" operator checks whether given value is a member of the list of values
+following this operator, the list should be enclosed between "<" and ">"
+characters, its members should be separated with commas. The symbols are
+considered the same when they have the same meaning for the assembler - for
+example "pword" and "fword" for assembler are the same and thus are not
+distinguished by the above operators. In the same way "16 eq 10h" is the true
+condition, however "16 eq 10+4" is not.
+  The "eqtype" operator checks whether the two compared values have the same
+structure, and whether the structural elements are of the same type. The
+distinguished types include numerical expressions, individual quoted strings,
+floating point numbers, address expressions (the expressions enclosed in square
+brackets or preceded by "ptr" operator), instruction mnemonics, registers, size
+operators, jump type and code type operators. And each of the special
+characters that act as a separators, like comma or colon, is the separate type
+itself. For example, two values, each one consisting of register name followed
+by comma and numerical expression, will be regarded as of the same type, no
+matter what kind of register and how complicated numerical expression is used;
+with exception for the quoted strings and floating point values, which are the
+special kinds of numerical expressions and are treated as different types. Thus
+"eax,16 eqtype fs,3+7" condition is true, but "eax,16 eqtype eax,1.6" is false.
+
+
+2.2.2 Repeating blocks of instructions
 
 "times" directive repeats one instruction specified number of times. It
 should be followed by numerical expression specifying number of repeats and
@@ -2235,81 +2319,40 @@ The generated code will store byte values from one to eight in the memory
 addressed by BX register.
   Number of repeats can be zero, in that case the instructions are not
 assembled at all.
+  The "break" directive allows to stop repeating earlier and continue assembly
+from the first line after the "end repeat". Combined with the "if" directive it
+allows to stop repeating under some special condition, like:
 
+    s = x/2
+    repeat 100
+        if x/s = s
+            break
+        end if
+        s = (s+x/s)/2
+    end repeat
 
-2.2.2  Conditional assembly
+  The "while" directive repeats the block of instructions as long as the
+condition specified by the logical expression following it is true. The block
+of instructions to be repeated should end with the "end while" directive.
+Before each repetition the logical expression is evaluated and when its value
+is false, the assembly is continued starting from the first line after the
+"end while". Also in this case the "%" symbol holds the number of current
+repeat. The "break" directive can be used to stop this kind of loop in the same
+way as with "repeat" directive. The previous sample can be rewritten to use the
+"while" instead of "repeat" this way:
 
-"if" directive causes come block of instructions to be assembled only under
-certain condition. It should be followed by logical expression specifying the
-condition, instructions in next lines will be assembled only when this
-condition is met, otherwise they will be skipped. The optional "else if"
-directive followed with logical expression specifying additional condition
-begins the next block of instructions that will be assembled if previous
-conditions were not met, and the additional condition is met. The optional
-"else" directive begins the block of instructions that will be assembled if
-all the conditions were not met. The "end if" directive ends the last block of
-instructions.
-  You should note that "if" directive is processed at assembly stage and
-therefore it doesn't affect any preprocessor directives, so if you put some
-symbolic constants or macroinstructions inside such block, they will get
-defined even when the condition is not met.
-  The logical expression consist of logical values and logical operators. The
-logical operators are "~" for logical negation, "&" for logical and, "|" for
-logical or. The negation has the highest priority. Logical value can be a
-numerical expression, it will be false if it is equal to zero, otherwise it
-will be true. Two numerical expression can be compared using one of the
-following operators to make the logical value: "=" (equal), "<" (less),
-">" (greater), "<=" (less or equal), ">=" (greater or equal),
-"<>" (not equal).
-  There are also operators that allow comparision of values being any chains of
-symbols. The "eq" compares two such values whether they are exactly the same.
-The "in" operator checks whether given value is a member of the list of values
-following this operator, the list should be enclosed between "<" and ">"
-characters, its members should be separated with commas. The "eqtype" operator
-checks whether the two compared values have the same structure, and whether the
-structural elements are of the same type. The distinguished types include
-numerical expressions, individual quoted strings, floating point numbers,
-address expressions (the expressions enclosed in square brackets or preceded by
-"ptr" operator), instruction mnemonics, registers, size operators, jump type
-and code type operators. For example, two values, each one consisting of
-register name followed by comma and numerical expression, will be be regarded
-as of the same type, no matter what kind of register and how complicated
-numerical expression is used (with exception for quoted strings and floating
-point values, which are special kinds of numerical expressions and are treated
-as different types).
-  The "used" operator should be followed by a symbol name, it checks whether
-the given symbol is used somewhere (it returns correct result even if symbol is
-used only after this check). The "defined" operator can be followed by any
-expression, usually just by a single symbol name; it checks whether the given
-expression contains only symbols that are defined in the source and accessible
-from the current position.
-  The following simple example uses the "count" constant that should be
-defined somewhere in source:
+    s = x/2
+    while x/s <> s
+        s = (s+x/s)/2
+        if % = 100
+            break
+        end if
+    end while
 
-    if count>0
-        mov cx,count
-        rep movsb
-    end if
-
-These two assembly instructions will be assembled only if the "count" constant
-is greater than 0.
-  The next example is more complex and assumes that the symbolic constant
-"reg" has been defined:
-
-    if reg in <cs,ds,es,fs,gs,ss>
-        mov dx,reg
-        add ax,dx
-        shl ax,1
-    else if reg eq ax
-        shl ax,2
-    else
-        add ax,reg
-        shl ax,1
-    end if
-
-The first block of instructions will be assembled only if the value of
-"reg" is segment register, otherwise the second or third block will
-assembled whether the value of "reg" is AX register or not.
+  The blocks defined with "if", "repeat" and "while" can be nested in any
+order, however they should be closed in the same order in which they were
+started. The "break" directive always stops processing the block that was
+started last with either the "repeat" or "while" directive.
 
 
 2.2.3  Addressing spaces
@@ -2343,6 +2386,16 @@ current addressing space. The "$$" symbol is always equal to the base address
 of current addressing space, and the "$" symbol is the address of current
 position in that addressing space, therefore these two values define limits
 of the area, where "load" and "store" can operate.
+  Combining the "load" and "store" directives allows to do things like encoding
+some of the already generated code. For example to encode the whole code
+generated in current addressing space you can use such block of directives:
+
+    repeat $-$$
+        load a byte from $$+%-1
+        store byte a xor c at $$+%-1
+    end repeat
+
+and each byte of code will be xored with the value defined by "c" constant.
   "virtual" defines virtual data at specified address. This data won't be
 included in the output file, but labels defined there can be used in other
 parts of source. This directive can be followed by "at" operator and the
@@ -2402,37 +2455,125 @@ addressing space.
 2.2.4  Other directives
 
 "align" directive aligns code or data to the specified boundary. It should
-be followed by a numerical expression specyfing the number of bytes, to the
+be followed by a numerical expression specifying the number of bytes, to the
 multiply of which the current address has to be aligned. The boundary value
 has to be the power of two.
+  The "align" directive fills the bytes that had to be skipped to perform the
+alignment with the "nop" instructions and at the same time marks this area as
+uninitialized data, so if it is placed among other uninitialized data that
+wouldn't take space in the output file, the alignment bytes will act the same
+way. If you need to fill the alignment area with some other values, you can
+combine "align" with "virtual" to get the size of alignment needed and then
+create the alignment yourself, like:
+
+    virtual
+        align 16
+        a = $ - $$
+    end virtual
+    db a dup 0
+
+The "a" constant is defined to be the difference between address after
+alignment and address of the "virtual" block (see previous section), so it is
+equal to the size of needed alignment space.
   "display" directive displays the message at the assembly time. It should
 be followed by the quoted strings or byte values, separated with commas. It
 can be used to display values of some constants, for example:
 
-    d1 = '0'+ $ shr 12 and 0Fh
-    d2 = '0'+ $ shr 8 and 0Fh
-    d3 = '0'+ $ shr 4 and 0Fh
-    d4 = '0'+ $ and 0Fh
-    if d1>'9'
-        d1 = d1 + 'A'-'9'-1
-    end if
-    if d2>'9'
-        d2 = d2 + 'A'-'9'-1
-    end if
-    if d3>'9'
-        d3 = d3 + 'A'-'9'-1
-    end if
-    if d4>'9'
-        d4 = d4 + 'A'-'9'-1
-    end if
-    display 'Current offset is 0x',d1,d2,d3,d4,13,10
+    bits = 16
+    display 'Current offset is 0x'
+    repeat bits/4
+        d = '0' + $ shr (bits-%*4) and 0Fh
+        if d > '9'
+            d = d + 'A'-'9'-1
+        end if
+        display d
+    end repeat
+    display 13,10
 
-Instructions before the "display" directive calculate four digits of 16-bit
-value and convert them into characters for displaying. Note that this won't
-work if the adresses in current addressing space are relocatable (as it might
-happen with PE or object output formats), since only absolute values can be
-used this way. The absolute value may be obtained by calculating the relative
-address, like "$-$$", or "rva $" in case of PE format.
+This block of directives calculates the four hexadecimal digits of 16-bit value
+and converts them into characters for displaying. Note that this won't work if
+the adresses in current addressing space are relocatable (as it might happen
+with PE or object output formats), since only absolute values can be used this
+way. The absolute value may be obtained by calculating the relative address,
+like "$-$$", or "rva $" in case of PE format.
+
+
+2.2.5  Multiple passes
+
+Because the assembler allows to reference some of the labels or constants
+before they get actually defined, it has to predict the values of such labels
+and if there is even a suspicion that prediction failed in at least one case,
+it does one more pass, assembling the whole source, this time doing better
+prediction based on the values the labels got in the previous pass.
+  The changing values of labels can cause some instructions to have encodings
+of different length, and this can cause the change in values of labels again.
+And since the labels and constants can also be used inside the expressions that
+affect the behavior of control directive, the whole block of source can be
+processed completely differently during the new pass. Thus the assembler does
+more and more passes, each time trying to do better predictions to approach
+the final solution, when all the values get predicted correctly. It uses
+various method for predicting the values, which has been chosen to allow
+finding in a few passes the solution of possibly smallest length for the most
+of the programs.
+  Some of the errors, like the values not fitting in required boundaries, are
+not signaled during those intermediate passes, since it may happen that when
+some of the values are predicted better, these errors will disappear. However
+if assembler meets some illegal syntax construction or unknown instruction, it
+always stops immediately. Also defining some label more than once causes such
+error, because it makes the predictions groundless.
+  Only the messages created with the "display" directive during the last
+performed pass get actually displayed. In case when the assembly has been
+stopped due to an error, these messages may reflect the predicted values that
+are not yet resolved correctly.
+  The solution may sometimes not exist and in such cases the assembler will
+never manage to make correct predictions - for this reason there is a limit for
+a number of passes, and when assembler reaches this limit, it stops and
+displays the message that it is not able to generate the correct output.
+Consider the following example:
+
+    if ~ defined alpha
+        alpha:
+    end if
+
+The "defined" operator gives the true value when the expression following it
+could be calculated in this place, what in this case means that the "alpha"
+label is defined somewhere. But the above block causes this label to be defined
+only when the value given by "defined" operator is false, what leads to an
+antynomy and makes it impossible to resolve such code. When processing the "if"
+directive assembler has to predict whether the "alpha" label will be defined
+somewhere (it wouldn't have to predict only if the label was already defined
+earlier in this pass), and whatever the prediction is, the opposite always
+happens. Thus the assembly will fail, unless the "alpha" label is defined
+somewhere in source preceding the above block of instructions - in such case,
+as it was already noted, the prediction is not needed and the block will just
+get skipped.
+  The above sample might have been written as a try to define the label only
+when it was not yet defined. It fails, because the "defined" operator does
+check whether the label is defined anywhere, and this includes the definition
+inside this conditionally processed block. However there is a way to overcome
+this problem:
+
+    if ~ defined alpha | defined @f
+        alpha:
+        @@:
+    end if
+
+The "@f" is always the same label as the nearest "@@" symbol in the source
+following it, so the above sample would mean the same if any unique name was
+used instead of the anonymous label. When the "alpha" label was not yet
+defined, the assembler will be predicting the "defined alpha" to be false, this
+will however cause the both labels to get defined. So in the next pass
+assembler will predict that the both labels will get defined, and this will
+cause them both to be defined again - thus the predictions will match with the
+results and the assembly process will approach the correct solution. The
+anonymous label acts here as a kind of marker that the "alpha" label is defined
+in this place.
+  From this example you can conclude, that the prediction for the "defined"
+operator is very straightforward - the label is predicted to be defined only
+when it was defined during the previous pass (and if it was defined during the
+current pass, no prediction is needed). The same applies to the "used"
+operator. But the predictions for the values of labels are not so simple and
+you should never rely on them this way.
 
 
 2.3  Preprocessor directives
@@ -2477,7 +2618,7 @@ this value to the new constant. For example:
     NULL equ d 0
     d equ edx
 
-After there three definitions the value of "NULL" constant is "dword 0" and
+After these three definitions the value of "NULL" constant is "dword 0" and
 the value of "d" is "edx". So, for example, "push NULL" will be assembled as
 "push dword 0" and "push d" will be assembled as "push edx". And if then the
 following line was put:
@@ -2617,6 +2758,11 @@ needs, the rest of arguments will have empty values. When three operands are
 given, this macroinstruction will become two macroinstructions of the previous
 definition, so "mov es,ds,dx" will be assembled as "push ds", "pop es" and
 "mov ds,dx".
+  By placing the "*" after the name of argument you can mark the argument as
+required - preprocessor won't allow it to have an empty value. For example the
+above macroinstruction could be declared as "macro mov op1*,op2*,op3" to make
+sure that first two arguments will always have to be given some non empty
+values.
   When it's needed to provide macroinstruction with argument that contains
 some commas, such argument should be enclosed between "<" and ">" characters.
 If it contains more than one "<" character, the same number of ">" should be
@@ -2658,9 +2804,11 @@ will be processed into these two instructions separately. For example
   There are some special directives available only inside the definitions of
 macroinstructions. "local" directive defines local names, which will be
 replaced with unique values each time the macroinstruction is used. It should
-be followed by names separated with commas. This directive is usually needed
-for the constants or labels that macroinstruction defines and uses internally.
-For example:
+be followed by names separated with commas. If the name given as parameter to
+"local" directive begins with a dot or two dots, the unique labels generated
+by each evaluation of macroinstruction will have the same properties.
+This directive is usually needed for the constants or labels that
+macroinstruction defines and uses internally. For example:
 
     macro movstr
      {
@@ -2774,7 +2922,7 @@ When label defined with such macro is not used in the source, macro will warn
 you with the message, informing to which label it applies.
   To make macroinstruction behaving differently when some of the arguments are
 of some special type, for example a quoted strings, you can use "eqtype"
-comparision operator. Here's an example of utilizing it to distinguish a
+comparison operator. Here's an example of utilizing it to distinguish a
 quoted string from an other argument:
 
     macro message arg
@@ -2919,7 +3067,7 @@ amount of duplicates of the block enclosed with braces. The basic syntax is
 "rept" directive followed by number (it cannot be an expression, since
 preprocessor doesn't do calculations, if you need repetitions based on values
 calculated by assembler, use one of the code repeating directives that are
-processed by assembler, see 2.2.1), and then block of source enclosed between
+processed by assembler, see 2.2.2), and then block of source enclosed between
 the "{" and "}" characters. The simplest example:
 
     rept 5 { in al,dx }
@@ -2970,6 +3118,42 @@ of counter. For example:
 will generate code which will clear the contents of eight SSE registers.
 You can define multiple counters separated with commas, and each one can have
 different base.
+  The "irp" directive iterates the single argument through the given list of
+parameters. The syntax is "irp" followed by the argument name, then the comma
+and then the list of parameters. The parameters are specified in the same
+way like in the invocation of standard macroinstruction, so they have to be
+separated with commas and each one can be enclosed with the "<" and ">"
+characters. Also the name of argument may be followed by "*" to mark that it
+cannot get an empty value. Such block:
+
+   irp value, 2,3,5
+    { db value }
+
+will generate lines:
+
+   db 2
+   db 3
+   db 5
+
+The "irps" directive iterates through the given list of symbols, it should
+be followed by the argument name, then the comma and then the sequence of any
+symbols. Each symbol in this sequence, no matter whether it is the name
+symbol, symbol character or quoted string, becomes an argument value for one
+iteration. If there are no symbols following the comma, no iteration is done
+at all. This example:
+
+   irps reg, al bx ecx
+    { xor reg,reg }
+
+will generate lines:
+
+   xor al,al
+   xor bx,bx
+   xor ecx,ecx
+
+The blocks defined by the "irp" and "irps" directives are also processed in
+the same way as any macroinstructions, so operators and directives specific
+to macroinstructions may be freely used also in this case.
 
 
 2.3.6  Conditional preprocessing
@@ -3109,7 +3293,7 @@ then replaced with matched value when generating the new lines defined by the
 block enclosed with braces. So if the "list" had value "1,2", the above line
 would generate the line containing "foo 1,2", which would then go through the
 standard preprocessing.
-   There is one more special case - when preprocessor goes to checking the
+  There is one more special case - when preprocessor goes to checking the
 second symbol in the line and it happens to be the colon character (what is
 then interpreted by assembler as definition of a label), it stops in this
 place and finishes the preprocessing of the first symbol (so if it's the
@@ -3124,11 +3308,47 @@ by assembler, like:
 However if the label becomes broken during preprocessing (for example when
 it is the symbolic constant with empty value), only replacing of the symbolic
 constants is continued for the rest of line.
+  It should be remembered, that the jobs performed by preprocessor are the
+preliminary operations on the texts symbols, that are done in a simple
+single pass before the main process of assembly. The text that is the
+result of preprocessing is passed to assembler, and it then does its
+multiple passes on it. Thus the control directives, which are recognized and
+processed only by the assembler - as they are dependent on the numerical
+values that may even vary between passes - are not recognized in any way by
+the preprocessor and have no effect on the preprocessing. Consider this
+example source:
+
+    if 0
+    a = 1
+    b equ 2
+    end if
+    dd b
+
+When it is preprocessed, they only directive that is recognized by the
+preprocessor is the "equ", which defines symbolic constant "b", so later
+in the source the "b" symbol is replaced with the value "2". Except for this
+replacement, the other lines are passes unchanged to the assembler. So
+after preprocessing the above source becomes:
+
+    if 0
+    a = 1
+    end if
+    dd 2
+
+Now when assembler processes it, the condition for the "if" is false, and
+the "a" constant doesn't get defined. However symbolic constant "b" was
+processed normally, even though its definition was put just next to the one
+of "a". So because of the possible confusion you should be very careful
+every time when mixing the features of preprocessor and assembler - always
+try to imagine what your source will become after the preprocessing, and
+thus what the assembler will see and do its multiple passes on.
 
 
 2.4  Formatter directives
 
-"format" directive followed by the format identifier allows to select the
+These directives are actually also a kind of control directives, with the
+purpose of controlling the format of generated code.
+  "format" directive followed by the format identifier allows to select the
 output format. This directive should be put at the beginning of the source.
 Default output format is a flat binary file, it can also be selected by using
 "format binary" directive.
@@ -3179,6 +3399,9 @@ declaration:
 
     format PE GUI 4.0 DLL at 7000000h on 'stub.exe'
 
+  To create PE file for the x86-64 architecture, use "PE64" keyword instead of
+"PE" in the format declaration, in such case the long mode code is generated
+by default.
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then one or more section flags can
 follow. Available flags are: "code", "data", "readable", "writeable",

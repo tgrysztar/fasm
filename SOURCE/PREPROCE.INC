@@ -120,8 +120,6 @@ convert_line:
 	je	convert_line_data
 	cmp	al,9
 	je	convert_line_data
-	dec	esi
-	lods	byte [esi]
 	mov	ah,al
 	mov	ebx,characters
 	xlat	byte [ebx]
@@ -336,6 +334,11 @@ convert_line:
 	ret
 
 preprocess_line:
+	mov	eax,esp
+	sub	eax,100h
+	jc	stack_overflow
+	cmp	eax,[stack_limit]
+	jb	stack_overflow
 	push	ecx esi
       preprocess_current_line:
 	mov	esi,[current_line]
@@ -384,7 +387,7 @@ preprocess_line:
 	inc	esi
 	cmp	al,1Ah
 	jne	not_preprocessor_symbol
-	cmp	cl,4
+	cmp	cl,3
 	jb	not_preprocessor_directive
 	push	edi
 	mov	edi,preprocessor_directives
@@ -440,30 +443,29 @@ preprocess_line:
 	call	get_preprocessor_symbol
 	jc	struc_name_ok
 	mov	ecx,[edx+12]
-	inc	ecx
-	lea	esi,[edi-1]
+	add	ecx,3
 	lea	ebx,[edi+ecx]
+	mov	ecx,edi
+	sub	ecx,[struc_label]
+	lea	esi,[edi-1]
 	lea	edi,[ebx-1]
-	mov	ecx,ebx
-	sub	ecx,[struc_name]
-	sub	ecx,2
 	std
-	call	move_data
+	rep	movs byte [edi],[esi]
 	cld
-	mov	edi,[struc_name]
-	sub	edi,2
+	mov	edi,[struc_label]
 	mov	esi,[edx+8]
 	mov	ecx,[edx+12]
 	add	[struc_name],ecx
-	inc	[struc_name]
+	add	[struc_name],3
 	call	move_data
 	mov	al,3Ah
 	stos	byte [edi]
-	mov	byte [edi],3Bh
+	mov	ax,3Bh
+	stos	word [edi]
 	mov	edi,ebx
 	pop	esi
 	add	esi,[edx+12]
-	inc	esi
+	add	esi,3
 	pop	edx
 	jmp	use_macro
       struc_name_ok:
@@ -761,6 +763,10 @@ define_macro:
 	inc	esi
 	add	esi,eax
 	lods	byte [esi]
+	cmp	al,'*'
+	jne	macro_argument_end
+	lods	byte [esi]
+      macro_argument_end:
 	cmp	al,','
 	je	skip_macro_arguments
 	cmp	al,']'
@@ -833,8 +839,14 @@ define_macro:
 rept_directive:
 	mov	[base_code],0
 	jmp	define_instant_macro
-match_directive:
+irp_directive:
 	mov	[base_code],1
+	jmp	define_instant_macro
+irps_directive:
+	mov	[base_code],2
+	jmp	define_instant_macro
+match_directive:
+	mov	[base_code],10h
 define_instant_macro:
 	mov	al,[macro_status]
 	and	al,0F0h
@@ -843,34 +855,40 @@ define_instant_macro:
 	mov	eax,[current_line]
 	mov	[error_line],eax
 	mov	[instant_macro_start],esi
-	cmp	[base_code],1
+	cmp	[base_code],10h
 	je	prepare_match
       skip_parameters:
 	lods	byte [esi]
 	or	al,al
-	jz	line_preprocessed
+	jz	instant_macro_parameters_end
 	cmp	al,'{'
-	je	found_macro_block
+	je	instant_macro_parameters_end
 	cmp	al,22h
-	je	invalid_macro_arguments
+	je	skip_quoted_parameter
 	cmp	al,1Ah
 	jne	skip_parameters
 	lods	byte [esi]
 	movzx	eax,al
 	add	esi,eax
 	jmp	skip_parameters
-prepare_match:
-	call	skip_pattern
-	mov	[value_type],80h+10b
-	call	process_symbolic_constants
+      skip_quoted_parameter:
+	lods	dword [esi]
+	add	esi,eax
+	jmp	skip_parameters
+      instant_macro_parameters_end:
 	dec	esi
-	mov	[match_end],esi
+	mov	[parameters_end],esi
 	lods	byte [esi]
 	cmp	al,'{'
 	je	found_macro_block
 	or	al,al
 	jnz	invalid_macro_arguments
 	jmp	line_preprocessed
+prepare_match:
+	call	skip_pattern
+	mov	[value_type],80h+10b
+	call	process_symbolic_constants
+	jmp	instant_macro_parameters_end
       skip_pattern:
 	lods	byte [esi]
 	or	al,al
@@ -1224,8 +1242,8 @@ process_macro_operators:
 use_macro:
 	push	[free_additional_memory]
 	push	[macro_symbols]
-	push	[counter_limit]
 	mov	[macro_symbols],0
+	push	[counter_limit]
 	push	dword [edx+4]
 	mov	dword [edx+4],1
 	push	edx
@@ -1242,10 +1260,31 @@ use_macro:
 	je	arguments_end
 	inc	esi
 	cmp	al,'['
-	jne	get_macro_argument
+	jne	get_macro_arguments
 	mov	ebp,esi
 	inc	esi
 	inc	[counter_limit]
+      get_macro_arguments:
+	call	get_macro_argument
+	lods	byte [esi]
+	cmp	al,','
+	je	next_argument
+	cmp	al,']'
+	je	next_arguments_group
+	dec	esi
+	jmp	arguments_end
+      next_argument:
+	cmp	byte [ebx],','
+	jne	process_macro_arguments
+	inc	ebx
+	jmp	process_macro_arguments
+      next_arguments_group:
+	cmp	byte [ebx],','
+	jne	arguments_end
+	inc	ebx
+	inc	[counter_limit]
+	mov	esi,ebp
+	jmp	process_macro_arguments
       get_macro_argument:
 	lods	byte [esi]
 	movzx	ecx,al
@@ -1255,7 +1294,7 @@ use_macro:
 	xchg	esi,ebx
 	mov	[edx+12],esi
 	cmp	byte [esi],'<'
-	jne	get_argument_value
+	jne	simple_argument
 	inc	esi
 	mov	[edx+12],esi
 	mov	ecx,1
@@ -1293,9 +1332,10 @@ use_macro:
 	mov	eax,esi
 	sub	eax,[edx+12]
 	dec	eax
+	or	eax,80000000h
 	mov	[edx+8],eax
 	jmp	argument_value_ok
-      get_argument_value:
+      simple_argument:
 	lods	byte [esi]
 	or	al,al
 	jz	argument_value_end
@@ -1304,15 +1344,15 @@ use_macro:
 	cmp	al,22h
 	je	argument_string
 	cmp	al,1Ah
-	jne	get_argument_value
+	jne	simple_argument
 	movzx	eax,byte [esi]
 	inc	esi
 	add	esi,eax
-	jmp	get_argument_value
+	jmp	simple_argument
       argument_string:
 	lods	dword [esi]
 	add	esi,eax
-	jmp	get_argument_value
+	jmp	simple_argument
       argument_value_end:
 	dec	esi
 	mov	eax,esi
@@ -1320,25 +1360,13 @@ use_macro:
 	mov	[edx+8],eax
       argument_value_ok:
 	xchg	esi,ebx
-	lods	byte [esi]
-	cmp	al,','
-	je	next_argument
-	cmp	al,']'
-	je	next_arguments_group
-	dec	esi
-	jmp	arguments_end
-      next_argument:
-	cmp	byte [ebx],','
-	jne	process_macro_arguments
-	inc	ebx
-	jmp	process_macro_arguments
-      next_arguments_group:
-	cmp	byte [ebx],','
-	jne	arguments_end
-	inc	ebx
-	inc	[counter_limit]
-	mov	esi,ebp
-	jmp	process_macro_arguments
+	cmp	byte [esi],'*'
+	jne	macro_argument_ok
+	cmp	dword [edx+8],0
+	je	invalid_macro_arguments
+	inc	esi
+      macro_argument_ok:
+	ret
       arguments_end:
 	cmp	byte [ebx],0
 	jne	invalid_macro_arguments
@@ -1357,8 +1385,10 @@ use_instant_macro:
 	mov	[current_line],eax
 	mov	[macro_line],eax
 	mov	esi,[instant_macro_start]
-	cmp	[base_code],1
-	je	do_match
+	cmp	[base_code],10h
+	jae	do_match
+	cmp	[base_code],0
+	jne	do_irp
 	call	get_number
 	jc	invalid_value
 	or	ebp,ebp
@@ -1372,8 +1402,8 @@ use_instant_macro:
 	jae	value_out_of_range
 	push	[free_additional_memory]
 	push	[macro_symbols]
-	push	[counter_limit]
 	mov	[macro_symbols],0
+	push	[counter_limit]
 	mov	[struc_name],0
 	mov	[counter_limit],eax
 	lods	byte [esi]
@@ -1419,23 +1449,112 @@ use_instant_macro:
 	jmp	add_rept_counter
       rept_counters_ok:
 	dec	esi
+      instant_macro_parameters_ok:
 	xor	eax,eax
 	call	process_macro
 	pop	[counter_limit]
 	pop	[macro_symbols]
 	pop	[free_additional_memory]
       instant_macro_done:
-	pop	ebx esi eax
+	pop	ebx esi edx
 	cmp	byte [ebx],0
 	je	line_preprocessed
 	mov	[current_line],edi
 	mov	ecx,4
 	rep	movs dword [edi],[esi]
+	test	[macro_status],0Fh
+	jz	instant_macro_attached_line
+	mov	ax,3Bh
+	stos	word [edi]
+      instant_macro_attached_line:
 	mov	esi,ebx
-	sub	eax,ebx
-	mov	ecx,eax
+	sub	edx,ebx
+	mov	ecx,edx
 	call	move_data
 	jmp	preprocess_current_line
+do_irp:
+	cmp	byte [esi],1Ah
+	jne	invalid_macro_arguments
+	movzx	eax,byte [esi+1]
+	lea	esi,[esi+2+eax]
+	lods	byte [esi]
+	cmp	[base_code],1
+	ja	irps_name_ok
+	cmp	al,'*'
+	jne	irp_name_ok
+	lods	byte [esi]
+      irp_name_ok:
+	cmp	al,','
+	jne	invalid_macro_arguments
+	jmp	irp_parameters_start
+      irps_name_ok:
+	cmp	al,','
+	jne	invalid_macro_arguments
+	mov	al,[esi]
+	or	al,al
+	jz	instant_macro_done
+	cmp	al,'{'
+	je	instant_macro_done
+      irp_parameters_start:
+	xor	eax,eax
+	push	[free_additional_memory]
+	push	[macro_symbols]
+	mov	[macro_symbols],eax
+	push	[counter_limit]
+	mov	[counter_limit],eax
+	mov	[struc_name],eax
+	mov	ebx,esi
+	cmp	[base_code],1
+	ja	get_irps_parameter
+	mov	edx,[parameters_end]
+	mov	al,[edx]
+	push	eax
+	mov	byte [edx],0
+      get_irp_parameter:
+	inc	[counter_limit]
+	mov	esi,[instant_macro_start]
+	inc	esi
+	call	get_macro_argument
+	cmp	byte [ebx],','
+	jne	irp_parameters_end
+	inc	ebx
+	jmp	get_irp_parameter
+      irp_parameters_end:
+	mov	esi,ebx
+	pop	eax
+	mov	[esi],al
+	jmp	instant_macro_parameters_ok
+      get_irps_parameter:
+	mov	esi,[instant_macro_start]
+	inc	esi
+	lods	byte [esi]
+	movzx	ecx,al
+	inc	[counter_limit]
+	mov	eax,[counter_limit]
+	call	add_macro_symbol
+	mov	[edx+12],ebx
+	cmp	byte [ebx],1Ah
+	je	irps_symbol
+	cmp	byte [ebx],22h
+	je	irps_quoted_string
+	mov	eax,1
+	jmp	irps_parameter_ok
+      irps_quoted_string:
+	mov	eax,[ebx+1]
+	add	eax,1+4
+      irps_symbol:
+	movzx	eax,byte [ebx+1]
+	add	eax,1+1
+      irps_parameter_ok:
+	mov	[edx+8],eax
+	add	ebx,eax
+	cmp	byte [ebx],0
+	je	irps_parameters_end
+	cmp	byte [ebx],'{'
+	jne	get_irps_parameter
+      irps_parameters_end:
+	mov	esi,ebx
+	jmp	instant_macro_parameters_ok
 do_match:
 	mov	ebx,esi
 	call	skip_pattern
@@ -1446,7 +1565,7 @@ do_match:
 	je	free_match
 	cmp	al,','
 	jne	instant_macro_done
-	cmp	esi,[match_end]
+	cmp	esi,[parameters_end]
 	je	matched_pattern
 	jmp	instant_macro_done
       free_match:
@@ -1464,7 +1583,7 @@ do_match:
 	je	free_match
       find_exact_match:
 	call	exact_match
-	cmp	esi,[match_end]
+	cmp	esi,[parameters_end]
 	je	end_matching
 	cmp	byte [ebx],1Ah
 	je	free_match
@@ -1489,7 +1608,7 @@ do_match:
 	mov	[edx-4],esi
 	jmp	find_exact_match
       skip_match_element:
-	cmp	esi,[match_end]
+	cmp	esi,[parameters_end]
 	je	cannot_match
 	mov	al,[esi]
 	cmp	al,1Ah
@@ -1512,7 +1631,7 @@ do_match:
 	stc
 	ret
       exact_match:
-	cmp	esi,[match_end]
+	cmp	esi,[parameters_end]
 	je	exact_match_complete
 	mov	ah,[esi]
 	mov	al,[ebx]
@@ -1569,12 +1688,13 @@ do_match:
 	cmp	byte [ebx],','
 	jne	instant_macro_done
       matched_pattern:
+	xor	eax,eax
 	push	[free_additional_memory]
 	push	[macro_symbols]
+	mov	[macro_symbols],eax
 	push	[counter_limit]
-	mov	[macro_symbols],0
-	mov	[struc_name],0
-	mov	[counter_limit],0
+	mov	[counter_limit],eax
+	mov	[struc_name],eax
 	push	esi edi edx
       add_matched_symbol:
 	cmp	edi,[esp]
@@ -1594,12 +1714,7 @@ do_match:
 	jmp	add_matched_symbol
       matched_symbols_ok:
 	pop	edx edi esi
-	xor	eax,eax
-	call	process_macro
-	pop	[counter_limit]
-	pop	[macro_symbols]
-	pop	[free_additional_memory]
-	jmp	instant_macro_done
+	jmp	instant_macro_parameters_ok
 
 process_macro:
 	push	dword [macro_status]
@@ -1725,6 +1840,7 @@ process_macro:
       replace_macro_symbol:
 	pop	edi eax
 	mov	ecx,[edx+8]
+	and	ecx,not 80000000h
 	mov	edx,[edx+12]
 	or	edx,edx
 	jz	replace_macro_counter
@@ -1752,14 +1868,24 @@ process_macro:
 	call	get_macro_symbol
 	pop	eax
 	jc	not_macro_symbol
-	cmp	eax,[counter_limit]
-	je	replace_macro_symbol
 	pop	edi
 	push	ecx
 	mov	ecx,[edx+8]
 	mov	edx,[edx+12]
 	xchg	esi,edx
+	btr	ecx,31
+	jc	enclose_macro_symbol_value
 	rep	movs byte [edi],[esi]
+	jmp	macro_symbol_value_ok
+      enclose_macro_symbol_value:
+	mov	byte [edi],'<'
+	inc	edi
+	rep	movs byte [edi],[esi]
+	mov	byte [edi],'>'
+	inc	edi
+      macro_symbol_value_ok:
+	cmp	eax,[counter_limit]
+	je	multiple_macro_symbol_values_ok
 	mov	byte [edi],','
 	inc	edi
 	mov	esi,edx
@@ -1767,6 +1893,10 @@ process_macro:
 	push	edi
 	sub	esi,ecx
 	jmp	multiple_macro_symbol_values
+      multiple_macro_symbol_values_ok:
+	pop	ecx eax
+	mov	esi,edx
+	jmp	process_macro_line_element
       replace_macro_counter:
 	mov	eax,[counter]
 	and	eax,not 80000000h
@@ -1856,7 +1986,24 @@ process_macro:
 	rep	movs byte [edi],[esi]
 	xchg	esi,ebx
 	mov	eax,[esp+8+12]
+	cmp	byte [eax],3Bh
+	je	process_macro_line_element
+	cmp	byte [eax],1Ah
+	jne	disable_replaced_struc_name
 	mov	byte [eax],3Bh
+	jmp	process_macro_line_element
+      disable_replaced_struc_name:
+	mov	ebx,[esp+8+8]
+	push	esi edi
+	lea	edi,[ebx-3]
+	lea	esi,[edi-2]
+	lea	ecx,[esi+1]
+	sub	ecx,eax
+	std
+	rep	movs byte [edi],[esi]
+	cld
+	mov	word [eax],3Bh
+	pop	edi esi
 	jmp	process_macro_line_element
       skip_foreign_symbol:
 	lods	byte [esi]
@@ -1891,7 +2038,7 @@ process_macro:
       process_next_line:
 	inc	ecx
 	mov	[macro_line],esi
-	add	esi,18
+	add	esi,16+2
 	jmp	process_macro_line
       macro_block_processed:
 	call	close_macro_block
@@ -1944,9 +2091,24 @@ local_symbols:
 	mov	eax,edi
 	sub	eax,[edx+12]
 	mov	[edx+8],eax
-	pop	ecx
 	xor	al,al
 	stos	byte [edi]
+	mov	eax,locals_counter
+	movzx	ecx,byte [eax]
+      counter_loop:
+	inc	byte [eax+ecx]
+	cmp	byte [eax+ecx],':'
+	jb	counter_ok
+	jne	letter_digit
+	mov	byte [eax+ecx],'A'
+	jmp	counter_ok
+      letter_digit:
+	cmp	byte [eax+ecx],'F'
+	jbe	counter_ok
+	mov	byte [eax+ecx],'0'
+	loop	counter_loop
+      counter_ok:
+	pop	ecx
 	lods	byte [esi]
 	cmp	al,'}'
 	je	macro_block_processed
@@ -1986,10 +2148,6 @@ reverse_block:
 	mov	[macro_block_line_number],ecx
 	jmp	process_macro_line
 close_macro_block:
-	push	ecx
-	mov	eax,locals_counter
-	call	increase_counter
-	pop	ecx
 	cmp	[counter],0
 	je	block_closed
 	jl	reverse_counter
@@ -2095,30 +2253,6 @@ add_macro_symbol:
 	add	ebx,8
 	xor	eax,eax
 	jmp	make_macro_symbol
-
-increase_counter:
-	movzx	ecx,byte [eax]
-      counter_loop:
-	call	increase_digit
-	jnc	counter_ok
-	mov	byte [eax+ecx],'0'
-	loop	counter_loop
-      counter_ok:
-	ret
-      increase_digit:
-	inc	byte [eax+ecx]
-	cmp	byte [eax+ecx],':'
-	jb	digit_increased
-	je	letter_digit
-	cmp	byte [eax+ecx],'F'
-	jbe	digit_increased
-	stc
-	ret
-      letter_digit:
-	mov	byte [eax+ecx],'A'
-      digit_increased:
-	clc
-	ret
 
 include_file:
 	lods	byte [esi]
@@ -2256,6 +2390,10 @@ symbol_characters db 27
 preprocessor_directives:
  db 7,'include'
  dw include_file-preprocessor
+ db 3,'irp'
+ dw irp_directive-preprocessor
+ db 4,'irps'
+ dw irps_directive-preprocessor
  db 5,'macro'
  dw define_macro-preprocessor
  db 5,'match'

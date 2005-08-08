@@ -48,6 +48,7 @@ simple_extended_instruction:
 	jmp	instruction_assembled
 prefix_instruction:
 	stos	byte [edi]
+	or	[prefixed_instruction],-1
 	jmp	continue_line
 segment_prefix:
 	mov	ah,al
@@ -57,6 +58,7 @@ segment_prefix:
 	and	al,1111b
 	mov	[segment_register],al
 	call	store_segment_prefix
+	or	[prefixed_instruction],-1
 	jmp	continue_line
 int_instruction:
 	lods	byte [esi]
@@ -205,10 +207,10 @@ basic_instruction:
       basic_mem_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	basic_mem_imm_32bit_ok
       get_simm32:
 	call	get_qword_value
@@ -368,10 +370,10 @@ basic_instruction:
       basic_reg_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	basic_reg_imm_32bit_ok
 single_operand_instruction:
 	mov	[base_code],0F6h
@@ -593,10 +595,10 @@ mov_instruction:
       mov_mem_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	mov_mem_imm_32bit_store
       mov_reg:
 	lods	byte [esi]
@@ -856,7 +858,7 @@ mov_instruction:
 	jmp	instruction_assembled
       mov_sreg:
 	mov	ah,al
-	and	al,111b
+	and	al,1111b
 	mov	[postbyte_register],al
 	shr	ah,4
 	cmp	ah,5
@@ -1045,10 +1047,10 @@ test_instruction:
       test_mem_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	test_mem_imm_32bit_store
       test_reg:
 	lods	byte [esi]
@@ -1151,10 +1153,10 @@ test_instruction:
       test_reg_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	test_reg_imm_32bit_store
       test_reg_mem:
 	call	get_address
@@ -1434,28 +1436,30 @@ push_instruction:
 	je	illegal_instruction
 	call	get_dword_value
 	mov	edx,eax
+	call	operand_32bit
 	cmp	[value_type],0
 	jne	push_imm_32bit_store
 	cmp	eax,-80h
 	jl	push_imm_32bit_store
 	cmp	eax,80h
 	jge	push_imm_32bit_store
-	call	operand_32bit
 	jmp	push_imm_8bit
       push_imm_optimized_16bit:
 	call	get_word_value
 	mov	dx,ax
+	call	operand_16bit
 	cmp	[value_type],0
 	jne	push_imm_16bit_store
 	cmp	ax,-80h
 	jl	push_imm_16bit_store
 	cmp	ax,80h
 	jge	push_imm_16bit_store
-	call	operand_16bit
       push_imm_8bit:
 	mov	ah,al
-	mov	al,6Ah
-	stos	word [edi]
+	mov	[base_code],6Ah
+	call	store_instruction_code
+	mov	al,ah
+	stos	byte [edi]
 	jmp	push_done
       push_imm_16bit:
 	call	get_word_value
@@ -2451,7 +2455,7 @@ bt_instruction:
       bt_reg_imm:
 	xor	al,al
 	xchg	al,[operand_size]
-	push	eax
+	push	eax ebx
 	lods	byte [esi]
 	call	get_size_operator
 	cmp	al,'('
@@ -2464,7 +2468,7 @@ bt_instruction:
       bt_reg_imm_size_ok:
 	call	get_byte_value
 	mov	byte [value],al
-	pop	eax
+	pop	ebx eax
 	call	operand_autodetect
       bt_reg_imm_store:
 	mov	[extended_code],0BAh
@@ -2628,10 +2632,10 @@ imul_instruction:
       imul_reg_mem_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	imul_reg_mem_imm_32bit_ok
       imul_reg_mem_imm_8bit_store:
 	pop	cx bx edx
@@ -2714,11 +2718,11 @@ imul_instruction:
       imul_reg_reg_imm_64bit:
 	cmp	[size_declared],0
 	jne	long_immediate_not_encodable
-	cmp	[value_type],4
-	jae	long_immediate_not_encodable
 	call	operand_64bit
 	push	ebx
 	call	get_simm32
+	cmp	[value_type],4
+	jae	long_immediate_not_encodable
 	jmp	imul_reg_reg_imm_32bit_ok
       imul_reg_reg_imm_8bit_store:
 	mov	[base_code],6Bh
@@ -3681,6 +3685,7 @@ pm_word_instruction:
 	call	get_size_operator
 	cmp	al,10h
 	je	pm_reg
+      pm_mem:
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address
@@ -3693,6 +3698,24 @@ pm_word_instruction:
 	call	store_instruction
 	jmp	instruction_assembled
       pm_reg:
+	lods	byte [esi]
+	call	convert_register
+	mov	bl,al
+	cmp	ah,2
+	jne	invalid_operand_size
+	call	store_nomem_instruction
+	jmp	instruction_assembled
+pm_store_word_instruction:
+	mov	ah,al
+	shr	ah,4
+	and	al,111b
+	mov	[base_code],0Fh
+	mov	[extended_code],ah
+	mov	[postbyte_register],al
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,10h
+	jne	pm_mem
 	lods	byte [esi]
 	call	convert_register
 	mov	bl,al
@@ -3782,7 +3805,7 @@ swapgs_instruction:
 	mov	[base_code],0Fh
 	mov	[extended_code],1
 	mov	[postbyte_register],7
-	xor	bl,bl
+	mov	bl,al
 	call	store_nomem_instruction
 	jmp	instruction_assembled
 
@@ -5748,6 +5771,8 @@ store_segment_prefix_if_necessary:
 	cmp	al,4
 	ja	segment_prefix_386
 	jb	segment_prefix_86
+	cmp	bl,25h
+	je	segment_prefix_86
 	cmp	bh,25h
 	je	segment_prefix_86
 	cmp	bh,45h
@@ -5756,6 +5781,8 @@ store_segment_prefix_if_necessary:
 	je	segment_prefix_86
 	ret
       ss_prefix:
+	cmp	bl,25h
+	je	segment_prefix_ok
 	cmp	bh,25h
 	je	segment_prefix_ok
 	cmp	bh,45h
@@ -5902,11 +5929,15 @@ store_instruction:
 	jnz	address_16bit_value
 	or	ch,ch
 	jnz	address_sizes_do_not_agree
-	or	edx,edx
+	cmp	edx,10000h
+	jge	value_out_of_range
+	cmp	edx,-8000h
+	jl	value_out_of_range
+	or	dx,dx
 	jz	address
-	cmp	edx,80h
+	cmp	dx,80h
 	jb	address_8bit_value
-	cmp	edx,-80h
+	cmp	dx,-80h
 	jae	address_8bit_value
       address_16bit_value:
 	or	al,10000000b
@@ -5916,10 +5947,6 @@ store_instruction:
 	stos	byte [edi]
 	mov	eax,edx
 	stos	word [edi]
-	cmp	edx,10000h
-	jge	value_out_of_range
-	cmp	edx,-8000h
-	jl	value_out_of_range
 	ret
       address_8bit_value:
 	or	al,01000000b
@@ -5929,9 +5956,9 @@ store_instruction:
 	stos	byte [edi]
 	mov	al,dl
 	stos	byte [edi]
-	cmp	edx,80h
+	cmp	dx,80h
 	jge	value_out_of_range
-	cmp	edx,-80h
+	cmp	dx,-80h
 	jl	value_out_of_range
 	ret
       address:
@@ -6291,6 +6318,14 @@ symbols:
  db 3,'cr5',10h,55h
  db 3,'cr6',10h,56h
  db 3,'cr7',10h,57h
+ db 3,'cr8',10h,58h
+ db 3,'cr9',10h,59h
+ db 4,'cr10',10h,5Ah
+ db 4,'cr11',10h,5Bh
+ db 4,'cr12',10h,5Ch
+ db 4,'cr13',10h,5Dh
+ db 4,'cr14',10h,5Eh
+ db 4,'cr15',10h,5Fh
  db 2,'cs',10h,62h
  db 2,'cx',10h,21h
  db 2,'dh',10h,06h
@@ -6306,6 +6341,14 @@ symbols:
  db 3,'dr5',10h,75h
  db 3,'dr6',10h,76h
  db 3,'dr7',10h,77h
+ db 3,'dr8',10h,78h
+ db 3,'dr9',10h,79h
+ db 4,'dr10',10h,7Ah
+ db 4,'dr11',10h,7Bh
+ db 4,'dr12',10h,7Ch
+ db 4,'dr13',10h,7Dh
+ db 4,'dr14',10h,7Eh
+ db 4,'dr15',10h,7Fh
  db 2,'ds',10h,64h
  db 5,'dword',11h,4
  db 2,'dx',10h,22h
@@ -6662,7 +6705,7 @@ instructions_3:
  db 'sti',0FBh
  dw simple_instruction-assembler
  db 'str',1
- dw pm_word_instruction-assembler
+ dw pm_store_word_instruction-assembler
  db 'sub',28h
  dw basic_instruction-assembler
  db 'ud2',0Bh
@@ -6762,7 +6805,7 @@ instructions_4:
  db 'jnle',7Fh
  dw conditional_jump-assembler
  db 'lahf',9Fh
- dw simple_instruction_except64-assembler
+ dw simple_instruction-assembler
  db 'lgdt',2
  dw lgdt_instruction-assembler
  db 'lidt',3
@@ -6822,7 +6865,7 @@ instructions_4:
  db 'retw',0C2h
  dw ret_instruction_16bit-assembler
  db 'sahf',9Eh
- dw simple_instruction_except64-assembler
+ dw simple_instruction-assembler
  db 'salc',0D6h
  dw simple_instruction_except64-assembler
  db 'scas',0AEh
@@ -6856,9 +6899,9 @@ instructions_4:
  db 'sidt',1
  dw lgdt_instruction-assembler
  db 'sldt',0
- dw pm_word_instruction-assembler
+ dw pm_store_word_instruction-assembler
  db 'smsw',14h
- dw pm_word_instruction-assembler
+ dw pm_store_word_instruction-assembler
  db 'stos',0AAh
  dw stos_instruction-assembler
  db 'test',0
@@ -6893,6 +6936,8 @@ instructions_5:
  dw sse_ps_instruction-assembler
  db 'bound',0
  dw bound_instruction-assembler
+ db 'break',0
+ dw break_directive-assembler
  db 'bswap',0
  dw bswap_instruction-assembler
  db 'cmova',47h
@@ -7263,6 +7308,8 @@ instructions_5:
  dw times_directive-assembler
  db 'vmxon',6
  dw vmxon_instruction-assembler
+ db 'while',0
+ dw while_directive-assembler
  db 'wrmsr',30h
  dw simple_extended_instruction-assembler
  db 'xlatb',0D7h
@@ -7489,6 +7536,8 @@ instructions_6:
  dw simple_instruction_only64-assembler
  db 'pushfw',9Ch
  dw simple_instruction_16bit-assembler
+ db 'rdtscp',1
+ dw swapgs_instruction-assembler
  db 'repeat',0
  dw repeat_directive-assembler
  db 'setalc',0D6h
