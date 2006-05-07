@@ -1,12 +1,12 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF executable
 	entry	start
 
-section readable executable
+segment readable executable
 
 start:
 	mov	esi,_logo
@@ -214,8 +214,9 @@ include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+include '..\tables.inc'
 
-section readable writeable
+segment readable writeable
 
 align 4
 

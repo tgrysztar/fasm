@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	PE console
@@ -247,6 +247,7 @@ include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+include '..\tables.inc'
 
 align 4
 

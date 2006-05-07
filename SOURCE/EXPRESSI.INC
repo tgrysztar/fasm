@@ -1,19 +1,23 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 convert_expression:
 	push	ebp
 	call	get_fp_value
 	jnc	fp_expression
-	mov	ebp,esp
+	mov	[current_offset],esp
       expression_loop:
-	push	ebp edi
+	push	edi
 	mov	edi,single_operand_operators
 	call	get_operator
 	pop	edi
+	or	al,al
+	jz	expression_element
 	push	eax
+	jmp	expression_loop
+      expression_element:
 	mov	al,[esi]
 	cmp	al,1Ah
 	je	expression_number
@@ -21,27 +25,20 @@ convert_expression:
 	je	expression_number
 	cmp	al,'('
 	je	expression_number
-	mov	al,11h
+	mov	al,'!'
 	stos	byte [edi]
-	or	eax,-1
-	stos	dword [edi]
-	jmp	expression_number_ok
+	jmp	expression_operator
       expression_number:
 	call	convert_number
-      expression_number_ok:
-	pop	eax
-	or	al,al
-	jz	expression_operator
-	stos	byte [edi]
       expression_operator:
 	push	edi
 	mov	edi,operators
 	call	get_operator
-	pop	edi ebp
+	pop	edi
 	or	al,al
 	jz	expression_end
       operators_loop:
-	cmp	esp,ebp
+	cmp	esp,[current_offset]
 	je	push_operator
 	mov	bl,al
 	and	bl,0F0h
@@ -57,7 +54,7 @@ convert_expression:
 	push	eax
 	jmp	expression_loop
       expression_end:
-	cmp	esp,ebp
+	cmp	esp,[current_offset]
 	je	expression_converted
 	pop	eax
 	stos	byte [edi]
@@ -78,6 +75,9 @@ convert_expression:
 	ret
 
 convert_number:
+	lea	eax,[edi-10h]
+	cmp	eax,[labels_list]
+	jae	out_of_memory
 	cmp	byte [esi],'('
 	je	expression_value
 	inc	edi
@@ -117,7 +117,9 @@ convert_number:
 	cmp	eax,[stack_limit]
 	jb	stack_overflow
 	inc	esi
+	push	[current_offset]
 	call	convert_expression
+	pop	[current_offset]
 	lods	byte [esi]
 	cmp	al,')'
 	jne	invalid_expression
@@ -143,7 +145,7 @@ convert_number:
 	ret
       broken_value:
 	sub	esi,2
-	or	eax,-1
+	mov	eax,0Fh
 	jmp	store_label_value
       register_value:
 	pop	edi
@@ -451,6 +453,11 @@ get_fp_value:
 	pop	esi edi
 	stc
 	ret
+      fp_last_character:
+	cmp	cl,1
+	jne	not_fp_value
+	or	ah,4
+	jmp	fp_character_ok
       fp_character_exp:
 	cmp	esi,edx
 	je	not_fp_value
@@ -463,11 +470,6 @@ get_fp_value:
 	je	fp_exp_sign
 	cmp	byte [esi],'-'
 	jne	fp_character_ok
-      fp_last_character:
-	cmp	cl,1
-	jne	not_fp_value
-	or	ah,4
-	jmp	fp_character_ok
       fp_exp_sign:
 	inc	esi
 	cmp	byte [esi],1Ah
@@ -809,12 +811,12 @@ get_fp_value:
 calculate_expression:
 	mov	[current_offset],edi
 	mov	[value_undefined],0
+	cmp	byte [esi],0
+	je	get_string_value
+	cmp	byte [esi],'.'
+	je	convert_fp
       calculation_loop:
 	lods	byte [esi]
-	or	al,al
-	jz	get_string_value
-	cmp	al,'.'
-	je	convert_fp
 	cmp	al,1
 	je	get_byte_number
 	cmp	al,2
@@ -833,6 +835,8 @@ calculate_expression:
 	je	expression_calculated
 	cmp	al,']'
 	je	expression_calculated
+	cmp	al,'!'
+	je	invalid_expression
 	sub	edi,14h
 	mov	ebx,edi
 	sub	ebx,14h
@@ -840,7 +844,7 @@ calculate_expression:
 	je	calculate_rva
 	cmp	al,0D0h
 	je	calculate_not
-	cmp	al,0D1h
+	cmp	al,083h
 	je	calculate_neg
 	mov	dx,[ebx+8]
 	or	dx,[edi+8]
@@ -883,6 +887,7 @@ calculate_expression:
 	xor	eax,eax
 	mov	[edi],eax
 	mov	[edi+4],eax
+	mov	[edi+12],al
       expression_value_ok:
 	ret
       get_byte_number:
@@ -940,8 +945,6 @@ calculate_expression:
 	cmp	eax,0Fh
 	jb	predefined_label
 	je	reserved_word_used_as_symbol
-	cmp	eax,-1
-	je	invalid_expression
 	mov	ebx,eax
 	mov	ax,[current_pass]
 	mov	[ebx+18],ax
@@ -1050,13 +1053,7 @@ calculate_expression:
 	je	org_origin_label
       label_undefined:
 	cmp	[current_pass],1
-	jbe	force_next_pass
-	cmp	[error_line],0
-	jne	undefined_value
-	mov	eax,[current_line]
-	mov	[error_line],eax
-	mov	[error],undefined_symbol
-	jmp	undefined_value
+	ja	undefined_value
       force_next_pass:
 	or	[next_pass_needed],-1
       undefined_value:
@@ -1066,6 +1063,11 @@ calculate_expression:
 	stos	dword [edi]
 	stos	dword [edi]
 	add	edi,0Ch
+	cmp	[error_line],0
+	jne	calculation_loop
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],undefined_symbol
 	jmp	calculation_loop
       calculate_add:
 	mov	ecx,[ebx+16]
@@ -1311,6 +1313,8 @@ calculate_expression:
 	mov	al,[esi+10]
 	cbw
 	idiv	byte [edi]
+	or	ah,ah
+	jnz	invalid_use_of_symbol
 	mov	[esi+10],al
       div_first_register_ok:
 	cmp	byte [esi+9],0
@@ -1328,6 +1332,8 @@ calculate_expression:
 	mov	al,[esi+11]
 	cbw
 	idiv	byte [edi]
+	or	ah,ah
+	jnz	invalid_use_of_symbol
 	mov	[esi+11],al
       div_calculated:
 	pop	esi
@@ -1497,9 +1503,11 @@ calculate_expression:
 	add	edi,14h
 	jmp	calculation_loop
       calculate_rva:
-	cmp	[output_format],3
-	jne	invalid_expression
 	cmp	word [edi+8],0
+	jne	invalid_expression
+	cmp	[output_format],5
+	je	calculate_gotoff
+	cmp	[output_format],3
 	jne	invalid_expression
 	test	[format_flags],8
 	jnz	pe64_rva
@@ -1534,6 +1542,20 @@ calculate_expression:
 	mov	eax,[eax+30h]
 	sub	[edi],eax
 	sbb	[edi+4],edx
+	add	edi,14h
+	jmp	calculation_loop
+      calculate_gotoff:
+	test	[format_flags],8+1
+	jnz	invalid_expression
+	cmp	byte [edi+12],2
+	je	gotoff_ok
+	cmp	[error_line],0
+	jne	pe64_rva_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
+      gotoff_ok:
+	mov	byte [edi+12],5
 	add	edi,14h
 	jmp	calculation_loop
       div_64:
@@ -1639,6 +1661,7 @@ calculate_expression:
       div_ok:
 	ret
       convert_fp:
+	inc	esi
 	mov	word [edi+8],0
 	mov	byte [edi+12],0
 	mov	al,[value_size]
@@ -1714,6 +1737,7 @@ calculate_expression:
 	add	esi,13
 	ret
       get_string_value:
+	inc	esi
 	lods	dword [esi]
 	mov	ecx,eax
 	cmp	ecx,8
@@ -1812,7 +1836,7 @@ get_dword_value:
 	mov	al,[edi+12]
 	mov	[value_type],al
 	cmp	al,4
-	jb	check_dword_value
+	jne	check_dword_value
 	cmp	[error_line],0
 	jne	check_dword_value
 	mov	eax,[current_line]
@@ -1840,7 +1864,7 @@ get_pword_value:
 	mov	al,[edi+12]
 	mov	[value_type],al
 	cmp	al,4
-	jb	check_pword_value
+	jne	check_pword_value
 	cmp	[error_line],0
 	jne	check_pword_value
 	mov	eax,[current_line]
@@ -1918,20 +1942,26 @@ get_address_value:
 	mov	eax,[edi+16]
 	mov	[address_symbol],eax
 	mov	al,[edi+12]
+	mov	[value_type],al
+	cmp	al,5
+	je	gotoff_address
 	test	al,1
 	jnz	invalid_use_of_symbol
-	mov	[value_type],al
 	or	al,al
-	jz	address_symbol_ok
+	jz	address_size_ok
 	shl	al,5
+	jmp	address_symbol_ok
+      gotoff_address:
+	mov	al,40h
+      address_symbol_ok:
 	mov	ah,[address_size]
 	or	[address_size],al
 	shr	al,4
 	or	ah,ah
-	jz	address_symbol_ok
+	jz	address_size_ok
 	cmp	al,ah
 	jne	address_sizes_do_not_agree
-      address_symbol_ok:
+      address_size_ok:
 	xor	bx,bx
 	xor	cl,cl
 	mov	ch,[address_size]
@@ -2010,6 +2040,8 @@ get_address_value:
       check_immediate_address:
 	cmp	[code_type],64
 	jne	check_dword_value
+	cmp	[address_size],4
+	je	check_dword_value
 	jmp	check_qword_value
 get_relative_offset:
 	mov	[value_size],4
@@ -2049,6 +2081,337 @@ get_relative_offset:
 	jc	range_exceeded
 	ret
 
+preevaluate_logical_expression:
+	push	edi
+	call	preevaluate_logical_value
+      preevaluation_loop:
+	cmp	al,0FFh
+	je	invalid_logical_expression
+	mov	dl,[esi]
+	inc	esi
+	cmp	dl,'|'
+	je	preevaluate_or
+	cmp	dl,'&'
+	je	preevaluate_and
+	cmp	dl,'}'
+	je	preevaluation_done
+	or	dl,dl
+	jnz	invalid_logical_expression
+      preevaluation_done:
+	pop	edx
+	dec	esi
+	ret
+      preevaluate_or:
+	cmp	al,'1'
+	je	quick_true
+	cmp	al,'0'
+	je	leave_only_following
+	push	edi
+	mov	al,dl
+	stos	byte [edi]
+	call	preevaluate_logical_value
+	pop	ebx
+	cmp	al,'0'
+	je	leave_only_preceding
+	cmp	al,'1'
+	jne	preevaluation_loop
+	stos	byte [edi]
+	xor	al,al
+	jmp	preevaluation_loop
+      preevaluate_and:
+	cmp	al,'0'
+	je	quick_false
+	cmp	al,'1'
+	je	leave_only_following
+	push	edi
+	mov	al,dl
+	stos	byte [edi]
+	call	preevaluate_logical_value
+	pop	ebx
+	cmp	al,'1'
+	je	leave_only_preceding
+	cmp	al,'0'
+	jne	preevaluation_loop
+	stos	byte [edi]
+	xor	al,al
+	jmp	preevaluation_loop
+      leave_only_following:
+	mov	edi,[esp]
+	call	preevaluate_logical_value
+	jmp	preevaluation_loop
+      leave_only_preceding:
+	mov	edi,ebx
+	xor	al,al
+	jmp	preevaluation_loop
+      quick_true:
+	call	skip_logical_value
+	jc	invalid_logical_expression
+	mov	edi,[esp]
+	mov	al,'1'
+	jmp	preevaluation_loop
+      quick_false:
+	call	skip_logical_value
+	jc	invalid_logical_expression
+	mov	edi,[esp]
+	mov	al,'0'
+	jmp	preevaluation_loop
+      invalid_logical_expression:
+	pop	edi
+	mov	esi,edi
+	mov	al,0FFh
+	stos	byte [edi]
+	ret
+skip_logical_value:
+	cmp	byte [esi],'~'
+	jne	negation_skipped
+	inc	esi
+	jmp	skip_logical_value
+      negation_skipped:
+	cmp	byte [esi],'{'
+	jne	skip_simple_logical_value
+	inc	esi
+      skip_logical_expression:
+	call	skip_logical_value
+	lods	byte [esi]
+	or	al,al
+	jz	wrongly_structured_logical_expression
+	cmp	al,0Fh
+	je	wrongly_structured_logical_expression
+	cmp	al,'|'
+	je	skip_logical_expression
+	cmp	al,'&'
+	je	skip_logical_expression
+	cmp	al,'}'
+	je	logical_value_skipped
+      wrongly_structured_logical_expression:
+	stc
+	ret
+      skip_simple_logical_value:
+	mov	al,[esi]
+	or	al,al
+	jz	logical_value_skipped
+	cmp	al,0Fh
+	je	logical_value_skipped
+	cmp	al,'}'
+	je	logical_value_skipped
+	cmp	al,'|'
+	je	logical_value_skipped
+	cmp	al,'&'
+	je	logical_value_skipped
+	call	skip_symbol
+	jmp	skip_simple_logical_value
+      logical_value_skipped:
+	clc
+	ret
+
+preevaluate_logical_value:
+	mov	ebp,edi
+      preevaluate_negation:
+	cmp	byte [esi],'~'
+	jne	preevaluate_negation_ok
+	movs	byte [edi],[esi]
+	jmp	preevaluate_negation
+      preevaluate_negation_ok:
+	mov	ebx,esi
+	xor	edx,edx
+	cmp	byte [esi],'{'
+	jne	find_logical_value_boundaries
+	movs	byte [edi],[esi]
+	push	ebp
+	call	preevaluate_logical_expression
+	pop	ebp
+	cmp	al,0FFh
+	je	invalid_logical_value
+	cmp	byte [esi],'}'
+	jne	invalid_logical_value
+	or	al,al
+	jnz	preevaluated_expression_value
+	movs	byte [edi],[esi]
+	ret
+      preevaluated_expression_value:
+	inc	esi
+	lea	edx,[edi-1]
+	sub	edx,ebp
+	test	edx,1
+	jz	expression_negation_ok
+	xor	al,1
+      expression_negation_ok:
+	mov	edi,ebp
+	ret
+      invalid_logical_value:
+	mov	edi,ebp
+	mov	al,0FFh
+	ret
+      find_logical_value_boundaries:
+	mov	al,[esi]
+	or	al,al
+	jz	logical_value_boundaries_found
+	cmp	al,'}'
+	je	logical_value_boundaries_found
+	cmp	al,'|'
+	je	logical_value_boundaries_found
+	cmp	al,'&'
+	je	logical_value_boundaries_found
+	or	edx,edx
+	jnz	next_symbol_in_logical_value
+	cmp	al,0F0h
+	je	preevaluable_logical_operator
+	cmp	al,0F7h
+	je	preevaluable_logical_operator
+	cmp	al,0F6h
+	jne	next_symbol_in_logical_value
+      preevaluable_logical_operator:
+	mov	edx,esi
+      next_symbol_in_logical_value:
+	call	skip_symbol
+	jmp	find_logical_value_boundaries
+      logical_value_boundaries_found:
+	or	edx,edx
+	jz	non_preevaluable_logical_value
+	mov	al,[edx]
+	cmp	al,0F0h
+	je	compare_symbols
+	cmp	al,0F7h
+	je	compare_symbol_types
+	cmp	al,0F6h
+	je	scan_symbols_list
+      non_preevaluable_logical_value:
+	mov	ecx,esi
+	mov	esi,ebx
+	sub	ecx,esi
+	jz	invalid_logical_value
+	cmp	esi,edi
+	je	leave_logical_value_intact
+	rep	movs byte [edi],[esi]
+	xor	al,al
+	ret
+      leave_logical_value_intact:
+	add	edi,ecx
+	add	esi,ecx
+	xor	al,al
+	ret
+      compare_symbols:
+	lea	ecx,[esi-1]
+	sub	ecx,edx
+	mov	eax,edx
+	sub	eax,ebx
+	cmp	ecx,eax
+	jne	preevaluated_false
+	push	esi edi
+	mov	esi,ebx
+	lea	edi,[edx+1]
+	repe	cmps byte [esi],[edi]
+	pop	edi esi
+	je	preevaluated_true
+      preevaluated_false:
+	mov	eax,edi
+	sub	eax,ebp
+	test	eax,1
+	jnz	store_true
+      store_false:
+	mov	edi,ebp
+	mov	al,'0'
+	ret
+      preevaluated_true:
+	mov	eax,edi
+	sub	eax,ebp
+	test	eax,1
+	jnz	store_false
+      store_true:
+	mov	edi,ebp
+	mov	al,'1'
+	ret
+      compare_symbol_types:
+	push	esi
+	lea	esi,[edx+1]
+      type_comparison:
+	cmp	esi,[esp]
+	je	types_compared
+	mov	al,[esi]
+	cmp	al,[ebx]
+	jne	different_type
+	cmp	al,'('
+	jne	equal_type
+	mov	al,[esi+1]
+	mov	ah,[ebx+1]
+	cmp	al,ah
+	je	equal_type
+	or	al,al
+	jz	different_type
+	or	ah,ah
+	jz	different_type
+	cmp	al,'.'
+	je	different_type
+	cmp	ah,'.'
+	je	different_type
+      equal_type:
+	call	skip_symbol
+	xchg	esi,ebx
+	call	skip_symbol
+	xchg	esi,ebx
+	jmp	type_comparison
+      types_compared:
+	pop	esi
+	cmp	byte [ebx],0F7h
+	jne	preevaluated_false
+	jmp	preevaluated_true
+      different_type:
+	pop	esi
+	jmp	preevaluated_false
+      scan_symbols_list:
+	push	edi esi
+	lea	esi,[edx+1]
+	sub	edx,ebx
+	lods	byte [esi]
+	cmp	al,'<'
+	jne	invalid_symbols_list
+      get_next_from_list:
+	mov	edi,esi
+      get_from_list:
+	cmp	byte [esi],','
+	je	compare_in_list
+	cmp	byte [esi],'>'
+	je	compare_in_list
+	cmp	esi,[esp]
+	jae	invalid_symbols_list
+	call	skip_symbol
+	jmp	get_from_list
+      compare_in_list:
+	mov	ecx,esi
+	sub	ecx,edi
+	cmp	ecx,edx
+	jne	not_equal_length_in_list
+	mov	esi,ebx
+	repe	cmps byte [esi],[edi]
+	mov	esi,edi
+	jne	not_equal_in_list
+      skip_rest_of_list:
+	cmp	byte [esi],'>'
+	je	check_list_end
+	cmp	esi,[esp]
+	jae	invalid_symbols_list
+	call	skip_symbol
+	jmp	skip_rest_of_list
+      check_list_end:
+	inc	esi
+	cmp	esi,[esp]
+	jne	invalid_symbols_list
+	pop	esi edi
+	jmp	preevaluated_true
+      not_equal_in_list:
+	add	esi,ecx
+      not_equal_length_in_list:
+	lods	byte [esi]
+	cmp	al,','
+	je	get_next_from_list
+	cmp	esi,[esp]
+	jne	invalid_symbols_list
+	pop	esi edi
+	jmp	preevaluated_false
+      invalid_symbols_list:
+	pop	esi edi
+	jmp	invalid_logical_value
+
 calculate_logical_expression:
 	call	get_logical_value
       logical_loop:
@@ -2059,6 +2422,8 @@ calculate_logical_expression:
 	ret
       logical_or:
 	inc	esi
+	or	al,al
+	jnz	logical_value_already_determined
 	push	eax
 	call	get_logical_value
 	pop	ebx
@@ -2066,12 +2431,19 @@ calculate_logical_expression:
 	jmp	logical_loop
       logical_and:
 	inc	esi
+	or	al,al
+	jz	logical_value_already_determined
 	push	eax
 	call	get_logical_value
 	pop	ebx
 	and	al,bl
 	jmp	logical_loop
-
+      logical_value_already_determined:
+	push	eax
+	call	skip_logical_value
+	jc	invalid_expression
+	pop	eax
+	jmp	logical_loop
 get_logical_value:
 	xor	al,al
       check_for_negation:
@@ -2085,184 +2457,31 @@ get_logical_value:
 	mov	al,[esi]
 	cmp	al,'{'
 	je	logical_expression
+	cmp	al,0FFh
+	je	invalid_expression
 	cmp	al,88h
 	je	check_for_defined
 	cmp	al,89h
 	je	check_for_used
-	push	esi
-	cmp	al,11h
-	jne	check_for_values
-	add	esi,2
-      check_for_values:
-	xor	bl,bl
-	cmp	byte [esi],'('
-	jne	find_eq_symbol
-	call	skip_symbol
-	lods	byte [esi]
-	cmp	al,'='
-	je	compare_values
-	cmp	al,'>'
-	je	compare_values
-	cmp	al,'<'
-	je	compare_values
-	cmp	al,0F1h
-	je	compare_values
-	cmp	al,0F2h
-	je	compare_values
-	cmp	al,0F3h
-	je	compare_values
-	dec	esi
-      find_eq_symbol:
-	cmp	byte [esi],0F0h
-	je	compare_symbols
-	cmp	byte [esi],0F7h
-	je	compare_symbol_types
-	cmp	byte [esi],0F6h
-	je	scan_symbols_list
-	call	check_character
-	jc	logical_number
-	cmp	al,','
-	jne	next_eq_symbol
-	mov	bl,1
-      next_eq_symbol:
-	call	skip_symbol
-	jmp	find_eq_symbol
-      compare_symbols:
-	inc	esi
-	pop	ebx
-	mov	edx,esi
-	push	edi
-	mov	edi,ebx
-	mov	ecx,esi
-	dec	ecx
-	sub	ecx,edi
-	repe	cmps byte [esi],[edi]
-	pop	edi
-	je	symbols_equal
-	mov	esi,edx
-      symbols_different:
-	call	check_character
-	jc	return_false
-	call	skip_symbol
-	jmp	symbols_different
-      symbols_equal:
-	call	check_character
-	jc	return_true
-	jmp	symbols_different
-      compare_symbol_types:
-	inc	esi
-	pop	ebx
-      type_comparision:
-	call	check_character
-	jc	types_compared
-	mov	al,[esi]
-	cmp	al,[ebx]
-	jne	symbols_different
-	cmp	al,'('
-	jne	equal_type
-	mov	al,[esi+1]
-	mov	ah,[ebx+1]
-	cmp	al,ah
-	je	equal_type
-	or	al,al
-	jz	symbols_different
-	or	ah,ah
-	jz	symbols_different
-	cmp	al,'.'
-	je	symbols_different
-	cmp	ah,'.'
-	je	symbols_different
-      equal_type:
-	call	skip_symbol
-	xchg	esi,ebx
-	call	skip_symbol
-	xchg	esi,ebx
-	jmp	type_comparision
-      types_compared:
-	cmp	byte [ebx],0F7h
-	jne	return_false
-	jmp	return_true
-      scan_symbols_list:
-	or	bl,bl
-	jnz	invalid_expression
-	xor	bp,bp
-	inc	esi
-	lods	byte [esi]
-	cmp	al,'<'
-	jne	invalid_expression
-	pop	ebx
-	mov	ecx,esi
-	sub	ecx,2
-	sub	ecx,ebx
-      compare_in_list:
-	mov	edx,esi
-	push	ecx edi
-	mov	edi,ebx
-	repe	cmps byte [esi],[edi]
-	pop	edi ecx
-	jne	not_equal_in_list
-	cmp	byte [esi],','
-	je	skip_rest_of_list
-	cmp	byte [esi],'>'
-	jne	not_equal_in_list
-      skip_rest_of_list:
-	mov	al,[esi]
-	or	al,al
-	jz	invalid_expression
-	cmp	al,0Fh
-	je	invalid_expression
-	cmp	al,'>'
-	je	list_return_true
-	call	skip_symbol
-	jmp	skip_rest_of_list
-      list_return_true:
-	inc	esi
-	jmp	return_true
-      not_equal_in_list:
-	mov	esi,edx
-      skip_list_item:
-	mov	al,[esi]
-	or	al,al
-	jz	invalid_expression
-	cmp	al,0Fh
-	je	invalid_expression
-	cmp	al,'<'
-	je	invalid_expression
-	cmp	al,'>'
-	je	list_return_false
-	cmp	al,','
-	je	next_in_list
-	call	skip_symbol
-	jmp	skip_list_item
-      next_in_list:
-	inc	esi
-	jmp	compare_in_list
-      list_return_false:
-	inc	esi
-	jmp	return_false
-      check_character:
-	mov	al,[esi]
-	or	al,al
-	jz	stop
-	cmp	al,0Fh
-	je	stop
-	cmp	al,'}'
-	je	stop
-	cmp	al,'|'
-	je	stop
-	cmp	al,'&'
-	je	stop
-	clc
-	ret
-      stop:
-	stc
-	ret
-      compare_values:
-	pop	esi
+	cmp	al,'0'
+	je	given_false
+	cmp	al,'1'
+	je	given_true
 	call	get_value
 	mov	bl,[value_type]
 	push	eax edx ebx
-	lods	byte [esi]
+	mov	al,[esi]
+	or	al,al
+	jz	logical_number
+	cmp	al,0Fh
+	je	logical_number
+	cmp	al,'}'
+	je	logical_number
+	cmp	al,'&'
+	je	logical_number
+	cmp	al,'|'
+	je	logical_number
+	inc	esi
 	mov	[compare_type],al
 	call	get_value
 	pop	ebx
@@ -2326,10 +2545,9 @@ get_logical_value:
 	jne	return_true
 	jmp	return_false
       logical_number:
-	pop	esi
-	call	get_value
-	cmp	[value_type],0
-	jne	invalid_expression
+	pop	ebx edx eax
+	or	bl,bl
+	jnz	invalid_expression
 	or	eax,edx
 	jnz	return_true
 	jmp	return_false
@@ -2423,9 +2641,14 @@ get_logical_value:
       not_used:
 	or	byte [eax+8],10h
 	and	byte [eax+8],not 20h
+	jmp	return_false
+      given_false:
+	inc	esi
       return_false:
 	xor	al,al
 	jmp	logical_value_ok
+      given_true:
+	inc	esi
       return_true:
 	or	al,-1
 	jmp	logical_value_ok

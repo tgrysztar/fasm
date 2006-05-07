@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Unix/libc
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF
@@ -223,6 +223,7 @@ include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+include '..\tables.inc'
 
 section '.bss' writeable align 4
 

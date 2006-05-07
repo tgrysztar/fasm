@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -695,10 +695,10 @@ define_fix_constant:
 	add	esi,2
 	push	edx esi
 	mov	esi,edx
-	call	process_fix_constants
+	call	skip_parameters
 	xchg	esi,[esp]
 	mov	ch,11b
-	jmp	define_symbolic_constant
+	jmp	define_preprocessor_constant
 define_equ_constant:
 	add	esi,3
 	push	esi
@@ -706,7 +706,7 @@ define_equ_constant:
 	push	esi
 	mov	esi,[struc_name]
 	mov	ch,10b
-      define_symbolic_constant:
+      define_preprocessor_constant:
 	mov	byte [esi-2],3Bh
 	mov	cl,[esi-1]
 	call	add_preprocessor_symbol
@@ -717,6 +717,45 @@ define_equ_constant:
 	mov	[edx+8],ebx
 	mov	[edx+12],ecx
 	jmp	line_preprocessed
+define_symbolic_constant:
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	invalid_name
+	lods	byte [esi]
+	mov	cl,al
+	mov	ch,10b
+	call	add_preprocessor_symbol
+	movzx	eax,byte [esi-1]
+	add	esi,eax
+	push	esi edx
+	call	skip_parameters
+	pop	edx ebx
+	lea	ecx,[esi-1]
+	sub	ecx,ebx
+	mov	[edx+8],ebx
+	mov	[edx+12],ecx
+	jmp	line_preprocessed
+      skip_parameters:
+	lods	byte [esi]
+	or	al,al
+	jz	parameters_skipped
+	cmp	al,'{'
+	je	parameters_skipped
+	cmp	al,22h
+	je	skip_quoted_parameter
+	cmp	al,1Ah
+	jne	skip_parameters
+	lods	byte [esi]
+	movzx	eax,al
+	add	esi,eax
+	jmp	skip_parameters
+      skip_quoted_parameter:
+	lods	dword [esi]
+	add	esi,eax
+	jmp	skip_parameters
+      parameters_skipped:
+	ret
+
 define_struc:
 	mov	ch,1
 	jmp	make_macro
@@ -857,25 +896,8 @@ define_instant_macro:
 	mov	[instant_macro_start],esi
 	cmp	[base_code],10h
 	je	prepare_match
-      skip_parameters:
-	lods	byte [esi]
-	or	al,al
-	jz	instant_macro_parameters_end
-	cmp	al,'{'
-	je	instant_macro_parameters_end
-	cmp	al,22h
-	je	skip_quoted_parameter
-	cmp	al,1Ah
-	jne	skip_parameters
-	lods	byte [esi]
-	movzx	eax,al
-	add	esi,eax
-	jmp	skip_parameters
-      skip_quoted_parameter:
-	lods	dword [esi]
-	add	esi,eax
-	jmp	skip_parameters
-      instant_macro_parameters_end:
+	call	skip_parameters
+      instant_macro_parameters_skipped:
 	dec	esi
 	mov	[parameters_end],esi
 	lods	byte [esi]
@@ -888,7 +910,7 @@ prepare_match:
 	call	skip_pattern
 	mov	[value_type],80h+10b
 	call	process_symbolic_constants
-	jmp	instant_macro_parameters_end
+	jmp	instant_macro_parameters_skipped
       skip_pattern:
 	lods	byte [esi]
 	or	al,al
@@ -1010,6 +1032,9 @@ process_equ_constants:
 	mov	esi,edi
 	ret
       move_data:
+	lea	eax,[edi+ecx]
+	cmp	eax,[memory_end]
+	jae	out_of_memory
 	shr	ecx,1
 	jnc	movsb_ok
 	movs	byte [edi],[esi]
@@ -1113,35 +1138,54 @@ process_macro_operators:
 	stos	byte [edi]
 	xor	dl,dl
 	jmp	after_macro_operators
+      reduce_symbol_conversion:
+	inc	esi
       symbol_conversion:
-	cmp	byte [esi],1Ah
-	jne	unexpected_characters
-	lea	eax,[edi+3]
-	sub	eax,esi
+	mov	edx,esi
+	mov	al,[esi]
+	cmp	al,1Ah
+	jne	symbol_character_conversion
+	lods	word [esi]
+	movzx	ecx,ah
+	lea	ebx,[edi+3]
+	jmp	convert_to_quoted_string
+      symbol_character_conversion:
+	cmp	al,22h
+	je	after_macro_operators
+	cmp	al,'`'
+	je	reduce_symbol_conversion
+	lea	ebx,[edi+5]
+	xor	ecx,ecx
+	or	al,al
+	jz	convert_to_quoted_string
+	cmp	al,'#'
+	je	convert_to_quoted_string
+	inc	ecx
+      convert_to_quoted_string:
+	sub	ebx,edx
 	ja	shift_line_data
 	mov	al,22h
 	mov	dl,al
 	stos	byte [edi]
-	lods	word [esi]
-	movzx	eax,ah
-	mov	ecx,eax
 	mov	ebx,edi
+	mov	eax,ecx
 	stos	dword [edi]
 	rep	movs byte [edi],[esi]
 	cmp	edi,esi
 	je	before_macro_operators
 	jmp	after_macro_operators
       shift_line_data:
-	lea	edx,[esi+2]
+	push	ecx
+	mov	edx,esi
 	lea	esi,[ebp-1]
-	add	ebp,eax
+	add	ebp,ebx
 	lea	edi,[ebp-1]
 	lea	ecx,[esi+1]
 	sub	ecx,edx
 	std
 	rep	movs byte [edi],[esi]
 	cld
-	movzx	eax,byte [edx-1]
+	pop	eax
 	sub	edi,3
 	mov	dl,22h
 	mov	[edi-1],dl
@@ -1150,8 +1194,6 @@ process_macro_operators:
 	lea	esi,[edi+4+eax]
 	jmp	before_macro_operators
       concatenation:
-	cmp	byte [esi],'#'
-	je	reduce_concatenation_symbol
 	cmp	dl,1Ah
 	je	symbol_concatenation
 	cmp	dl,22h
@@ -1160,11 +1202,6 @@ process_macro_operators:
 	cmp	esi,edi
 	je	before_macro_operators
 	jmp	after_macro_operators
-      reduce_concatenation_symbol:
-	movs	byte [edi],[esi]
-	cmp	byte [esi],'#'
-	je	reduce_concatenation_symbol
-	jmp	no_concatenation
       symbol_concatenation:
 	cmp	byte [esi],1Ah
 	jne	no_concatenation
@@ -1186,14 +1223,28 @@ process_macro_operators:
 	je	do_string_concatenation
 	cmp	byte [esi],'`'
 	jne	no_concatenation
+      concatenate_converted_symbol:
 	inc	esi
-	cmp	byte [esi],1Ah
-	jne	unexpected_characters
+	mov	al,[esi]
+	cmp	al,'`'
+	je	concatenate_converted_symbol
+	cmp	al,22h
+	je	do_string_concatenation
+	cmp	al,1Ah
+	jne	concatenate_converted_symbol_character
 	inc	esi
 	lods	byte [esi]
 	movzx	ecx,al
 	add	[ebx],ecx
 	rep	movs byte [edi],[esi]
+	jmp	after_macro_operators
+      concatenate_converted_symbol_character:
+	or	al,al
+	jz	after_macro_operators
+	cmp	al,'#'
+	je	after_macro_operators
+	inc	dword [ebx]
+	movs	byte [edi],[esi]
 	jmp	after_macro_operators
       do_string_concatenation:
 	inc	esi
@@ -1542,6 +1593,7 @@ do_irp:
       irps_quoted_string:
 	mov	eax,[ebx+1]
 	add	eax,1+4
+	jmp	irps_parameter_ok
       irps_symbol:
 	movzx	eax,byte [ebx+1]
 	add	eax,1+1
@@ -1757,7 +1809,8 @@ process_macro:
 	inc	[counter]
       process_macro_line:
 	mov	[current_line],edi
-	cmp	edi,[memory_end]
+	lea	eax,[edi+10h]
+	cmp	eax,[memory_end]
 	jae	out_of_memory
 	mov	eax,[esp+4]
 	or	eax,eax
@@ -1788,6 +1841,9 @@ process_macro:
 	mov	ax,3Bh
 	stos	word [edi]
       process_macro_line_element:
+	lea	eax,[edi+100h]
+	cmp	eax,[memory_end]
+	jae	out_of_memory
 	lods	byte [esi]
 	cmp	al,'}'
 	je	macro_line_processed
@@ -1804,7 +1860,11 @@ process_macro:
       copy_macro_string:
 	mov	ecx,[esi]
 	add	ecx,4
-	rep	movs byte [edi],[esi]
+;	 lea	 eax,[edi+ecx]
+;	 cmp	 eax,[memory_end]
+;	 jae	 out_of_memory
+;	 rep	 movs byte [edi],[esi]
+	call	move_data
 	jmp	process_macro_line_element
       process_macro_symbol:
 	push	esi edi
@@ -1845,7 +1905,11 @@ process_macro:
 	or	edx,edx
 	jz	replace_macro_counter
 	xchg	esi,edx
-	rep	movs byte [edi],[esi]
+;	 lea	 eax,[edi+ecx]
+;	 cmp	 eax,[memory_end]
+;	 jae	 out_of_memory
+;	 rep	 movs byte [edi],[esi]
+	call	move_data
 	mov	esi,edx
 	jmp	process_macro_line_element
       group_macro_symbol:
@@ -2381,42 +2445,3 @@ include_file:
 	stos	byte [edi]
 	mov	esi,ebx
 	jmp	preprocess_path
-
-include_variable db 'INCLUDE',0
-
-symbol_characters db 27
- db 9,0Ah,0Dh,1Ah,20h,'+-/*=<>()[]{}:,|&~#`;\'
-
-preprocessor_directives:
- db 7,'include'
- dw include_file-preprocessor
- db 3,'irp'
- dw irp_directive-preprocessor
- db 4,'irps'
- dw irps_directive-preprocessor
- db 5,'macro'
- dw define_macro-preprocessor
- db 5,'match'
- dw match_directive-preprocessor
- db 5,'purge'
- dw purge_macro-preprocessor
- db 4,'rept'
- dw rept_directive-preprocessor
- db 7,'restore'
- dw restore_equ_constant-preprocessor
- db 7,'restruc'
- dw purge_struc-preprocessor
- db 5,'struc'
- dw define_struc-preprocessor
- db 0
-
-macro_directives:
- db 6,'common'
- dw common_block-preprocessor
- db 7,'forward'
- dw forward_block-preprocessor
- db 5,'local'
- dw local_symbols-preprocessor
- db 7,'reverse'
- dw reverse_block-preprocessor
- db 0

@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Unix/libc
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 extrn malloc
@@ -34,8 +34,7 @@ init_memory:
 	add	eax,[memory_setting]
 	mov	[memory_end],eax
 	mov	eax,[memory_setting]
-	shr	eax,3
-	imul	eax,3
+	shr	eax,2
 	add	eax,[additional_memory]
 	mov	[additional_memory_end],eax
 	mov	[memory_start],eax

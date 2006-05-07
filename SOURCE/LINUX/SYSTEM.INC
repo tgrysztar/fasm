@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 0003o
@@ -47,8 +47,7 @@ init_memory:
 	int	0x80
 	mov	[memory_end],eax
 	sub	eax,[additional_memory]
-	shr	eax,3
-	imul	eax,3
+	shr	eax,2
 	add	eax,[additional_memory]
 	mov	[additional_memory_end],eax
 	mov	[memory_start],eax

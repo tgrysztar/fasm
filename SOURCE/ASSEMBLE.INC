@@ -1,17 +1,10 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 assembler:
-	mov	ecx,[memory_end]
-	mov	edi,[labels_list]
-	sub	ecx,edi
-	cmp	edi,[code_start]
-	jbe	out_of_memory
-	shr	ecx,2
 	xor	eax,eax
-	rep	stos dword [edi]
 	mov	[stub_size],eax
 	mov	[number_of_sections],eax
 	mov	[current_pass],ax
@@ -111,7 +104,7 @@ assembler:
       define_misprediction:
 	or	[next_pass_needed],-1
       check_next_symbol:
-	add	eax,24
+	add	eax,LABEL_STRUCTURE_SIZE
 	jmp	check_symbols
       symbols_checked:
 	cmp	[next_pass_needed],0
@@ -220,6 +213,8 @@ assemble_line:
       label_symbol_ok:
 	mov	cx,[current_pass]
 	xchg	[ebx+16],cx
+	mov	edx,[current_line]
+	mov	[ebx+28],edx
 	and	byte [ebx+8],not 2
 	test	byte [ebx+8],1
 	jz	new_label
@@ -305,6 +300,8 @@ assemble_line:
       constant_symbol_ok:
 	mov	cx,[current_pass]
 	xchg	[ebx+16],cx
+	mov	edx,[current_line]
+	mov	[ebx+28],edx
 	test	byte [ebx+8],1
 	jz	new_constant
 	cmp	cx,[ebx+16]
@@ -406,6 +403,8 @@ skip_symbol:
 	je	skip_done
 	cmp	al,']'
 	je	skip_done
+	cmp	al,'!'
+	je	skip_expression
 	cmp	al,0Fh
 	je	skip_expression
 	cmp	al,10h
@@ -448,7 +447,8 @@ org_directive:
 	mov	[labels_type],cl
 	mov	ecx,edi
 	sub	ecx,eax
-	sbb	edx,0
+	adc	edx,0
+	neg	edx
 	mov	dword [org_origin],ecx
 	mov	dword [org_origin+4],edx
 	mov	[org_registers],0
@@ -531,6 +531,8 @@ label_directive:
 	mov	ch,[value_type]
 	or	ch,ch
 	jz	make_free_label
+	cmp	ch,4
+	je	make_free_label
 	cmp	ch,2
 	jne	invalid_use_of_symbol
       make_free_label:
@@ -566,6 +568,8 @@ label_directive:
       free_label_symbol_ok:
 	mov	cx,[current_pass]
 	xchg	[ebx+16],cx
+	mov	edx,[current_line]
+	mov	[ebx+28],edx
 	and	byte [ebx+8],not 2
 	test	byte [ebx+8],1
 	jz	new_free_label
@@ -892,27 +896,11 @@ virtual_directive:
 	cmp	ebx,[additional_memory_end]
 	je	no_such_structure
 	cmp	ax,[ebx]
-	jne	next_structure
-	clc
+	je	structure_data_found
+	add	ebx,20h
+	jmp	scan_structures
+      structure_data_found:
 	ret
-      next_structure:
-	cmp	ax,if_directive-assembler
-	je	check_structure_overlapping
-	cmp	ax,repeat_directive-assembler
-	je	check_structure_overlapping
-	cmp	ax,while_directive-assembler
-	je	check_structure_overlapping
-	add	ebx,20h
-	jmp	scan_structures
-      check_structure_overlapping:
-	cmp	word [ebx],if_directive-assembler
-	je	no_such_structure
-	cmp	word [ebx],repeat_directive-assembler
-	je	no_such_structure
-	cmp	word [ebx],while_directive-assembler
-	je	no_such_structure
-	add	ebx,20h
-	jmp	scan_structures
       no_such_structure:
 	stc
 	ret
@@ -1909,9 +1897,9 @@ align_directive:
 	mov	edx,eax
 	dec	edx
 	test	eax,edx
-	jnz	invalid_value
+	jnz	negative_times
 	or	eax,eax
-	jz	invalid_value
+	jz	negative_times
 	cmp	eax,1
 	je	instruction_assembled
 	mov	ecx,edi

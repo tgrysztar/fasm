@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.64
+                              flat assembler 1.66
                               Programmer's Manual
 
 
@@ -52,11 +52,12 @@ Chapter 2  Instruction set
         2.1.19  The x86-64 long mode instructions
 
         2.2  Control directives
-        2.2.1  Conditional assembly
-        2.2.2  Repeating blocks of instructions
-        2.2.3  Addressing spaces
-        2.2.4  Other directives
-        2.2.5  Multiple passes
+        2.2.1  Numerical constants
+        2.2.2  Conditional assembly
+        2.2.3  Repeating blocks of instructions
+        2.2.4  Addressing spaces
+        2.2.5  Other directives
+        2.2.6  Multiple passes
 
         2.3  Preprocessor directives
         2.3.1  Including source files
@@ -138,21 +139,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.64
+flat assembler  version 1.66
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.64
+flat assembler  version 1.66
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.64
+flat assembler  version 1.66
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -162,7 +163,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.64
+flat assembler  version 1.66
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -404,8 +405,8 @@ of course change this behavior by putting some parts of expression into
 parenthesis. The "+", "-", "*" and "/" are standard arithmetical operations,
 "mod" calculates the remainder from division. The "and", "or", "xor", "shl",
 "shr" and "not" perform the same logical operations as assembly instructions
-of those names. The "rva" is specific to PE output format and performs the
-conversion of an address into the RVA.
+of those names. The "rva" performs the conversion of an address into the
+relocatable offset and is specific to some of the output formats (see 2.4).
   The numbers in the expression are by default treated as a decimal, binary
 numbers should have the "b" letter attached at the end, octal number should
 end with "o" letter, hexadecimal numbers should begin with "0x" characters
@@ -453,27 +454,28 @@ while simple "1" defines an integer value.
 
 The operand of any jump or call instruction can be preceded not only by the
 size operator, but also by one of the operators specifying type of the jump:
-"near" of "far". For example, when assembler is in 16-bit mode, instruction
-"jmp dword [0]" will become the far jump and when assembler is in 32-bit mode,
-it will become the near jump. To force this instruction to be treated
-differently, use the "jmp near dword [0]" or "jmp far dword [0]" form.
+"short", "near" of "far". For example, when assembler is in 16-bit mode,
+instruction "jmp dword [0]" will become the far jump and when assembler is
+in 32-bit mode, it will become the near jump. To force this instruction to be
+treated differently, use the "jmp near dword [0]" or "jmp far dword [0]" form.
   When operand of near jump is the immediate value, assembler will generate
 the shortest variant of this jump instruction if possible (but won't create
 32-bit instruction in 16-bit mode nor 16-bit instruction in 32-bit mode,
-unless there is a size operator stating it). By specifying the size operator
-you can force it to always generate long variant (for example "jmp word 0" in
-16-bit mode and "jmp dword 0" in 32-bit mode) or to always generate short
-variant and terminate with an error when it's impossible (for example
-"jmp byte 0").
+unless there is a size operator stating it). By specifying the jump type
+you can force it to always generate long variant (for example "jmp near 0")
+or to always generate short variant and terminate with an error when it's
+impossible (for example "jmp short 0").
 
 
 1.2.6  Size settings
 
-When instruction uses some memory addressing, by default the shorter 8-bit
-form is generated if only address value fits in range, but it can be
-overridden using the "word" or "dword" operator before the address inside the
-square brackets (or after the "ptr" operator). Such size operator placement
-can also be used to force address size other than default for the given mode.
+When instruction uses some memory addressing, by default the smallest form of
+instruction is generated by using the short displacement if only address
+value fits in the range. This can be overridden using the "word" or "dword"
+operator before the address inside the square brackets (or after the "ptr"
+operator), which forces the long displacement of appropriate size to be made.
+In case when address is not relative to any registers, those operators allow
+also to choose the appropriate mode of absolute addressing.
   Instructions "adc", "add", "and", "cmp", "or", "sbb", "sub" and "xor" with
 first operand being 16-bit or 32-bit are by default generated in shortened
 8-bit form when the second operand is immediate value fitting in the range
@@ -493,9 +495,9 @@ Chapter 2  Instruction set
 ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ
 
 This chapter provides the detailed information about the instructions and
-directives supported by flat assembler. Directives for defining constants and
-labels were already discussed in 1.2.3, all other directives will be described
-later in this chapter.
+directives supported by flat assembler. Directives for defining labels were
+already discussed in 1.2.3, all other directives will be described later in
+this chapter.
 
 
 2.1  The x86 architecture instructions
@@ -868,12 +870,15 @@ the operand with "near" or "far" operator) and whether the instruction is
 instruction or the "dword" size for 32-bit instruction. Operand for far jump
 should be "dword" size for 16-bit instruction or "pword" size for 32-bit
 instruction. A direct "jmp" instruction includes the destination address as
-part of the instruction, the operand specifying address should be the
-numerical expression for near jump, or two numerical expressions separated
-with colon for far jump, the first specifies selector of segment, the second
-is the offset within segment. An indirect "jmp" instruction obtains the
-destination address indirectly through a register or a pointer variable, the
-operand should be general register or memory. See also 1.2.5 for more details.
+part of the instruction (and can be preceded by "short", "near" or "far"
+operator), the operand specifying address should be the numerical expression
+for near or short jump, or two numerical expressions separated with colon for
+far jump, the first specifies selector of segment, the second is the offset
+within segment. The "pword" operator can be used to force the 32-bit far call,
+and "dword" to force the 16-bit far call. An indirect "jmp" instruction
+obtains the destination address indirectly through a register or a pointer
+variable, the operand should be general register or memory. See also 1.2.5 for
+some more details.
 
     jmp 100h         ; direct near jump
     jmp 0FFFFh:0     ; direct far jump
@@ -908,9 +913,9 @@ control, depending on the state of the CPU flags when the instruction
 executes. The mnemonics for conditional jumps may be obtained by attaching
 the condition mnemonic (see table 2.1) to the "j" mnemonic,
 for example "jc" instruction will transfer the control when the CF flag is
-set. The conditional jumps can be near and direct only, and can be optimized
-(see 1.2.5), the operand should be an immediate value specifying target
-address.
+set. The conditional jumps can be short or near, and direct only, and can be
+optimized (see 1.2.5), the operand should be an immediate value specifying
+target address.
 
    Table 2.1  Conditions
   ⁄ƒƒƒƒƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒ¬ƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒƒø
@@ -2212,7 +2217,59 @@ are processed during the assembly and may cause some blocks of instructions
 to be assembled differently or not assembled at all.
 
 
-2.2.1  Conditional assembly
+2.2.1  Numerical constants
+
+The "=" directive allows to define the numerical constant. It should be
+preceded by the name for the constant and followed by the numerical expression
+providing the value. The value of such constants can be a number or an address,
+but - unlike labels - the numerical constants are not allowed to hold the
+register-based addresses. Besides this difference, in their basic variant
+numerical constants behave very much like labels and you can even
+forward-reference them (access their values before they actually get defined).
+  There is, however, a second variant of numerical constants, which is
+recognized by assembler when you try to define the constant of name, under
+which there already was a numerical constant defined. In such case assembler
+treats that constant as an assembly-time variable and allows it to be assigned
+with new value, but forbids forward-referencing it (for obvious reasons). Let's
+see both the variant of numerical constants in one example:
+
+    dd sum
+    x = 1
+    x = x+2
+    sum = x
+
+Here the "x" is an assembly-time variable, and every time it is accessed, the
+value that was assigned to it the most recently is used. Thus if we tried to
+access the "x" before it gets defined the first time, like if we wrote "dd x"
+in place of the "dd sum" instruction, it would cause an error. And when it is
+re-defined with the "x = x+2" directive, the previous value of "x" is used to
+calculate the new one. So when the "sum" constant gets defined, the "x" has
+value of 3, and this value is assigned to the "sum". Since this one is defined
+only once in source, it is the standard numerical constant, and can be
+forward-referenced. So the "dd sum" is assembled as "dd 3". To read more about
+how the assembler is able to resolve this, see section 2.2.6.
+  The value of numerical constant can be preceded by size operator, which can
+ensure that the value will fit in the range for the specified size, and can
+affect also how some of the calculations inside the numerical expression are
+performed. This example:
+
+    c8 = byte -1
+    c32 = dword -1
+
+defines two different constants, the first one fits in 8 bits, the second one
+fits in 32 bits.
+  When you need to define constant with the value of address, which may be
+register-based (and thus you cannot employ numerical constant for this
+purpose), you can use the extended syntax of "label" directive (already
+described in section 1.2.3), like:
+
+    label myaddr at ebp+4
+
+which declares label placed at "ebp+4" address. However remember that labels,
+unlike numerical constants, cannot become assembly-time variables.
+
+
+2.2.2  Conditional assembly
 
 "if" directive causes come block of instructions to be assembled only under
 certain condition. It should be followed by logical expression specifying the
@@ -2295,7 +2352,7 @@ special kinds of numerical expressions and are treated as different types. Thus
 "eax,16 eqtype fs,3+7" condition is true, but "eax,16 eqtype eax,1.6" is false.
 
 
-2.2.2 Repeating blocks of instructions
+2.2.3 Repeating blocks of instructions
 
 "times" directive repeats one instruction specified number of times. It
 should be followed by numerical expression specifying number of repeats and
@@ -2355,7 +2412,7 @@ started. The "break" directive always stops processing the block that was
 started last with either the "repeat" or "while" directive.
 
 
-2.2.3  Addressing spaces
+2.2.4  Addressing spaces
 
   "org" directive sets address at which the following code is expected to
 appear in memory. It should be followed by numerical expression specifying
@@ -2452,7 +2509,7 @@ constant.
 addressing space.
 
 
-2.2.4  Other directives
+2.2.5  Other directives
 
 "align" directive aligns code or data to the specified boundary. It should
 be followed by a numerical expression specifying the number of bytes, to the
@@ -2498,7 +2555,7 @@ way. The absolute value may be obtained by calculating the relative address,
 like "$-$$", or "rva $" in case of PE format.
 
 
-2.2.5  Multiple passes
+2.2.6  Multiple passes
 
 Because the assembler allows to reference some of the labels or constants
 before they get actually defined, it has to predict the values of such labels
@@ -2508,7 +2565,7 @@ prediction based on the values the labels got in the previous pass.
   The changing values of labels can cause some instructions to have encodings
 of different length, and this can cause the change in values of labels again.
 And since the labels and constants can also be used inside the expressions that
-affect the behavior of control directive, the whole block of source can be
+affect the behavior of control directives, the whole block of source can be
 processed completely differently during the new pass. Thus the assembler does
 more and more passes, each time trying to do better predictions to approach
 the final solution, when all the values get predicted correctly. It uses
@@ -2550,8 +2607,8 @@ get skipped.
   The above sample might have been written as a try to define the label only
 when it was not yet defined. It fails, because the "defined" operator does
 check whether the label is defined anywhere, and this includes the definition
-inside this conditionally processed block. However there is a way to overcome
-this problem:
+inside this conditionally processed block. However adding some additional
+condition may make it possible to get it resolved:
 
     if ~ defined alpha | defined @f
         alpha:
@@ -2560,19 +2617,42 @@ this problem:
 
 The "@f" is always the same label as the nearest "@@" symbol in the source
 following it, so the above sample would mean the same if any unique name was
-used instead of the anonymous label. When the "alpha" label was not yet
-defined, the assembler will be predicting the "defined alpha" to be false, this
-will however cause the both labels to get defined. So in the next pass
-assembler will predict that the both labels will get defined, and this will
-cause them both to be defined again - thus the predictions will match with the
-results and the assembly process will approach the correct solution. The
-anonymous label acts here as a kind of marker that the "alpha" label is defined
-in this place.
-  From this example you can conclude, that the prediction for the "defined"
-operator is very straightforward - the label is predicted to be defined only
-when it was defined during the previous pass (and if it was defined during the
-current pass, no prediction is needed). The same applies to the "used"
-operator. But the predictions for the values of labels are not so simple and
+used instead of the anonymous label. When "alpha" is not defined in any other
+place in source, the only possible solution is when this block gets defined,
+and this time this doesn't lead to the antynomy, because of the anonymous
+label which makes this block self-establishing. To better understand this,
+look at the blocks that has nothing more than this self-establishing:
+
+    if defined @f
+        @@:
+    end if
+
+This is an example of source that may have more than one solution, as both
+cases when this block gets processed or not are equally correct. Which one of
+those two solutions we get depends on the algorithm on the assembler, in case
+of flat assembler - on the algorithm of predictions. Back to the previous
+sample, when "alpha" is not defined anywhere else, the condition for "if" block
+cannot be false, so we are left with only one possible solution, and we can
+hope the assembler will arrive at it. On the other hand, when "alpha" is
+defined in some other place, we've got two possible solutions again, but one of
+them causes "alpha" to be defined twice, and such an error causes assembler to
+abort the assembly immediately, as this is the kind of error that deeply
+disturbs the process of resolving. So we can get such source either correctly
+resolved or causing an error, and what we get may depend on the internal
+choices made by the assembler.
+  However there are some facts about such choices that are certain. When
+assembler has to check whether the given symbol is defined and it was already
+defined in the current pass, no prediction is needed - it was already noted
+above. And when the given symbol has been defined never before, including all
+the already finished passes, the assembler predicts it to be not defined.
+Knowing this, we can expect that the simple self-establishing block shown
+above will not be assembled at all and that the previous sample will resolve
+correctly when "alpha" is defined somewhere before our conditional block,
+while it will itself define "alpha" when it's not already defined earlier, thus
+potentially causing the error because of double definition if the "alpha" is
+also defined somewhere later.
+  The "used" operator may be expected to behave in a similar manner in
+analogous cases, however any other kinds of predictions my not be so simple and
 you should never rely on them this way.
 
 
@@ -2655,14 +2735,16 @@ allow the syntax with "offset" word before any address value:
 After this definition "mov ax,offset char" will be valid construction for
 copying the offset of "char" variable into "ax" register, because "offset" is
 replaced with an empty value, and therefore ignored.
+  The "define" directive followed by the name of constant and then the value,
+is the alternative way of defining symbolic constant. The only difference
+between "define" and "equ" is that "define" assigns the value as it is, it does
+not replace the symbolic constants with their values inside it.
   Symbolic constants can also be defined with the "fix" directive, which has
 the same syntax as "equ", but defines constants of high priority - they are
 replaced with their symbolic values even before processing the preprocessor
 directives and macroinstructions, the only exception is "fix" directive
 itself, which has the highest possible priority, so it allows redefinition of
-constants defined this way. But when such high priority constants are found
-inside the value following the "fix" directive, they are replaced with their
-values before assigning this value to the new constant.
+constants defined this way.
   The "fix" directive can be used for syntax adjustments related to directives
 of preprocessor, what cannot be done with "equ" directive. For example:
 
@@ -2988,9 +3070,9 @@ allows multiple levels of nesting the macroinstruction definitions.
 use the "fix" directive, which becomes useful when some macroinstruction only
 begins the definition of another one, without closing it. For example:
 
-    macro tmacro params
+    macro tmacro [params]
      {
-      macro params {
+      common macro params {
      }
 
     MACRO fix tmacro
@@ -3053,7 +3135,7 @@ With such definition "msg db 'Hello!',13,10" will define also "msg.size"
 constant, equal to the size of defined data in bytes.
   Defining data structures addressed by registers or absolute values should be
 done using the "virtual" directive with structure macroinstruction
-(see 2.2.3).
+(see 2.2.4).
   "restruc" directive removes the last definition of the structure, just like
 "purge" does with macroinstructions and "restore" with symbolic constants.
 It also has the same syntax - should be followed by one or more names of
@@ -3067,7 +3149,7 @@ amount of duplicates of the block enclosed with braces. The basic syntax is
 "rept" directive followed by number (it cannot be an expression, since
 preprocessor doesn't do calculations, if you need repetitions based on values
 calculated by assembler, use one of the code repeating directives that are
-processed by assembler, see 2.2.2), and then block of source enclosed between
+processed by assembler, see 2.2.3), and then block of source enclosed between
 the "{" and "}" characters. The simplest example:
 
     rept 5 { in al,dx }
@@ -3441,6 +3523,8 @@ definition is chosen, they are generated automatically and no more data needs
 to be defined there. The same applies to the resource data when the "resource"
 identifier is followed by "from" operator and quoted file name - in such case
 data is  taken from the given resource file.
+  The "rva" operator can be used inside the numerical expressions to obtain
+the RVA of the item addressed by the value it is applied to.
 
 
 2.4.3  Common Object File Format
@@ -3452,12 +3536,14 @@ Microsoft's COFF format for the x86-64 architecture, use "format MS64 COFF"
 setting, in such case long mode code is generated by default.
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then one or more section flags can
-follow. Available flags are: "code" and "data" for both COFF variants,
-"readable", "writeable", "executable", "shareable", "discardable" and
-"notpageable" only for Microsoft COFF variant. By default section is aligned
-to double word (four bytes), in case of Microsoft COFF variant other alignment
-can be specified by providing the "align" operator followed by alignment value
-(any power of two up to 8192) among the section flags.
+follow. Section flags available for both COFF variants are "code" and "data",
+while "readable", "writeable", "executable", "shareable", "discardable",
+"notpageable", "linkremove" and "linkinfo" are flags available only with
+Microsoft COFF variant.
+  By default section is aligned to double word (four bytes), in case of
+Microsoft COFF variant other alignment can be specified by providing the
+"align" operator followed by alignment value (any power of two up to 8192)
+among the section flags.
   "extrn" directive defines the external symbol, it should be followed by the
 name of symbol and optionally the size operator specifying the size of data
 labeled by this symbol. The name of symbol can be also preceded by quoted
@@ -3489,13 +3575,17 @@ two), if no alignment is specified, the default value is used, which is 4 or 8,
 depending on which format variant has been chosen.
   "extrn" and "public" directives have the same meaning and syntax as when the
 COFF output format is selected (described in previous section).
+  The "rva" operator can be used also in the case of this format (however not
+when target architecture is x86-64), it converts the address into the offset
+relative to the GOT table, so it may be useful to create position-independent
+code.
   To create executable file, follow the format choice directive with the
 "executable" keyword. It allows to use "entry" directive followed by the value
 to set as entry point of program. On the other hand it makes "extrn" and
-"public" directives unavailable. "section" directive in this case can be
-followed only by one or more section flags and its origin is aligned to page
-(4096 bytes). Available flags for section are: "readable", "writeable" and
-"executable".
+"public" directives unavailable, and instead of "section" there should be the
+"segment" directive used, followed only by one or more segment permission
+flags. The origin of segment is aligned to page (4096 bytes), and available
+flags for are: "readable", "writeable" and "executable".
 
 
 EOF

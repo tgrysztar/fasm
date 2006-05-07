@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 CREATE_NEW	       = 1
@@ -56,8 +56,7 @@ init_memory:
 	add	eax,dword [buffer+12]
     allocate_memory:
 	mov	edx,eax
-	shr	edx,3
-	imul	edx,3
+	shr	edx,2
 	mov	ecx,eax
 	sub	ecx,edx
 	mov	[memory_end],ecx
@@ -77,7 +76,7 @@ init_memory:
 	ret
     not_enough_memory:
 	mov	eax,[additional_memory_end]
-	shl	eax,2
+	shl	eax,1
 	cmp	eax,4000h
 	jb	out_of_memory
 	jmp	allocate_memory

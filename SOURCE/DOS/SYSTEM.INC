@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 go32:
@@ -50,7 +50,7 @@ init_memory:
 	lds	bx,dword [4*19h]
 	mov	eax,100000h		; initial free extended memory base
 	cmp	dword [bx+12h],'VDIS'	; VDISK memory allocation?
-	jne	byte no_vdisk		; if present, get base of free memory
+	jne	short no_vdisk		; if present, get base of free memory
 	mov	eax,dword [bx+2Ch]	; get first free extended memory byte
 	add	eax,0Fh 		; align on paragraph
 	and	eax,0FFFFF0h		; address is only 24bit
@@ -58,11 +58,11 @@ init_memory:
 	push	0FFFFh			; DS := FFFFh for ext mem addressing
 	pop	ds
 	cmp	dword [13h],'VDIS'	; VDISK memory allocation?
-	jne	byte vdisk_ok		; if present, get base of free memory
+	jne	short vdisk_ok		; if present, get base of free memory
 	movzx	ebx,word [2Eh]		; get first free kilobyte
 	shl	ebx,10
 	cmp	eax,ebx 		; pick larger of 2 addresses
-	ja	byte vdisk_ok
+	ja	short vdisk_ok
 	mov	eax,ebx
     vdisk_ok:
 	pop	ds
@@ -194,14 +194,12 @@ extended_memory_ok:
 	je	only_conventional_memory
 	mov	eax,[memory_end]
 	sub	eax,[memory_start]
-	shr	eax,3
-	imul	eax,3
+	shr	eax,2
 	cmp	eax,ecx
 	ja	no_conventional_memory
 	ret
     only_conventional_memory:
-	shr	ecx,3			; use part of conventional memory
-	imul	ecx,3
+	shr	ecx,2			; use part of conventional memory
 	add	edi,ecx 		; as a substitute for extended memory
 	mov	[memory_start],edi
 	xchg	[additional_memory_end],edi
@@ -256,8 +254,7 @@ init_dpmi_memory:
 	add	[additional_memory_end],ecx
 	mov	eax,[memory_end]
 	sub	eax,[memory_start]
-	shr	eax,3
-	imul	eax,3
+	shr	eax,2
 	cmp	eax,ecx
 	ja	no_conventional_memory
 	ret
@@ -265,8 +262,7 @@ init_dpmi_memory:
 	mov	eax,[memory_end]
 	mov	ebx,[memory_start]
 	sub	eax,ebx
-	shr	eax,3
-	imul	eax,3
+	shr	eax,2
 	mov	[additional_memory],ebx
 	add	ebx,eax
 	mov	[additional_memory_end],ebx

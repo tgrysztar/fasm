@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2005, Tomasz Grysztar.
+; Copyright (c) 1999-2006, Tomasz Grysztar.
 ; All rights reserved.
 
 segment modes use16
@@ -50,7 +50,7 @@ real32:
 	jmp	modes:test_rm32
     test_rm32:
 	inc	ebx
-	jz	byte no_rm32
+	jz	short no_rm32
 	lgdt	[cs:real16_GDTR]
 	mov	eax,cr0
 	or	al,1
