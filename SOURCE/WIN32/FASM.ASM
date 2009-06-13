@@ -1,12 +1,13 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	PE console
 
 start:
 
+	mov	[con_handle],STD_OUTPUT_HANDLE
 	mov	esi,_logo
 	call	display_string
 
@@ -14,6 +15,17 @@ start:
 	jc	information
 
 	call	init_memory
+
+	mov	esi,_memory_prefix
+	call	display_string
+	mov	eax,[memory_end]
+	sub	eax,[memory_start]
+	add	eax,[additional_memory_end]
+	sub	eax,[additional_memory]
+	shr	eax,10
+	call	display_number
+	mov	esi,_memory_suffix
+	call	display_string
 
 	call	[GetTickCount]
 	mov	[start_time],eax
@@ -62,6 +74,9 @@ information:
 	jmp	exit_program
 
 get_params:
+	mov	[input_file],0
+	mov	[output_file],0
+	mov	[symbols_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
 	call	[GetCommandLine]
@@ -91,16 +106,23 @@ get_params:
 	lodsb
 	cmp	al,20h
 	je	find_param
-	cmp	al,22h
-	je	string_param
 	cmp	al,'-'
 	je	option_param
 	cmp	al,0Dh
 	je	all_params
 	or	al,al
 	jz	all_params
-	inc	edi
-	mov	ebx,edi
+	cmp	[input_file],0
+	jne	get_output_file
+	mov	[input_file],edi
+	jmp	process_param
+      get_output_file:
+	cmp	[output_file],0
+	jne	bad_params
+	mov	[output_file],edi
+    process_param:
+	cmp	al,22h
+	je	string_param
     copy_param:
 	stosb
 	lodsb
@@ -112,9 +134,6 @@ get_params:
 	jz	param_end
 	jmp	copy_param
     string_param:
-	inc	edi
-	mov	ebx,edi
-    copy_string_param:
 	lodsb
 	cmp	al,22h
 	je	string_param_end
@@ -123,7 +142,7 @@ get_params:
 	or	al,al
 	jz	param_end
 	stosb
-	jmp	copy_string_param
+	jmp	string_param
     option_param:
 	lodsb
 	cmp	al,'m'
@@ -134,6 +153,10 @@ get_params:
 	je	passes_option
 	cmp	al,'P'
 	je	passes_option
+	cmp	al,'s'
+	je	symbols_option
+	cmp	al,'S'
+	je	symbols_option
     bad_params:
 	stc
 	ret
@@ -196,34 +219,22 @@ get_params:
 	ja	bad_params
 	mov	[passes_limit],dx
 	jmp	find_param
+    symbols_option:
+	mov	[symbols_file],edi
+      find_symbols_file_name:
+	lodsb
+	cmp	al,20h
+	jne	process_param
+	jmp	find_symbols_file_name
     param_end:
 	dec	esi
     string_param_end:
 	xor	al,al
 	stosb
-	mov	eax,edi
-	sub	eax,ebx
-	mov	[ebx-1],al
 	jmp	find_param
     all_params:
-	xor	al,al
-	stosb
-	cmp	[params],0
+	cmp	[input_file],0
 	je	bad_params
-	lea	eax,[params+1]
-	mov	[input_file],eax
-	mov	[output_file],0
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	je	params_ok
-	inc	eax
-	mov	[output_file],eax
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	jne	bad_params
-    params_ok:
 	clc
 	ret
 
@@ -231,11 +242,18 @@ include 'system.inc'
 
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2005, Tomasz Grysztar',0Dh,0Ah,0
+_copyright db 'Copyright (c) 1999-2009, Tomasz Grysztar',0Dh,0Ah,0
 
-_logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,0
-_usage db 'usage: fasm source [output]',0Dh,0Ah,0
-
+_logo db 'flat assembler  version ',VERSION_STRING,0
+_usage db 0Dh,0Ah
+       db 'usage: fasm <source> [output]',0Dh,0Ah
+       db 'optional settings:',0Dh,0Ah
+       db ' -m <limit>    set the limit in kilobytes for the available memory',0Dh,0Ah
+       db ' -p <limit>    set the maximum allowed number of passes',0Dh,0Ah
+       db ' -s <file>     dump symbolic information for debugging',0Dh,0Ah
+       db 0
+_memory_prefix db '  (',0
+_memory_suffix db ' kilobytes memory)',0Dh,0Ah,0
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0Dh,0Ah,0
@@ -247,16 +265,20 @@ include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+
 include '..\tables.inc'
+include '..\messages.inc'
 
 align 4
 
 include '..\variable.inc'
 
+con_handle dd ?
 memory_setting dd ?
 start_time dd ?
 
 params rb 1000h
+options rb 1000h
 buffer rb 4000h
 
 stack 10000h

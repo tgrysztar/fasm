@@ -2,46 +2,103 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.68 (Jun 13, 2009)
+
+[+] Added SSSE3 (Supplemental SSE3), SSE4.1, SSE4.2 and SSE4a instructions.
+
+[+] Added the AMD SVM and Intel SMX instructions.
+
+[+] Added "rdmsrq", "wrmsrq", "sysexitq" and "sysretq" mnemonics for the
+    64-bit variants of respective instructions.
+
+[+] Added "fstenvw", "fstenvd", "fsavew", "fsaved", "frstorw" and "frstord"
+    mnemonics to allow choosing between 16-bit and 32-bit variants of
+    structures used by the "fstenv", "fsave" and "frstor" instructions.
+
+[+] Added "plt" operator for the ELF output format.
+
+[+] Allowed "rva" operator to be used in MS COFF object format, and also
+    added "static" keyword for the "public" directive.
+
+[+] Added Intel-style aliases for the additional long mode 8-bit registers.
+
+[-] The PE formatter now automatically detects whether relocatable labels
+    should be used, depending on whether the fixups directory is placed
+    somewhere into executable by programer, or not. This makes possible the
+    more flexible use of the addressing symbols in case of PE executable fixed
+    at some position.
+
+[-] Added support for outputting the 32-bit address relocations in case of
+    64-bit object formats and PE executable. This makes some specific
+    instructions compilable, but it also forces linker to put such
+    generated code into the low 2 gigabytes of addressing space.
+
+[+] Added "EFI", "EFIboot" and "EFIruntime" subsystem keywords for PE format.
+
+[-] Corrected the precedence of operators of macroinstruction line maker.
+    The symbol escaping now has always the higher priority than symbol conversion,
+    and both have higher precedence than concatenation.
+
+[+] Allowed to check "@b" and "@f" symbols with "defined" operator.
+
+[+] Allowed "as" operator to specify the output file extension when
+    placed at the end of the "format" directive line.
+
+[-] Definition of macro with the same name as one of the preprocessor's directives
+    is no longer allowed.
+
+[+] Allowed single quote character to be put inside the number value,
+    to help improve long numbers readability.
+
+[+] Added optional symbolic information output, and a set of tools that extract
+    various kinds of information from it.
+
+[+] Added "err" directive that allows to signalize error from the source.
+
+
 version 1.66 (May 7, 2006)
 
-[+] Added DEFINE directive to preprocessor, which defines symbolic constants, the same kind
-    as EQU directive, however there's an important difference that DEFINE doesn't process
-    symbolic constants in the value before assigning it. For example:
+[+] Added "define" directive to preprocessor, which defines symbolic constants,
+    the same kind as "equ" directive, however there's an important difference
+    that "define" doesn't process symbolic constants in the value before
+    assigning it. For example:
 
-        a equ 1
-        a equ a+a
+	a equ 1
+	a equ a+a
 
-        define b 1
-        define b b+b
+	define b 1
+	define b b+b
 
-    defines the "a" constant with value "1+1", but the "b" is defined with value "b+b".
-    This directive may be useful in some advanced macroinstructions.
+    defines the "a" constant with value "1+1", but the "b" is defined with
+    value "b+b". This directive may be useful in some advanced
+    macroinstructions.
 
 [-] Moved part of the conditional expression processing into parser,
     for slightly better performance and lesser memory usage by assembler.
-    The logical values defined with "eq", "eqtype" and "in" operators are now evaluated
-    by the parser and if they are enough to determine the condition, the whole
-    block is processed accordingly. Thus this block:
+    The logical values defined with "eq", "eqtype" and "in" operators are now
+    evaluated by the parser and if they are enough to determine the condition,
+    the whole block is processed accordingly. Thus this block:
 
-        if eax eq EAX | 0/0
-                nop
-        end if
+	if eax eq EAX | 0/0
+		nop
+	end if
 
-    is parsed into just NOP instruction, since parser is able to determine that the
-    condition is true, even though one of the logical values makes no sense -
-    but since this is none of the "eq", "eqtype" and "in" expressions, the parser doesn't
-    investigate.
+    is parsed into just "nop" instruction, since parser is able to determine
+    that the condition is true, even though one of the logical values makes no
+    sense - but since this is none of the "eq", "eqtype" and "in" expressions,
+    the parser doesn't investigate.
 
-[-] Also the assembler is now calculating only as many logical values as it needs to 
-    determine the condition. So this block:
+[-] Also the assembler is now calculating only as many logical values as it
+    needs to determine the condition. So this block:
 
-        if defined alpha & alpha
+	if defined alpha & alpha
 
-        end if
+	end if
 
-    will not cause error when "alpha" is not defined, as it would with previous versions.
-    This is because after checking that "defined alpha" is false condition it doesn't need
-    to know the second logical value to determine the value of conjunction.
+    will not cause error when "alpha" is not defined, as it would with previous
+    versions. This is because after checking that "defined alpha" is false
+    condition it doesn't need to know the second logical value to determine the
+    value of conjunction.
 
 [+] Added "short" keyword for specifying jump type, the "jmp byte" form is now
     obsolete and no longer correct - use "jmp short" instead.
@@ -49,8 +106,8 @@ version 1.66 (May 7, 2006)
 [-] The size operator applied to jump no longer applies to the size of relative
     displacement - now it applies to the size of target address.
 
-[-] The RET instruction with 0 parameter is now assembled into short form, unless you
-    force using the 16-bit immediate with "word" operator.
+[-] The "ret" instruction with 0 parameter is now assembled into short form,
+    unless you force using the 16-bit immediate with "word" operator.
 
 [+] Added missing extended registers for the 32-bit addressing in long mode.
 
@@ -59,29 +116,30 @@ version 1.66 (May 7, 2006)
 [+] Added support for GOT offsets in ELF object formatter, which can be useful
     when making position-independent code for shared libraries. For any label
     you can get its offset relative to GOT by preceding it with "rva" operator
-    (the same keyword as for PE format is used, to avoid adding a new one, while
-    this one has very similar meaning).
+    (the same keyword as for PE format is used, to avoid adding a new one,
+    while this one has very similar meaning).
 
 [-] Changed ELF executable to use "segment" directive in place of "section",
-    to make the distinction between the run-time segments and linkable sections.
-    If you had a "section" directive in your ELF executables and they no longer assemble,
-    replace it with "segment".
+    to make the distinction between the run-time segments and linkable
+    sections. If you had a "section" directive in your ELF executables and they
+    no longer assemble, replace it with "segment".
 
-[-] The PE formatter now always creates the fixups directory when told to - even when
-    there are no fixups to be put there (in such case it creates the directory with
-    one empty block).
+[-] The PE formatter now always creates the fixups directory when told to -
+    even when there are no fixups to be put there (in such case it creates the
+    directory with one empty block).
 
-[-] Some of the internal structures have been extended to provide the possibility of making
-    extensive symbol dumps.
+[-] Some of the internal structures have been extended to provide the
+    possibility of making extensive symbol dumps.
 
-[-] Corrected FIX directive to keep the value intact before assigning it to the
+[-] Corrected "fix" directive to keep the value intact before assigning it to the
     prioritized constant.
 
-[+] The ` operator now works with any kind of symbol; when used with quoted string it
-    simply does nothing. Thus the sequence of ` operators applied to one symbol work the
-    same as if there was just one. In similar manner, the sequence of # operators now
-    works as if it was a single one - using such a sequence instead of escaping, which was
-    kept for some backward compatibility, is now deprecated.
+[+] The ` operator now works with any kind of symbol; when used with quoted
+    string it simply does nothing. Thus the sequence of ` operators applied to
+    one symbol work the same as if there was just one. In similar manner, the
+    sequence of # operators now works as if it was a single one - using such a
+    sequence instead of escaping, which was kept for some backward
+    compatibility, is now deprecated.
 
 [-] Corrected order of identifying assembler directives ("if db eq db" was
     incorrectly interpreted as data definition).
@@ -91,24 +149,25 @@ version 1.66 (May 7, 2006)
 
 version 1.64 (Aug 8, 2005)
 
-[+] Output of PE executables for Win64 architecture (with "format PE64" setting).
+[+] Output of PE executables for Win64 architecture (with "format PE64"
+    setting).
 
 [+] Added "while" and "break" directives.
 
 [+] Added "irp" and "irps" directives.
 
-[+] The macro arguments can be marked as required witht the "*" character.
+[+] The macro arguments can be marked as required with the "*" character.
 
-[-] Fixed checking for overflow when multiplying 64-bit values - the result must
-    always fit in the range of signed 64 integer now.
+[-] Fixed checking for overflow when multiplying 64-bit values - the result
+    must always fit in the range of signed 64 integer now.
 
 [-] Segment prefixes were generated incorrectly in 16-bit mode when BP was used
     as a second addressing register - fixed.
 
 [-] The "local" directive was not creating unique labels in some cases - fixed.
 
-[-] The "not encodable with long immediate" error in 64-bit mode was sometimes wrongly
-    signaled - fixed.
+[-] The "not encodable with long immediate" error in 64-bit mode was sometimes
+    wrongly signaled - fixed.
 
 [-] Other minor fixes and corrections.
 
@@ -126,7 +185,8 @@ version 1.62 (Jun 14, 2005)
 
 [+] Extended data directives to allow use of the "dup" operator.
 
-[+] Extended "struc" features to allow custom definitions of main structure's label.
+[+] Extended "struc" features to allow custom definitions of main structure's
+    label.
 
 [-] When building resources from the the .RES file that contained more
     than one resource of the same string name, the separate resource
@@ -136,5 +196,5 @@ version 1.62 (Jun 14, 2005)
 
 [-] Corrected behavior of "fix" directive to more straightforward.
 
-[-] Fixed bug in "include" directive, which caused files included from within macros to
-    be processed the wrong way.
+[-] Fixed bug in "include" directive, which caused files included from within
+    macros to be processed the wrong way.

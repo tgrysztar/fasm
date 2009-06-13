@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 assembler:
@@ -8,6 +8,7 @@ assembler:
 	mov	[stub_size],eax
 	mov	[number_of_sections],eax
 	mov	[current_pass],ax
+	mov	[resolver_flags],eax
       assembler_loop:
 	mov	eax,[labels_list]
 	mov	[display_buffer],eax
@@ -30,6 +31,7 @@ assembler:
 	mov	[format_flags],eax
 	mov	[number_of_relocations],eax
 	mov	[undefined_data_end],eax
+	mov	[file_extension],eax
 	mov	[next_pass_needed],al
 	mov	[output_format],al
 	mov	[labels_type],al
@@ -151,6 +153,27 @@ assemble_line:
 	lods	dword [esi]
 	mov	[current_line],eax
 	mov	[prefixed_instruction],0
+	cmp	[symbols_file],0
+	je	continue_line
+	mov	ebx,[display_buffer]
+	mov	dword [ebx-4],1
+	mov	dword [ebx-8],1Ch
+	sub	ebx,8+1Ch
+	cmp	ebx,edi
+	jbe	out_of_memory
+	mov	[display_buffer],ebx
+	mov	[ebx],eax
+	mov	[ebx+4],edi
+	mov	eax,dword [org_origin]
+	mov	edx,dword [org_origin+4]
+	mov	ecx,[org_registers]
+	mov	[ebx+8],eax
+	mov	[ebx+8+4],edx
+	mov	[ebx+10h],ecx
+	mov	edx,[org_symbol]
+	mov	eax,dword [labels_type]
+	mov	[ebx+14h],edx
+	mov	[ebx+18h],eax
       continue_line:
 	cmp	byte [esi],0Fh
 	je	line_assembled
@@ -329,10 +352,12 @@ assemble_line:
 	or	byte [ebx+8],1+2
 	jmp	instruction_assembled
       assemble_instruction:
-	mov	[operand_size],0
-	mov	[size_override],0
-	mov	[operand_prefix],0
-	mov	[rex_prefix],0
+;        mov     [operand_size],0
+;        mov     [size_override],0
+;        mov     [operand_prefix],0
+;        mov     [rex_prefix],0
+	mov	dword [operand_size],0
+	mov	[opcode_prefix],0
 	mov	[immediate_size],0
 	movzx	ebx,word [esi]
 	mov	al,[esi+2]
@@ -617,14 +642,18 @@ load_directive:
       load_from_code:
 	cmp	byte [esi],'.'
 	je	invalid_value
-	call	get_relative_offset
-	neg	eax
+	or	[size_override],-1
+	call	get_address_value
+	call	calculate_relative_offset
+	push	esi edi
 	cmp	[next_pass_needed],0
-	jne	load_address_ok
+	jne	load_address_type_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-      load_address_ok:
-	push	esi edi
+      load_address_type_ok:
+	cmp	edx,-1
+	jne	bad_load_address
+	neg	eax
 	mov	esi,edi
 	sub	esi,eax
 	jc	bad_load_address
@@ -672,14 +701,18 @@ store_directive:
 	jne	invalid_argument
 	cmp	byte [esi],'.'
 	je	invalid_value
-	call	get_relative_offset
-	neg	eax
+	or	[size_override],-1
+	call	get_address_value
+	call	calculate_relative_offset
+	push	esi edi
 	cmp	[next_pass_needed],0
-	jne	store_address_ok
+	jne	store_address_type_ok
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
-      store_address_ok:
-	push	esi edi
+      store_address_type_ok:
+	cmp	edx,-1
+	jne	bad_store_address
+	neg	eax
 	sub	edi,eax
 	jc	bad_store_address
 	cmp	edi,[org_start]
@@ -717,10 +750,14 @@ display_directive:
 	mov	ecx,eax
 	push	edi
 	mov	edi,[display_buffer]
-	sub	edi,4
+	sub	edi,8
 	sub	edi,eax
+	cmp	edi,[esp]
+	jbe	out_of_memory
 	mov	[display_buffer],edi
 	rep	movs byte [edi],[esi]
+	stos	dword [edi]
+	xor	eax,eax
 	stos	dword [edi]
 	pop	edi
 	inc	esi
@@ -729,10 +766,12 @@ display_directive:
 	call	get_byte_value
 	push	edi
 	mov	edi,[display_buffer]
-	sub	edi,4+1
+	sub	edi,8+1
 	mov	[display_buffer],edi
 	stos	byte [edi]
 	mov	eax,1
+	stos	dword [edi]
+	dec	eax
 	stos	dword [edi]
 	pop	edi
       display_next:
@@ -743,7 +782,7 @@ display_directive:
 	je	display_directive
 	dec	esi
 	jmp	instruction_assembled
-flush_display_buffer:
+show_display_buffer:
 	mov	eax,[display_buffer]
 	or	eax,eax
 	jz	display_done
@@ -751,18 +790,21 @@ flush_display_buffer:
 	cmp	esi,eax
 	je	display_done
       display_messages:
-	sub	esi,4
+	sub	esi,8
+	mov	eax,[esi+4]
 	mov	ecx,[esi]
 	sub	esi,ecx
+	test	eax,eax
+	jnz	skip_internal_message
 	push	esi
 	call	display_block
 	pop	esi
+      skip_internal_message:
 	cmp	esi,[display_buffer]
 	jne	display_messages
-	mov	eax,[labels_list]
-	mov	[display_buffer],eax
       display_done:
 	ret
+
 times_directive:
 	lods	byte [esi]
 	cmp	al,'('
@@ -1546,8 +1588,41 @@ data_twords:
 	stos	dword [edi]
 	mov	ax,[esi+8]
 	add	ax,3FFFh
-	cmp	ax,8000h
+	jo	value_out_of_range
+	cmp	ax,7FFFh
+	jge	value_out_of_range
+	cmp	ax,0
+	jg	tword_exp_ok
+	mov	cx,ax
+	neg	cx
+	inc	cx
+	cmp	cx,64
 	jae	value_out_of_range
+	cmp	cx,32
+	ja	large_shift
+	mov	eax,[esi]
+	mov	edx,[esi+4]
+	mov	ebx,edx
+	shr	edx,cl
+	shrd	eax,ebx,cl
+	jmp	tword_mantissa_shift_done
+      large_shift:
+	sub	cx,32
+	xor	edx,edx
+	mov	eax,[esi+4]
+	shr	eax,cl
+      tword_mantissa_shift_done:
+	jnc	store_shifted_mantissa
+	add	eax,1
+	adc	edx,0
+      store_shifted_mantissa:
+	mov	[edi-8],eax
+	mov	[edi-4],edx
+	xor	ax,ax
+	test	edx,1 shl 31
+	jz	tword_exp_ok
+	inc	ax
+      tword_exp_ok:
 	mov	bl,[esi+11]
 	shl	bx,15
 	or	ax,bx
@@ -1566,6 +1641,8 @@ data_twords:
       complex_tword:
 	call	get_word_value
 	push	eax
+	cmp	byte [esi],':'
+	jne	invalid_operand
 	inc	esi
 	lods	byte [esi]
 	cmp	al,'('
@@ -1948,3 +2025,10 @@ align_directive:
       nops_stosw_ok:
 	rep	stos dword [edi]
 	jmp	reserved_data
+err_directive:
+	mov	al,[esi]
+	cmp	al,0Fh
+	je	invoked_error
+	or	al,al
+	jz	invoked_error
+	jmp	extra_characters_on_line

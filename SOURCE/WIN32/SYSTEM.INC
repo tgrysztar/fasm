@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 CREATE_NEW	       = 1
@@ -172,11 +172,9 @@ lseek:
 	ret
 
 display_string:
-	push	esi
-	push	STD_OUTPUT_HANDLE
+	push	[con_handle]
 	call	[GetStdHandle]
 	mov	ebp,eax
-	pop	esi
 	mov	edi,esi
 	or	ecx,-1
 	xor	al,al
@@ -193,7 +191,7 @@ display_string:
 display_character:
 	push	ebx
 	mov	[character],dl
-	push	STD_OUTPUT_HANDLE
+	push	[con_handle]
 	call	[GetStdHandle]
 	mov	ebx,eax
 	push	0
@@ -239,7 +237,7 @@ display_number:
 
 display_user_messages:
 	mov	[displayed_count],0
-	call	flush_display_buffer
+	call	show_display_buffer
 	cmp	[displayed_count],1
 	jb	line_break_ok
 	je	make_line_break
@@ -250,7 +248,7 @@ display_user_messages:
 	je	line_break_ok
       make_line_break:
 	mov	word [buffer],0A0Dh
-	push	STD_OUTPUT_HANDLE
+	push	[con_handle]
 	call	[GetStdHandle]
 	push	0
 	push	bytes_count
@@ -274,7 +272,7 @@ display_block:
 	mov	word [last_displayed],ax
       block_ok:
 	push	ecx
-	push	STD_OUTPUT_HANDLE
+	push	[con_handle]
 	call	[GetStdHandle]
 	pop	ecx
 	push	0
@@ -287,6 +285,7 @@ display_block:
 	ret
 
 fatal_error:
+	mov	[con_handle],STD_ERROR_HANDLE
 	mov	esi,error_prefix
 	call	display_string
 	pop	esi
@@ -296,10 +295,14 @@ fatal_error:
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
+	mov	[con_handle],STD_ERROR_HANDLE
 	call	display_user_messages
 	push	dword 0
 	mov	ebx,[current_line]
       get_error_lines:
+	mov	eax,[ebx]
+	cmp	byte [eax],0
+	je	get_next_error_line
 	push	ebx
 	test	byte [ebx+7],80h
 	jz	display_error_line
@@ -309,6 +312,7 @@ assembler_error:
 	test	byte [edx+7],80h
 	jnz	find_definition_origin
 	push	edx
+      get_next_error_line:
 	mov	ebx,[ebx+8]
 	jmp	get_error_lines
       display_error_line:

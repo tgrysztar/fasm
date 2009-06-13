@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	MZ
@@ -35,6 +35,17 @@ start:
 
 	call	init_memory
 
+	mov	esi,_memory_prefix
+	call	display_string
+	mov	eax,[memory_end]
+	sub	eax,[memory_start]
+	add	eax,[additional_memory_end]
+	sub	eax,[additional_memory]
+	shr	eax,10
+	call	display_number
+	mov	esi,_memory_suffix
+	call	display_string
+
 	xor	ah,ah
 	int	1Ah
 	mov	ax,cx
@@ -51,9 +62,8 @@ start:
 	movzx	eax,[current_pass]
 	inc	eax
 	call	display_number
-	mov	ah,9
-	mov	dx,_passes_suffix
-	call	dos_int
+	mov	esi,_passes_suffix
+	call	display_string
 	xor	ah,ah
 	int	1Ah
 	mov	ax,cx
@@ -76,26 +86,26 @@ start:
 	int	21h
 	pop	eax
 	call	display_number
-	mov	ah,9
-	mov	dx,_seconds_suffix
-	call	dos_int
+	mov	esi,_seconds_suffix
+	call	display_string
       display_bytes_count:
 	mov	eax,[written_size]
 	call	display_number
-	mov	ah,9
-	mov	dx,_bytes_suffix
-	call	dos_int
+	mov	esi,_bytes_suffix
+	call	display_string
 	xor	al,al
 	jmp	exit_program
 
 information:
-	mov	dx,_usage
-	mov	ah,9
-	call	dos_int
+	mov	esi,_usage
+	call	display_string
 	mov	al,1
 	jmp	exit_program
 
 get_params:
+	mov	[input_file],0
+	mov	[output_file],0
+	mov	[symbols_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
 	push	ds
@@ -106,16 +116,23 @@ get_params:
 	lodsb
 	cmp	al,20h
 	je	find_param
-	cmp	al,22h
-	je	string_param
 	cmp	al,'-'
 	je	option_param
 	cmp	al,0Dh
 	je	all_params
 	or	al,al
 	jz	all_params
-	inc	edi
-	mov	ebx,edi
+	cmp	[es:input_file],0
+	jne	get_output_file
+	mov	[es:input_file],edi
+	jmp	process_param
+      get_output_file:
+	cmp	[es:output_file],0
+	jne	bad_params
+	mov	[es:output_file],edi
+    process_param:
+	cmp	al,22h
+	je	string_param
     copy_param:
 	stosb
 	lodsb
@@ -127,9 +144,6 @@ get_params:
 	jz	param_end
 	jmp	copy_param
     string_param:
-	inc	edi
-	mov	ebx,edi
-    copy_string_param:
 	lodsb
 	cmp	al,22h
 	je	string_param_end
@@ -138,7 +152,7 @@ get_params:
 	or	al,al
 	jz	param_end
 	stosb
-	jmp	copy_string_param
+	jmp	string_param
     option_param:
 	lodsb
 	cmp	al,'m'
@@ -149,6 +163,10 @@ get_params:
 	je	passes_option
 	cmp	al,'P'
 	je	passes_option
+	cmp	al,'s'
+	je	symbols_option
+	cmp	al,'S'
+	je	symbols_option
     invalid_option:
 	pop	ds
 	stc
@@ -214,35 +232,25 @@ get_params:
 	ja	invalid_option
 	mov	[es:passes_limit],dx
 	jmp	find_param
+    symbols_option:
+	mov	[es:symbols_file],edi
+      find_symbols_file_name:
+	lodsb
+	cmp	al,20h
+	jne	process_param
+	jmp	find_symbols_file_name
     param_end:
 	dec	esi
     string_param_end:
 	xor	al,al
 	stosb
-	mov	eax,edi
-	sub	eax,ebx
-	mov	[es:ebx-1],al
 	jmp	find_param
     all_params:
 	xor	al,al
 	stosb
 	pop	ds
-	cmp	[params],0
+	cmp	[input_file],0
 	je	bad_params
-	lea	eax,[params+1]
-	mov	[input_file],eax
-	mov	[output_file],0
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	je	params_ok
-	inc	eax
-	mov	[output_file],eax
-	movzx	ecx,byte [eax-1]
-	add	eax,ecx
-	cmp	byte [eax],0
-	jne	bad_params
-    params_ok:
 	clc
 	ret
     bad_params:
@@ -253,14 +261,7 @@ include 'system.inc'
 
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2005, Tomasz Grysztar',0Dh,0Ah,24h
-
-_logo db 'flat assembler  version ',VERSION_STRING,0Dh,0Ah,24h
-_usage db 'usage: fasm source [output]',0Dh,0Ah,24h
-
-_passes_suffix db ' passes, ',24h
-_seconds_suffix db ' seconds, ',24h
-_bytes_suffix db ' bytes.',0Dh,0Ah,24h
+_logo db 'flat assembler  version ',VERSION_STRING,24h
 
 include '..\errors.inc'
 include '..\expressi.inc'
@@ -269,7 +270,46 @@ include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+
+if $>=10000h
+ if UNREAL_ENABLED>0
+  UNREAL_ENABLED = -1
+ else
+  UNREAL_ENABLED = 0
+ end if
+else
+ if UNREAL_ENABLED<0
+  UNREAL_ENABLED = -1
+ else
+  UNREAL_ENABLED = 1
+ end if
+end if
+
+include 'sysdpmi.inc'
+
 include '..\tables.inc'
+include '..\messages.inc'
+
+_copyright db 'Copyright (c) 1999-2009, Tomasz Grysztar',0Dh,0Ah,0
+
+_usage db 0Dh,0Ah
+       db 'usage: fasm <source> [output]',0Dh,0Ah
+       db 'optional settings:',0Dh,0Ah
+       db ' -m <limit>    set the limit in kilobytes for the available memory',0Dh,0Ah
+       db ' -p <limit>    set the maximum allowed number of passes',0Dh,0Ah
+       db ' -s <file>     dump symbolic information for debugging',0Dh,0Ah
+       db 0
+_memory_prefix db '  (',0
+_memory_suffix db ' kilobytes memory)',0Dh,0Ah,0
+_passes_suffix db ' passes, ',0
+_seconds_suffix db ' seconds, ',0
+_bytes_suffix db ' bytes.',0Dh,0Ah,0
+
+error_prefix db 'error: ',0
+error_suffix db '.'
+cr_lf db 0Dh,0Ah,0
+line_number_start db ' [',0
+line_data_start db ':',0Dh,0Ah,0
 
 align 4
 
@@ -278,6 +318,11 @@ include '..\variable.inc'
 memory_setting dd ?
 start_time dd ?
 params rb 100h
+
+mode dw ?
+real_mode_segment dw ?
+displayed_count dd ?
+last_displayed rb 2
 
 segment buffer
 

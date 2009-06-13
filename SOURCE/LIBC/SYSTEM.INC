@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Unix/libc
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 extrn malloc
@@ -12,9 +12,10 @@ extrn fread
 extrn fwrite
 extrn fseek
 extrn ftell
-extrn putchar
 extrn time
 extrn exit
+
+extrn 'write' as libc_write
 
 init_memory:
 	mov	eax,esp
@@ -144,8 +145,8 @@ display_string:
       string_displayed:
 	ret
 display_character:
-	movzx	edx,dl
-	ccall	putchar,edx
+	mov	[character],dl
+	ccall	libc_write,[con_handle],character,1
 	ret
 display_number:
 	push	ebx
@@ -182,7 +183,7 @@ display_number:
 
 display_user_messages:
 	mov	[displayed_count],0
-	call	flush_display_buffer
+	call	show_display_buffer
 	cmp	[displayed_count],0
 	je	line_break_ok
 	cmp	[last_displayed],0Ah
@@ -207,6 +208,7 @@ display_block:
 	ret
 
 fatal_error:
+	mov	[con_handle],2
 	mov	esi,error_prefix
 	call	display_string
 	pop	esi
@@ -216,10 +218,14 @@ fatal_error:
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
+	mov	[con_handle],2
 	call	display_user_messages
 	push	dword 0
 	mov	ebx,[current_line]
       get_error_lines:
+	mov	eax,[ebx]
+	cmp	byte [eax],0
+	je	get_next_error_line
 	push	ebx
 	test	byte [ebx+7],80h
 	jz	display_error_line
@@ -229,6 +235,7 @@ assembler_error:
 	test	byte [edx+7],80h
 	jnz	find_definition_origin
 	push	edx
+      get_next_error_line:
 	mov	ebx,[ebx+8]
 	jmp	get_error_lines
       display_error_line:

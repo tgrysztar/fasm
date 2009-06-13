@@ -1,131 +1,174 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 out_of_memory:
-	call	fatal_error
-	db	'out of memory',0
+	push	_out_of_memory
+	jmp	fatal_error
 stack_overflow:
-	call	fatal_error
-	db	'out of stack space',0
+	push	_stack_overflow
+	jmp	fatal_error
 main_file_not_found:
-	call	fatal_error
-	db	'source file not found',0
+	push	_main_file_not_found
+	jmp	fatal_error
 unexpected_end_of_file:
-	call	fatal_error
-	db	'unexpected end of file',0
+	push	_unexpected_end_of_file
+	jmp	fatal_error
 code_cannot_be_generated:
-	call	fatal_error
-	db	'code cannot be generated',0
+	push	_code_cannot_be_generated
+	jmp	fatal_error
 format_limitations_exceeded:
-	call	fatal_error
-	db	'format limitations exceeded',0
+	push	_format_limitations_exceeded
+	jmp	fatal_error
+invalid_definition:
+	push	_invalid_definition
+	jmp	fatal_error
 write_failed:
-	call	fatal_error
-	db	'write failed',0
+	push	_write_failed
+	jmp	fatal_error
+
 file_not_found:
-	call	assembler_error
-	db	'file not found',0
+	push	_file_not_found
+	jmp	assembler_error
 error_reading_file:
-	call	assembler_error
-	db	'error reading file',0
+	push	_error_reading_file
+	jmp	assembler_error
 invalid_file_format:
-	call	assembler_error
-	db	'invalid file format',0
+	push	_invalid_file_format
+	jmp	assembler_error
 invalid_macro_arguments:
-	call	assembler_error
-	db	'invalid macro arguments',0
+	push	_invalid_macro_arguments
+	jmp	assembler_error
 incomplete_macro:
-	call	assembler_error
-	db	'incomplete macro',0
+	push	_incomplete_macro
+	jmp	assembler_error
 unexpected_characters:
-	call	assembler_error
-	db	'unexpected characters',0
+	push	_unexpected_characters
+	jmp	assembler_error
 invalid_argument:
-	call	assembler_error
-	db	'invalid argument',0
+	push	_invalid_argument
+	jmp	assembler_error
 illegal_instruction:
-	call	assembler_error
-	db	'illegal instruction',0
+	push	_illegal_instruction
+	jmp	assembler_error
 invalid_operand:
-	call	assembler_error
-	db	'invalid operand',0
+	push	_invalid_operand
+	jmp	assembler_error
 invalid_operand_size:
-	call	assembler_error
-	db	'invalid size of operand',0
+	push	_invalid_operand_size
+	jmp	assembler_error
 operand_size_not_specified:
-	call	assembler_error
-	db	'operand size not specified',0
+	push	_operand_size_not_specified
+	jmp	assembler_error
 operand_sizes_do_not_match:
-	call	assembler_error
-	db	'operand sizes do not match',0
+	push	_operand_sizes_do_not_match
+	jmp	assembler_error
 invalid_address_size:
-	call	assembler_error
-	db	'invalid size of address value',0
+	push	_invalid_address_size
+	jmp	assembler_error
 address_sizes_do_not_agree:
-	call	assembler_error
-	db	'address sizes do not agree',0
+	push	_address_sizes_do_not_agree
+	jmp	assembler_error
 prefix_conflict:
-	call	assembler_error
-	db	'disallowed combination of registers',0
+	push	_prefix_conflict
+	jmp	assembler_error
 long_immediate_not_encodable:
-	call	assembler_error
-	db	'not encodable with long immediate',0
+	push	_long_immediate_not_encodable
+	jmp	assembler_error
 relative_jump_out_of_range:
-	call	assembler_error
-	db	'relative jump out of range',0
+	push	_relative_jump_out_of_range
+	jmp	assembler_error
 invalid_expression:
-	call	assembler_error
-	db	'invalid expression',0
+	push	_invalid_expression
+	jmp	assembler_error
 invalid_address:
-	call	assembler_error
-	db	'invalid address',0
+	push	_invalid_address
+	jmp	assembler_error
 invalid_value:
-	call	assembler_error
-	db	'invalid value',0
+	push	_invalid_value
+	jmp	assembler_error
 value_out_of_range:
-	call	assembler_error
-	db	'value out of range',0
+	push	_value_out_of_range
+	jmp	assembler_error
 undefined_symbol:
-	call	assembler_error
-	db	'undefined symbol',0
+	mov	edi,message
+	mov	esi,_undefined_symbol
+	call	copy_asciiz
+	push	message
+	cmp	[error_info],0
+	je	assembler_error
+	mov	byte [edi-1],20h
+	call	write_quoted_symbol_name
+	jmp	assembler_error
+    copy_asciiz:
+	lods	byte [esi]
+	stos	byte [edi]
+	test	al,al
+	jnz	copy_asciiz
+	ret
+    write_quoted_symbol_name:
+	mov	al,27h
+	stosb
+	mov	esi,[error_info]
+	movzx	ecx,byte [esi-1]
+	rep	movs byte [edi],[esi]
+	mov	ax,27h
+	stosw
+	ret
+symbol_out_of_scope:
+	mov	edi,message
+	mov	esi,_symbol_out_of_scope_1
+	call	copy_asciiz
+	cmp	[error_info],0
+	je	finish_symbol_out_of_scope_message
+	mov	byte [edi-1],20h
+	call	write_quoted_symbol_name
+    finish_symbol_out_of_scope_message:
+	mov	byte [edi-1],20h
+	mov	esi,_symbol_out_of_scope_2
+	call	copy_asciiz
+	push	message
+	jmp	assembler_error
 invalid_use_of_symbol:
-	call	assembler_error
-	db	'invalid use of symbol',0
+	push	_invalid_use_of_symbol
+	jmp	assembler_error
 name_too_long:
-	call	assembler_error
-	db	'name too long',0
+	push	_name_too_long
+	jmp	assembler_error
 invalid_name:
-	call	assembler_error
-	db	'invalid name',0
+	push	_invalid_name
+	jmp	assembler_error
 reserved_word_used_as_symbol:
-	call	assembler_error
-	db	'reserved word used as symbol',0
+	push	_reserved_word_used_as_symbol
+	jmp	assembler_error
 symbol_already_defined:
-	call	assembler_error
-	db	'symbol already defined',0
+	push	_symbol_already_defined
+	jmp	assembler_error
 missing_end_quote:
-	call	assembler_error
-	db	'missing end quote',0
+	push	_missing_end_quote
+	jmp	assembler_error
 missing_end_directive:
-	call	assembler_error
-	db	'missing end directive',0
+	push	_missing_end_directive
+	jmp	assembler_error
 unexpected_instruction:
-	call	assembler_error
-	db	'unexpected instruction',0
+	push	_unexpected_instruction
+	jmp	assembler_error
 extra_characters_on_line:
-	call	assembler_error
-	db	'extra characters on line',0
+	push	_extra_characters_on_line
+	jmp	assembler_error
 section_not_aligned_enough:
-	call	assembler_error
-	db	'section is not aligned enough',0
+	push	_section_not_aligned_enough
+	jmp	assembler_error
 setting_already_specified:
-	call	assembler_error
-	db	'setting already specified',0
+	push	_setting_already_specified
+	jmp	assembler_error
 data_already_defined:
-	call	assembler_error
-	db	'data already defined',0
+	push	_data_already_defined
+	jmp	assembler_error
 too_many_repeats:
-	call	assembler_error
-	db	'too many repeats',0
+	push	_too_many_repeats
+	jmp	assembler_error
+invoked_error:
+	push	_invoked_error
+	jmp	assembler_error

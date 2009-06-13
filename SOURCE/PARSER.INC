@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 parser:
@@ -14,6 +14,7 @@ parser:
 	mov	[anonymous_forward],eax
 	mov	[hash_tree],eax
 	mov	[blocks_stack],eax
+	mov	[parsed_lines],eax
 	mov	esi,[memory_start]
 	mov	edi,[source_start]
       parser_loop:
@@ -23,10 +24,13 @@ parser:
 	jae	out_of_memory
 	cmp	byte [esi+16],0
 	je	empty_line
+	cmp	byte [esi+16],3Bh
+	je	empty_line
 	mov	al,0Fh
 	stos	byte [edi]
 	mov	eax,esi
 	stos	dword [edi]
+	inc	[parsed_lines]
 	add	esi,16
       parse_line:
 	cmp	byte [esi],1Ah
@@ -45,14 +49,12 @@ parser:
 	push	esi ecx
 	lea	esi,[esi+ecx+2]
 	movzx	ecx,byte [esi-1]
-	mov	edi,data_directives
-	call	get_symbol
+	call	get_data_directive
 	jnc	data_label
 	pop	ecx esi
       no_data_label:
-	mov	edi,data_directives
-	call	get_symbol
-	jnc	data_instruction
+	call	get_data_directive
+	jnc	main_instruction_identified
 	pop	edi
 	sub	esi,2
 	xor	bx,bx
@@ -81,22 +83,18 @@ parser:
 	call	parse_line_contents
 	jmp	parse_next_line
       data_label:
-	pop	ecx ebx
+	pop	ecx edx
 	pop	edi
-	push	eax esi
-	mov	esi,ebx
+	push	eax ebx esi
+	mov	esi,edx
 	movzx	ecx,byte [esi-1]
 	call	identify_label
 	mov	byte [edi],2
 	inc	edi
 	stos	dword [edi]
-	pop	esi eax
+	pop	esi ebx eax
 	stos	byte [edi]
 	push	edi
-	jmp	data_instruction
-      data_instruction:
-	movzx	ebx,ah
-	mov	bx,[data_handlers+ebx*2]
       main_instruction_identified:
 	pop	edi
 	mov	dl,al
@@ -125,32 +123,15 @@ parser:
 	jz	parse_next_line
 	cmp	al,':'
 	je	invalid_name
-	cmp	al,3Bh
-	je	skip_preprocessed_symbol
 	dec	esi
+	cmp	al,3Bh
+	je	skip_rest_of_line
 	call	parse_argument
 	jmp	parse_next_line
-      skip_preprocessed_symbol:
-	lods	byte [esi]
-	movzx	eax,al
-	add	esi,eax
-      skip_next:
-	lods	byte [esi]
-	or	al,al
-	jz	parse_next_line
-	cmp	al,1Ah
-	je	skip_preprocessed_symbol
-	cmp	al,3Bh
-	je	skip_preprocessed_symbol
-	cmp	al,22h
-	je	skip_preprocessed_string
-	jmp	skip_next
-      skip_preprocessed_string:
-	lods	dword [esi]
-	add	esi,eax
-	jmp	skip_next
       empty_line:
-	add	esi,17
+	add	esi,16
+      skip_rest_of_line:
+	call	skip_foreign_line
       parse_next_line:
 	cmp	esi,[source_start]
 	jb	parser_loop
@@ -163,10 +144,6 @@ parser:
       blocks_stack_ok:
 	xor	al,al
 	stos	byte [edi]
-	mov	eax,[error_line]
-	mov	[current_line],eax
-	cmp	[anonymous_forward],0
-	jne	invalid_value
 	add	edi,0Fh
 	and	edi,not 0Fh
 	mov	[code_start],edi
@@ -416,6 +393,7 @@ parser:
 	stos	byte [edi]
 	mov	eax,[current_line]
 	stos	dword [edi]
+	inc	[parsed_lines]
 	mov	eax,1 + (end_directive-assembler) shl 8
 	stos	dword [edi]
 	mov	eax,1 + (if_directive-assembler) shl 8
@@ -452,6 +430,7 @@ parser:
 	stos	byte [edi]
 	mov	eax,[current_line]
 	stos	dword [edi]
+	inc	[parsed_lines]
       parse_else_if:
 	mov	eax,1 + (if_directive-assembler) shl 8
 	stos	dword [edi]
@@ -536,10 +515,6 @@ parse_line_contents:
 	inc	esi
 	movzx	ecx,byte [esi]
 	inc	esi
-	mov	edi,symbols
-	call	get_symbol
-	jnc	symbol_argument
-	mov	edi,formatter_symbols
 	call	get_symbol
 	jnc	symbol_argument
 	cmp	ecx,1
@@ -576,15 +551,11 @@ parse_line_contents:
 	inc	esi
 	call	get_instruction
 	jnc	embedded_instruction
-	mov	edi,data_directives
-	call	get_symbol
-	jnc	embedded_data_instruction
+	call	get_data_directive
+	jnc	embedded_instruction
 	pop	edi
 	sub	esi,2
 	jmp	parse_argument
-      embedded_data_instruction:
-	movzx	ebx,ah
-	mov	bx,[data_handlers+ebx*2]
       embedded_instruction:
 	pop	edi
 	mov	dl,al
@@ -649,6 +620,18 @@ parse_line_contents:
 	push	esi
 	movzx	ecx,byte [esi]
 	inc	esi
+	push	esi ecx
+	push	edi
+	call	get_symbol
+	pop	edi
+	jc	parse_public_label
+	cmp	al,1Dh
+	jne	parse_public_label
+	add	esp,12
+	stos	word [edi]
+	jmp	parse_public_directive
+      parse_public_label:
+	pop	ecx esi
 	mov	al,2
 	stos	byte [edi]
 	call	get_label_id
@@ -741,9 +724,8 @@ parse_line_contents:
 	jnz	not_instruction
 	call	get_instruction
 	jnc	embedded_instruction
-	mov	edi,data_directives
-	call	get_symbol
-	jnc	embedded_data_instruction
+	call	get_data_directive
+	jnc	embedded_instruction
       not_instruction:
 	pop	edi
 	sub	esi,2
@@ -837,7 +819,6 @@ parse_line_contents:
 	add	esi,2
 	mov	ecx,2
 	push	ebx edi
-	mov	edi,symbols
 	call	get_symbol
 	pop	edi esi
 	jc	unknown_segment_prefix
@@ -852,23 +833,14 @@ parse_line_contents:
       unknown_segment_prefix:
 	sub	esi,5
       convert_address:
-	cmp	byte [esi],1Ah
-	jne	convert_expression
-	push	esi
-	lods	word [esi]
-	movzx	ecx,ah
 	push	edi
 	mov	edi,address_sizes
-	call	get_symbol
+	call	get_operator
 	pop	edi
-	jc	no_size_prefix
-	mov	al,ah
+	or	al,al
+	jz	convert_expression
 	add	al,70h
 	stos	byte [edi]
-	add	esp,4
-	jmp	convert_expression
-      no_size_prefix:
-	pop	esi
 	jmp	convert_expression
       forced_parenthesis:
 	cmp	byte [esi],'('
@@ -923,7 +895,11 @@ parse_line_contents:
 	jmp	expression
       contents_parsed:
 	cmp	[parenthesis_stack],0
-	jne	invalid_expression
+	je	contents_ok
+	dec	[parenthesis_stack]
+	add	esp,8
+	jmp	contents_parsed
+      contents_ok:
 	ret
 
 identify_label:
@@ -1008,46 +984,65 @@ get_operator:
 	ret
 
 get_symbol:
-	mov	edx,esi
+	push	esi
 	mov	ebp,ecx
-	push	edi
 	call	lower_case
-	pop	edi
-      scan_symbols:
-	mov	esi,converted
-	movzx	eax,byte [edi]
-	or	al,al
-	jz	no_symbol
 	mov	ecx,ebp
-	inc	edi
-	mov	ebx,edi
-	add	ebx,eax
-	mov	ah,[esi]
-	cmp	ah,[edi]
-	jb	no_symbol
-	ja	next_symbol
-	cmp	cl,al
-	jne	next_symbol
+	cmp	cl,11
+	ja	no_symbol
+	sub	cl,2
+	jc	no_symbol
+	movzx	ebx,word [symbols+ecx*4]
+	add	ebx,symbols
+	movzx	edx,word [symbols+ecx*4+2]
+      scan_symbols:
+	or	edx,edx
+	jz	no_symbol
+	mov	eax,edx
+	shr	eax,1
+	lea	edi,[ebp+2]
+	imul	eax,edi
+	lea	edi,[ebx+eax]
+	mov	esi,converted
+	mov	ecx,ebp
 	repe	cmps byte [esi],[edi]
-	jb	no_symbol
-	je	symbol_ok
-      next_symbol:
-	mov	edi,ebx
-	add	edi,2
-	jmp	scan_symbols
+	ja	symbols_up
+	jb	symbols_down
+	pop	esi
+	add	esi,ebp
+	mov	ax,[edi]
+	clc
+	ret
       no_symbol:
-	mov	esi,edx
+	pop	esi
 	mov	ecx,ebp
 	stc
 	ret
-      symbol_ok:
-	lea	esi,[edx+ebp]
-	mov	ax,[ebx]
-	clc
-	ret
+      symbols_down:
+	shr	edx,1
+	jmp	scan_symbols
+      symbols_up:
+	lea	ebx,[edi+ecx+2]
+	shr	edx,1
+	adc	edx,-1
+	jmp	scan_symbols
+
+get_data_directive:
+	push	esi
+	mov	ebp,ecx
+	call	lower_case
+	mov	ecx,ebp
+	cmp	cl,4
+	ja	no_instruction
+	sub	cl,2
+	jc	no_instruction
+	movzx	ebx,word [data_directives+ecx*4]
+	add	ebx,data_directives
+	movzx	edx,word [data_directives+ecx*4+2]
+	jmp	scan_instructions
 
 get_instruction:
-	mov	edx,esi
+	push	esi
 	mov	ebp,ecx
 	call	lower_case
 	mov	ecx,ebp
@@ -1055,44 +1050,41 @@ get_instruction:
 	ja	no_instruction
 	sub	cl,2
 	jc	no_instruction
-	movzx	edi,word [instructions+ecx*2]
-	add	edi,instructions
+	movzx	ebx,word [instructions+ecx*4]
+	add	ebx,instructions
+	movzx	edx,word [instructions+ecx*4+2]
       scan_instructions:
-	mov	esi,converted
-	mov	al,[edi]
-	or	al,al
+	or	edx,edx
 	jz	no_instruction
+	mov	eax,edx
+	shr	eax,1
+	lea	edi,[ebp+3]
+	imul	eax,edi
+	lea	edi,[ebx+eax]
+	mov	esi,converted
 	mov	ecx,ebp
-	mov	ebx,edi
-	add	ebx,ecx
 	repe	cmps byte [esi],[edi]
-	jb	no_instruction
-	je	instruction_ok
-      next_instruction:
-	mov	edi,ebx
-	add	edi,3
-	jmp	scan_instructions
+	ja	instructions_up
+	jb	instructions_down
+	pop	esi
+	add	esi,ebp
+	mov	al,[edi]
+	mov	bx,[edi+1]
+	clc
+	ret
       no_instruction:
-	mov	esi,edx
+	pop	esi
 	mov	ecx,ebp
 	stc
 	ret
-      lower_case:
-	mov	edi,converted
-	mov	ebx,characters
-      convert_case:
-	lods	byte [esi]
-	xlat	byte [ebx]
-	stos	byte [edi]
-	loop	convert_case
-      case_ok:
-	ret
-      instruction_ok:
-	lea	esi,[edx+ebp]
-	mov	al,[ebx]
-	mov	bx,[ebx+1]
-	clc
-	ret
+      instructions_down:
+	shr	edx,1
+	jmp	scan_instructions
+      instructions_up:
+	lea	ebx,[edi+ecx+3]
+	shr	edx,1
+	adc	edx,-1
+	jmp	scan_instructions
 
 get_label_id:
 	cmp	ecx,100h
@@ -1163,10 +1155,10 @@ get_label_id:
 	xor	ebx,ebx
 	ret
       anonymous_back:
-	add	esi,2
 	mov	eax,[anonymous_reverse]
 	or	eax,eax
-	jz	invalid_value
+	jz	new_anonymous
+	add	esi,2
 	jmp	anonymous_ok
       new_anonymous:
 	add	esi,2
@@ -1297,20 +1289,19 @@ get_label_id:
 	cmp	al,39h
 	jbe	invalid_name
       name_first_char_ok:
-	cmp	ecx,1
-	jne	check_for_reserved_word
 	cmp	al,'$'
-	je	reserved_word
+	jne	check_for_reserved_word
+	cmp	ecx,1
+	jne	invalid_name
+      reserved_word:
+	mov	eax,0Fh
+	pop	edi
+	ret
       check_for_reserved_word:
 	call	get_instruction
 	jnc	reserved_word
-	mov	edi,data_directives
-	call	get_symbol
+	call	get_data_directive
 	jnc	reserved_word
-	mov	edi,symbols
-	call	get_symbol
-	jnc	reserved_word
-	mov	edi,formatter_symbols
 	call	get_symbol
 	jnc	reserved_word
 	sub	esi,2
@@ -1344,10 +1335,6 @@ get_label_id:
 	call	allocate_label
 	mov	[edx+4],eax
 	mov	[eax+24],ebx
-	pop	edi
-	ret
-      reserved_word:
-	mov	eax,0Fh
 	pop	edi
 	ret
       allocate_label:

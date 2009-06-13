@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.66
+                              flat assembler 1.68
                               Programmer's Manual
 
 
@@ -50,6 +50,8 @@ Chapter 2  Instruction set
         2.1.17  SSE3 instructions
         2.1.18  AMD 3DNow! instructions
         2.1.19  The x86-64 long mode instructions
+        2.1.20  SSE4 instructions
+        2.1.21  Other extensions of instruction set
 
         2.2  Control directives
         2.2.1  Numerical constants
@@ -73,6 +75,7 @@ Chapter 2  Instruction set
         2.4.2  Portable Executable
         2.4.3  Common Object File Format
         2.4.4  Executable and Linkable Format
+
 
 
 Chapter 1  Introduction
@@ -139,21 +142,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.66
+flat assembler  version 1.68 (16384 kilobytes memory)
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.66
+flat assembler  version 1.68 (16384 kilobytes memory)
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.66
+flat assembler  version 1.68 (16384 kilobytes memory)
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -163,7 +166,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.66
+flat assembler  version 1.68 (16384 kilobytes memory)
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -1251,7 +1254,7 @@ the stack before adjusting the stack pointer.
 "lmsw" loads the operand into the machine status word (bits 0 through 15 of
 CR0 register), while "smsw" stores the machine status word into the
 destination operand. The operand for both those instructions can be 16-bit
-general register or memory, for "smsw" it can also be 32-bit general 
+general register or memory, for "smsw" it can also be 32-bit general
 register.
 
     lmsw ax          ; load machine status from register
@@ -1528,7 +1531,12 @@ FPU state (operating environment and register stack) at the specified
 destination in memory and reinitializes the FPU. "fsave" check for pending
 unmasked FPU exceptions before proceeding, "fnsave" does not. "frstor"
 loads the FPU state from the specified memory location. All these instructions
-need an operand being a memory location.
+need an operand being a memory location. For each of these instruction
+exist two additional mnemonics that allow to precisely select the type of the
+operation. The "fstenvw", "fnstenvw", "fldenvw", "fsavew", "fnsavew" and
+"frstorw" mnemonics force the instruction to perform operation as in the 16-bit
+mode, while "fstenvd", "fnstenvd", "fldenvd", "fsaved", "fnsaved" and "frstord"
+force the operation as in 32-bit mode.
   "finit" and "fninit" set the FPU operating environment into its default
 state. "finit" checks for pending unmasked FPU exception before proceeding,
 "fninit" does not. "fclex" and "fnclex" clear the FPU exception flags in the
@@ -1573,17 +1581,17 @@ packed bytes, packed words, or packed double words.  "psubb", "psubw" and
 "psubsb" and "psubsw" perform the addition or substraction of packed bytes
 or packed words with the signed saturation. "paddusb", "paddusw", "psubusb",
 "psubusw" are analoguous, but with unsigned saturation. "pmulhw" and "pmullw"
-performs a signed multiply of the packed words and store the high or low words
-of the results in the destination operand. "pmaddwd" performs a multiply of
-the packed words and adds the four intermediate double word products in pairs
-to produce result as a packed double words. "pand", "por" and "pxor" perform
-the logical operations on the quad words, "pandn" peforms also a logical
-negation of the destination operand before performing the "and" operation.
-"pcmpeqb", "pcmpeqw" and "pcmpeqd" compare for equality of packed bytes,
-packed words or packed double words. If a pair of data elements is equal, the
-corresponding data element in the destination operand is filled with bits of
-value 1, otherwise it's set to 0. "pcmpgtb", "pcmpgtw" and "pcmpgtd" perform
-the similar operation, but they check whether the data elements in the
+performs a signed multiplication of the packed words and store the high or low
+words of the results in the destination operand. "pmaddwd" performs a multiply
+of the packed words and adds the four intermediate double word products in
+pairs to produce result as a packed double words. "pand", "por" and "pxor"
+perform the logical operations on the quad words, "pandn" peforms also a
+logical negation of the destination operand before performing the "and"
+operation. "pcmpeqb", "pcmpeqw" and "pcmpeqd" compare for equality of packed
+bytes, packed words or packed double words. If a pair of data elements is
+equal, the corresponding data element in the destination operand is filled with
+bits of value 1, otherwise it's set to 0. "pcmpgtb", "pcmpgtw" and "pcmpgtd"
+perform the similar operation, but they check whether the data elements in the
 destination operand are greater than the correspoding data elements in the
 source operand. "packsswb" converts packed signed words into packed signed
 bytes, "packssdw" converts packed signed double words into packed signed
@@ -1771,8 +1779,8 @@ source value to integer, rules for the operands are the same.
 
   "pextrw" copies the word in the source operand specified by the third
 operand to the destination operand. The source operand must be a MMX register,
-the destination operand must be a 32-bit general register (but only the low
-word of it is affected), the third operand must an 8-bit immediate value.
+the destination operand must be a 32-bit general register (the high word of
+the destination is cleared), the third operand must an 8-bit immediate value.
 
     pextrw eax,mm0,1   ; extract word into eax
 
@@ -1788,12 +1796,12 @@ word of the register is used).
 return the maximum values of packed unsigned bytes, "pminub" returns the
 minimum values of packed unsigned bytes, "pmaxsw" returns the maximum values
 of packed signed words, "pminsw" returns the minimum values of packed signed
-words. "pmulhuw" performs a unsigned multiply of the packed words and stores
-the high words of the results in the destination operand. "psadbw" computes
-the absolute differences of packed unsigned bytes, sums the differences, and
-stores the sum in the low word of destination operand. All these instructions
-follow the same rules for operands as the general MMX operations described in
-previous section.
+words. "pmulhuw" performs a unsigned multiplication of the packed words and
+stores the high words of the results in the destination operand. "psadbw"
+computes the absolute differences of packed unsigned bytes, sums the
+differences, and stores the sum in the low word of destination operand. All
+these instructions follow the same rules for operands as the general MMX
+operations described in previous section.
   "pmovmskb" creates a mask made of the most significant bit of each byte in
 the source operand and stores the result in the low byte of destination
 operand. The source operand must be a MMX register, the destination operand
@@ -1955,10 +1963,10 @@ double words instead of words, it allows only the extended syntax.
     pextrw eax,xmm0,7  ; extract highest word into eax
 
   "paddq" performs the addition of packed quad words, "psubq" performs the
-substraction of packed quad words, "pmuludq" performs an unsigned multiply
-of low double words from each corresponding quad words and returns the results
-in packed quad words. These instructions follow the same rules for operands as
-the general MMX operations described in 2.1.14.
+substraction of packed quad words, "pmuludq" performs an unsigned
+multiplication of low double words from each corresponding quad words and
+returns the results in packed quad words. These instructions follow the same
+rules for operands as the general MMX operations described in 2.1.14.
   "pslldq" and "psrldq" perform logical shift left or right of the double
 quad word in the destination operand by the amount of bits specified in the
 source operand. The destination operand should be a SSE register, source
@@ -2030,6 +2038,44 @@ need its three operands to be EAX, ECX and EDX register in that order. "mwait"
 waits for a write-back store to the address range set up by the "monitor"
 instruction. It uses two operands with additional parameters, first being the
 EAX and second the ECX register.
+  The functionality of SSE3 is further extended by the set of Supplemental
+SSE3 instructions (SSSE3). They generally follow the same rules for operands
+as all the MMX operations extended by SSE.
+  "phaddw" and "phaddd" perform the horizontal additional of the pairs of
+adjacent values from both the source and destination operand, and stores the
+sums into the destination (sums from the source operand go into lower part of
+destination register). They operate on 16-bit or 32-bit chunks, respectively.
+"phaddsw" performs the same operation on signed 16-bit packed values, but the
+result of each addition is saturated. "phsubw" and "phsubd" analogously
+perform the horizontal substraction of 16-bit or 32-bit packed value, and
+"phsubsw" performs the horizontal substraction of signed 16-bit packed values
+with saturation.
+  "pabsb", "pabsw" and "pabsd" calculate the absolute value of each signed
+packed signed value in source operand and stores them into the destination
+register. They operator on 8-bit, 16-bit and 32-bit elements respectively.
+  "pmaddubsw" multiplies signed 8-bit values from the source operand with the
+corresponding unsigned 8-bit values from the destination operand to produce
+intermediate 16-bit values, and every adjacent pair of those intermediate
+values is then added horizontally and those 16-bit sums are stored into the
+destination operand.
+  "pmulhrsw" multiplies corresponding 16-bit integers from the source and
+destination operand to produce intermediate 32-bit values, and the 16 bits
+next to the highest bit of each of those values are then rounded and packed
+into the destination operand.
+  "pshufb" shuffles the bytes in the destination operand according to the
+mask provided by source operand - each of the bytes in source operand is
+an index of the target position for the corresponding byte in the destination.
+  "psignb", "psignw" and "psignd" perform the operation on 8-bit, 16-bit or
+32-bit integers in destination operand, depending on the signs of the values
+in the source. If the value in source is negative, the corresponding value in
+the destination register is negated, if the value in source is positive, no
+operation is performed on the corresponding value is performed, and if the
+value in source is zero, the value in destination is zeroed, too.
+  "palignr" appends the source operand to the destination operand to form the
+intermediate value of twice the size, and then extracts into the destination
+register the 64 or 128 bits that are right-aligned to the byte offset
+specified by the third operand, which should be an 8-bit immediate value. This
+is the only SSSE3 instruction that takes three arguments.
 
 
 2.1.18  AMD 3DNow! instructions
@@ -2040,9 +2086,9 @@ consisting of two single precision floating point values.
   These instructions follow the same rules as the general MMX operations, the
 destination operand should be a MMX register, the source operand can be a MMX
 register or 64-bit memory location. "pavgusb" computes the rounded averages
-of packed unsigned bytes. "pmulhrw" performs a signed multiply of the packed
-words, round the high word of each double word results and stores them in the
-destination operand. "pi2fd" converts packed double word integers into
+of packed unsigned bytes. "pmulhrw" performs a signed multiplication of the
+packed words, round the high word of each double word results and stores them
+in the destination operand. "pi2fd" converts packed double word integers into
 packed floating point values. "pf2id" converts packed floating point values
 into packed double word integers using truncation. "pi2fw" converts packed
 word integers into packed floating point values, only low words of each
@@ -2207,7 +2253,274 @@ analoguous operation.
 the KernelGSbase model-specific register (MSR address 0C0000102h).
   "syscall" and "sysret" is the pair of new instructions that provide the
 functionality similar to "sysenter" and "sysexit" in long mode, where the
-latter pair is disallowed.
+latter pair is disallowed. The "sysexitq" and "sysretq" mnemonics provide the
+64-bit versions of "sysexit" and "sysret" instructions.
+  The "rdmsrq" and "wrmsrq" mnemonics are the 64-bit variants of the "rdmsr"
+and "wrmsr" instructions.
+
+
+2.1.20  SSE4 instructions
+
+There are actually three different sets of instructions under the name SSE4.
+Intel designed two of them, SSE4.1 and SSE4.2, with latter extending the
+former into the full Intel's SSE4 set. On the other hand, the implementation
+by AMD includes only a few instructions from this set, but also contains
+some additional instructions, that are called the SSE4a set.
+  The SSE4.1 instructions mostly follow the same rules for operands, as
+the basic SSE operations, so they require destination operand to be SSE
+register and source operand to be 128-bit memory location or SSE register,
+and some operations require a third operand, the 8-bit immediate value.
+  "pmulld" performs a signed multiplication of the packed double words and
+stores the low double words of the results in the destination operand.
+"pmuldq" performs a two signed multiplications of the corresponding double
+words in the lower quad words of operands, and stores the results as
+packed quad words into the destination register. "pminsb" and "pmaxsb"
+return the minimum or maximum values of packed signed bytes, "pminuw" and
+"pmaxuw" return the minimum and maximum values of packed unsigned words,
+"pminud", "pmaxud", "pminsd" and "pmaxsd" return minimum or maximum values
+of packed unsigned or signed words. These instruction complement the
+instructions computing packed minimum or maximum introduced by SSE.
+  "ptest" sets the ZF flag to one when the result of bitwise AND of the
+both operands is zero, and zeroes the ZF otherwise. It also sets CF flag
+to one, when the result of bitwise AND of the destination operand with
+the bitwise NOT of the source operand is zero, and zeroes the CF otherwise.
+"pcmpeqq" compares packed quad words for equality, and fills the
+corresponding elements of destination operand with either ones or zeros,
+depending on the result of comparison.
+  "paskusdw" converts packed signed double words from both the source and
+destination operand into the unsigned words using saturation, and stores
+the eight resulting word values into the destination register.
+  "pmovsxbw" and "pmovzxbw" perform sign extension or zero extension of the
+lowest eight byte values from the source operand into packed word values in
+destination operand. "pmovsxbd" and "pmovzxbd" perform sign extension or zero
+extension of the lowest four byte values from the source operand into packed
+double word values in destination operand. "pmovsxbq" and "pmovzxbq" perform
+sign extension or zero extension of the lowest two byte values from the source
+operand into packed quad word value in destination operand. "pmovsxwd" and
+"pmovzxwd" perform sign extension or zero extension of the lowest four word
+values from the source operand into packed double words in destination operand.
+"pmovsxwq" and "pmovzxwq" perform sign extension or zero extension of the
+lowest two word values from the source operand into packed quad words in
+destination operand. "pmovsxdq" and "pmovzxdq" perform signe extension or
+zero extension of the lowest two double word values from the source operand
+into packed quad words in destination operand.
+  "phminposuw" finds the minimum unsigned word value in source operand and
+places it into the lowest word of destination operand, setting the remaining
+upper bits of destination to zero.
+  "roundps", "roundss", "roundpd" and "roundsd" perform the rounding of packed
+or individual floating point value of single or double precision, using the
+rounding mode specified by the third operand.
+
+    roundsd xmm0,xmm1,0011b ; round toward zero
+
+  "dpps" calculates dot product of packed single precision floating point
+values, that is it multiplies the corresponding pairs of values from source and
+destination operand and then sums the products up. The high four bits of the
+8-bit immediate third operand control which products are calculated and taken
+to the sum, and the low four bits control, into which elements of destination
+the resulting dot product is copied (the other elements are filled with zero).
+"dppd" calculates dot product of packed double precision floating point values.
+The bits 4 and 5 of third operand control, which products are calculated and
+added, and bits 0 and 1 of this value control, which elements in destination
+register should get filled with the result. "mpsadbw" calculates multiple sums
+of absolute differences of unsigned bytes. The third operand controls, with
+value in bits 0-1, which of the four-byte blocks in source operand is taken to
+calculate the absolute differencies, and with value in bit 2, at which of the
+two first four-byte block in destination operand start calculating multiple
+sums. The sum is calculated from four absolute differencies between the
+corresponding unsigned bytes in the source and destination block, and each next
+sum is calculated in the same way, but taking the four bytes from destination
+at the position one byte after the position of previous block. The four bytes
+from the source stay the same each time. This way eight sums of absolute
+differencies are calculated and stored as packed word values into the
+destination operand. The instructions described in this paragraph follow the
+same reules for operands, as "roundps" instruction.
+  "blendps", "blendvps", "blendpd" and "blendvpd" conditionally copy the
+values from source operand into the destination operand, depending on the bits
+of the mask provided by third operand. If a mask bit is set, the corresponding
+element of source is copied into the same place in destination, otherwise this
+position is destination is left unchanged. The rules for the first two operands
+are the same, as for general SSE instructions. "blendps" and "blendpd" need
+third operand to be 8-bit immediate, and they operate on single or double
+precision values, respectively. "blendvps" and "blendvpd" require third operand
+to be the XMM0 register.
+
+    blendvps xmm3,xmm7,xmm0 ; blend according to mask
+
+  "pblendw" conditionally copies word elements from the source operand into the
+destination, depending on the bits of mask provided by third operand, which
+needs to be 8-bit immediate value. "pblendvb" conditionally copies byte
+elements from the source operands into destination, depending on mask defined
+by the third operand, which has to be XMM0 register. These instructions follow
+the same rules for operands as "blendps" and "blendvps" instructions,
+respectively.
+  "insertps" inserts a single precision floating point value taken from the
+position in source operand specified by bits 6-7 of third operand into location
+in destination register selected by bits 4-5 of third operand. Additionally,
+the low four bits of third operand control, which elements in destination
+register will be set to zero. The first two operands follow the same rules as
+for the general SSE operation, the third operand should be 8-bit immediate.
+  "extractps" extracts a single precision floating point value taken from the
+location in source operand specified by low two bits of third operand, and
+stores it into the destination operand. The destination can be a 32-bit memory
+value or general purpose register, the source operand must be SSE register,
+and the third operand should be 8-bit immediate value.
+
+    extractps edx,xmm3,3 ; extract the highest value
+
+  "pinsrb", "pinsrd" and "pinsrq" copy a byte, double word or quad word from
+the source operand into the location of destination operand determined by the
+third operand. The destination operand has to be SSE register, the source
+operand can be a memory location of appropriate size, or the 32-bit general
+purpose register (but 64-bit general purpose register for "pinsrq", which is
+only available in long mode), and the third operand has to be 8-bit immediate
+value. These instructions complement the "pinsrw" instruction operating on SSE
+register destination, which was introduced by SSE2.
+
+    pinsrd xmm4,eax,1 ; insert double word into second position
+
+  "pextrb", "pextrw", "pextrd" and "pextrq" copy a byte, word, double word or
+quad word from the location in source operand specified by third operand, into
+the destination. The source operand should be SSE register, the third operand
+should be 8-bit immediate, and the destination operand can be memory location
+of appropriate size, or the 32-bit general purpose register (but 64-bit general
+purpose register for "pextrq", which is only available in long mode). The
+"pextrw" instruction with SSE register as source was already introduced by
+SSE2, but SSE4 extends it to allow memory operand as destination.
+
+    pextrw [ebx],xmm3,7 ; extract highest word into memory
+
+  "movntdqa" loads double quad word from the source operand to the destination
+using a non-temporal hint. The destination operand should be SSE register,
+and the source operand should be 128-bit memory location.
+  The SSE4.2, described below, adds not only some new operations on SSE
+registers, but also introduces some completely new instructions operating on
+general purpose registers only.
+  "pcmpistri" compares two zero-ended (implicit length) strings provided in
+its source and destination operand and generates an index stored to ECX;
+"pcmpistrm" performs the same comparison and generates a mask stored to XMM0.
+"pcmpestri" compares two strings of explicit lengths, with length provided
+in EAX for the destination operand and in EDX for the source operand, and
+generates an index stored to ECX; "pcmpestrm" performs the same comparision
+and generates a mask stored to XMM0. The source and destination operand follow
+the same rules as for general SSE instructions, the third operand should be
+8-bit immediate value determining the details of performed operation - refer to
+Intel documentation for information on those details.
+  "pcmpgtq" compares packed quad words, and fills the corresponding elements of
+destination operand with either ones or zeros, depending on whether the value
+in destination is greater than the one in source, or not. This instruction
+follows the same rules for operands as "pcmpeqq".
+  "crc32" accumulates a CRC32 value for the source operand starting with
+initial value provided by destination operand, and stores the result in
+destination. Unless in long mode, the destination operand should be a 32-bit
+general purpose register, and the source operand can be a byte, word, or double
+word register or memory location. In long mode the destination operand can
+also be a 64-bit general purpose register, and the source operand in such case
+can be a byte or quad word register or memory location.
+
+    crc32 eax,dl          ; accumulate CRC32 on byte value
+    crc32 eax,word [ebx]  ; accumulate CRC32 on word value
+    crc32 rax,qword [rbx] ; accumulate CRC32 on quad word value
+
+  "popcnt" calculates the number of bits set in the source operand, which can
+be 16-bit, 32-bit, or 64-bit general purpose register or memory location,
+and stores this count in the destination operand, which has to be register of
+the same size as source operand. The 64-bit variant is available only in long
+mode.
+
+    popcnt ecx,eax ; count bits set to 1
+
+  The SSE4a extension, which also includes the "popcnt" instruction introduced
+by SSE4.2, at the same time adds the "lzcnt" instruction, which follows the
+same syntax, and calculates the count of leading zero bits in source operand
+(if the source operand is all zero bits, the total number of bits in source
+operand is stored in destination).
+  "extrq" extract the sequence of bits from the low quad word of SSE register
+provided as first operand and stores them at the low end of this register,
+filling the remaining bits in the low quad word with zeros. The position of bit
+string and its length can either be provided with two 8-bit immediate values
+as second and third operand, or by SSE register as second operand (and there
+is no third operand in such case), which should contain position value in bits
+8-13 and length of bit string in bits 0-5.
+
+    extrq xmm0,8,7  ; extract 8 bits from position 7
+    extrq xmm0,xmm5 ; extract bits defined by register
+
+  "insertq" writes the sequence of bits from the low quad word of the source
+operand into specified position in low quad word of the destination operand,
+leaving the other bits in low quad word of destination intact. The position
+where bits should be written and the length of bit string can either be
+provided with two 8-bit immediate values as third and fourth operand, or by
+the bit fields in source operand (and there are only two operands in such
+case), which should contain position value in bits 72-77 and length of bit
+string in bits 64-69.
+
+    insertq xmm1,xmm0,4,2 ; insert 4 bits at position 2
+    insertq xmm1,xmm0     ; insert bits defined by register
+
+  "movntss" and "movntsd" store single or double precision floating point
+value from the source SSE register into 32-bit or 64-bit destination memory
+location respectively, using non-temporal hint.
+
+
+2.1.21  Other extensions of instruction set
+
+There is a number of additional instruction set extensions recognized by flat
+assembler, and the general syntax of the instructions introduced by those
+extensions is provided here. For a detailed information on the operations
+performed by them, check out the manuals from Intel (for the VMX and SVM
+extensions) or AMD (for the SVM extension).
+  The Virtual-Machine Extensions (VMX) provide a set of instructions for the
+management of virtual machines. The "vmxon" instruction, which enters the VMX
+operation, requires a single 64-bit memory operand, which should be a physical
+address of memory region, which the logical processor may use to support VMX
+operation. The "vmxoff" instruction, which leaves the VMX operation, has no
+operands. The "vmlaunch" and "vmresume", which launch or resume the virtual
+machines, and "vmcall", which allows guest software to call the VM monitor, use
+no operands either.
+  The "vmptrld" loads the physical address of current Virtual Machine Control
+Structure (VMCS) from its memory operand, "vmptrst" stores the pointer to
+current VMCS into address specified by its memory operand, and "vmclear" sets
+the launch state of the VMCS referenced by its memory operand to clear. These
+three instruction all require single 64-bit memory operand.
+  The "vmread" reads from VCMS a field specified by the source operand and
+stores it into the destination operand. The source operand should be a
+general purpose register, and the destination operand can be a register of
+memory. The "vmwrite" writes into a VMCS field specified by the destination
+operand the value provided by source operand. The source operand can be a
+general purpose register or memory, and the destination operand must be a
+register. The size of operands for those instructions should be 64-bit when
+in long mode, and 32-bit otherwise.
+  The "invept" and "invvpid" invalidate the translation lookaside buffers
+(TLBs) and paging-structure caches, either derived from extended page tables
+(EPT), or based on the virtual processor identifier (VPID). These instructions
+require two operands, the first one being the general purpose register
+specifying the type of invalidation, and the second one being a 128-bit
+memory operand providing the invalidation descriptor. The first operand
+should be a 64-bit register when in long mode, and 32-bit register otherwise.
+  The Safer Mode Extensions (SMX) provide the functionalities available
+throught the "getsec" instruction. This instruction takes no operands, and
+the function that is executed is determined by the contents of EAX register
+upon executing this instruction.
+  The Secure Virtual Machine (SVM) is a variant of virtual machine extension
+used by AMD. The "skinit" instruction securely reinitializes the processor
+allowing the startup of trusted software, such as the virtual machine monitor
+(VMM). This instruction takes a single operand, which must be EAX, and
+provides a physical address of the secure loader block (SLB).
+  The "vmrun" instruction is used to start a guest virtual machine,
+its only operand should be an accumulator register (AX, EAX or RAX, the
+last one available only in long mode) providing the physical address of the
+virtual machine control block (VMCB). The "vmsave" stores a subset of processor
+state into VMCB specified by its operand, and "vmload" loads the same subset
+of processor state from a specified VMCB. The same operand rules as for the
+"vmrun" apply to those two instructions.
+  "vmmcall" allows the guest software to call the VMM. This instruction takes
+no operands.
+  "stgi" set the global interrupt flag to 1, and "clgi" zeroes it. These
+instructions take no operands.
+  "invlpga" invalidates the TLB mapping for a virtual page specified by the
+first operand (which has to be accumulator register) and address space
+identifier specified by the second operand (which must be ECX register).
 
 
 2.2  Control directives
@@ -2553,6 +2866,8 @@ the adresses in current addressing space are relocatable (as it might happen
 with PE or object output formats), since only absolute values can be used this
 way. The absolute value may be obtained by calculating the relative address,
 like "$-$$", or "rva $" in case of PE format.
+  The "err" directive immediately terminates the assembly process when it is
+encountered by assembler.
 
 
 2.2.6  Multiple passes
@@ -2654,6 +2969,15 @@ also defined somewhere later.
   The "used" operator may be expected to behave in a similar manner in
 analogous cases, however any other kinds of predictions my not be so simple and
 you should never rely on them this way.
+  The "err" directive, usually used to stop the assembly when some condition is
+met, stops the assembly immediatelly, regardless of whether the currect pass
+is final or intermediate. So even when the condition that caused this directive
+to be interpreted is temporary, and would eventually disappear in the later
+passes, the assembly is stopped anyway. If it's needed to stop the assembly only
+when the condition is permanent, and not just occuring in the intermediate
+assembly passes, the trick with "rb -1" can be used instead. The "rb" directive
+does not cause an error when it is provided with negative value in the
+intermediate passes.
 
 
 2.3  Preprocessor directives
@@ -2985,7 +3309,7 @@ For example "jif ax,ae,10h,exit" will be assembled as "cmp ax,10h" and
 "jae exit" instructions.
   The "#" operator can be also used to concatenate two quoted strings into one.
 Also conversion of name into a quoted string is possible, with the "`" operator,
-which likewise can be used inside the macroinstruction. It convert the name
+which likewise can be used inside the macroinstruction. It converts the name
 that follows it into a quoted string - but note, that when it is followed by
 a macro argument which is being replaced with value containing more than one
 symbol, only the first of them will be converted, as the "`" operator converts
@@ -3331,11 +3655,15 @@ called "foo" and the structure macroinstruction called "bar". Those lines:
 
 would be then both interpreted as invocations of macroinstruction "foo", since
 the meaning of the first symbol overrides the meaning of second one.
-  The macroinstructions generate the new lines from their definition blocks,
-replacing the parameters with their values and then processing the "#" and "`"
-operators. The conversion operator has the higher priority than concatenation.
-After this is completed, the newly generated line goes through the standard
-preprocessing, as described above.
+  When the macroinstruction generates the new lines from its definition block,
+in every line it first scans for macroinstruction directives, and interpretes
+them accordingly. All the other content in the definition block is used to
+brew the new lines, replacing the macroinstruction parameters with their values
+and then processing the symbol escaping and "#" and "`" operators. The
+conversion operator has the higher priority than concatenation and if any of
+them operates on the escaped symbol, the escaping is cancelled before finishing
+the operation. After this is completed, the newly generated line goes through
+the standard preprocessing, as described above.
   Though the symbolic constants are usually only replaced in the lines, where
 no preprocessor directives nor macroinstructions has been found, there are some
 special cases where those replacements are performed in the parts of lines
@@ -3433,7 +3761,10 @@ purpose of controlling the format of generated code.
   "format" directive followed by the format identifier allows to select the
 output format. This directive should be put at the beginning of the source.
 Default output format is a flat binary file, it can also be selected by using
-"format binary" directive.
+"format binary" directive. This directive can be followed by the "as" keyword
+and the quoted string specifying the default file extension for the output
+file. Unless the output file name was specified from the command line,
+assembler will use this extension when generating the output file.
   "use16" and "use32" directives force the assembler to generate 16-bit or
 32-bit code, omitting the default setting for selected output format. "use64"
 enables generating the code for the long mode of x86-64 processors.
@@ -3468,16 +3799,16 @@ needs. Default size of heap is 65535.
 2.4.2  Portable Executable
 
 To select the Portable Executable output format, use "format PE" directive, it
-can be followed by additional format settings: use "console", "GUI" or
-"native" operator selects the target subsystem (floating point value
-specifying subsystem version can follow), "DLL" marks the output file as a
-dynamic link library. Then can follow the "at" operator and the numerical
-expression specifying the base of PE image and then optionally "on" operator
-followed by the quoted string containing file name selects custom MZ stub for
-PE program (when specified file is not a MZ executable, it is treated as a
-flat binary executable file and converted into MZ format). The default code
-setting for this format is 32-bit. The example of fully featured PE format
-declaration:
+can be followed by additional format settings: first the target subsystem
+setting, which can be "console" or "GUI" for Windows applications, "native"
+for Windows drivers, "EFI", "EFIboot" or "EFIruntime" for the UEFI. "DLL"
+keyword following the subsystem setting marks the output file as a dynamic link
+library. Then can follow the "at" operator and the numerical expression
+specifying the base of PE image and then optionally "on" operator followed by
+the quoted string containing file name selects custom MZ stub for PE program
+(when specified file is not a MZ executable, it is treated as a flat binary
+executable file and converted into MZ format). The default code setting for
+this format is 32-bit. The example of fully featured PE format declaration:
 
     format PE GUI 4.0 DLL at 7000000h on 'stub.exe'
 
@@ -3537,9 +3868,9 @@ setting, in such case long mode code is generated by default.
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then one or more section flags can
 follow. Section flags available for both COFF variants are "code" and "data",
-while "readable", "writeable", "executable", "shareable", "discardable",
-"notpageable", "linkremove" and "linkinfo" are flags available only with
-Microsoft COFF variant.
+while flags "readable", "writeable", "executable", "shareable", "discardable",
+"notpageable", "linkremove" and "linkinfo" are available only with Microsoft's
+COFF variant.
   By default section is aligned to double word (four bytes), in case of
 Microsoft COFF variant other alignment can be specified by providing the
 "align" operator followed by alignment value (any power of two up to 8192)
@@ -3561,6 +3892,12 @@ available as public. Some examples of public symbols declarations:
     public main
     public start as '_start'
 
+Additionally, with COFF format it's possible to specify exported symbol as
+static, it's done by preceding the name of symbol with the "static" keyword.
+  When using the Microsoft's COFF format, the "rva" operator can be used
+inside the numerical expressions to obtain the RVA of the item addressed by the
+value it is applied to.
+
 2.4.4  Executable and Linkable Format
 
 To select ELF output format, use "format ELF" directive. The default code
@@ -3578,7 +3915,14 @@ COFF output format is selected (described in previous section).
   The "rva" operator can be used also in the case of this format (however not
 when target architecture is x86-64), it converts the address into the offset
 relative to the GOT table, so it may be useful to create position-independent
-code.
+code. There's also a special "plt" operator, which allows to call the external
+functions through the Procedure Linkage Table. You can even create an alias
+for external function that will make it always be called through PLT, with
+the code like:
+
+    extrn 'printf' as _printf
+    printf = PLT _printf
+
   To create executable file, follow the format choice directive with the
 "executable" keyword. It allows to use "entry" directive followed by the value
 to set as entry point of program. On the other hand it makes "extrn" and

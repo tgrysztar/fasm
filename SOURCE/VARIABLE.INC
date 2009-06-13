@@ -1,6 +1,6 @@
 
 ; flat assembler core variables
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 ; Variables which have to be set up by interface:
@@ -15,6 +15,7 @@ stack_limit dd ?
 
 input_file dd ?
 output_file dd ?
+symbols_file dd ?
 
 passes_limit dw ?
 
@@ -51,12 +52,13 @@ label_leaf dd ?
 hash_tree dd ?
 org_origin dq ?
 org_registers dd ?
-org_start dd ?
 org_symbol dd ?
+org_start dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
 counter_limit dd ?
+error_info dd ?
 error_line dd ?
 error dd ?
 display_buffer dd ?
@@ -70,6 +72,7 @@ symbol_identifier dd ?
 address_symbol dd ?
 address_high dd ?
 format_flags dd ?
+resolver_flags dd ?
 symbols_stream dd ?
 number_of_relocations dd ?
 number_of_sections dd ?
@@ -85,34 +88,43 @@ resource_data dd ?
 resource_size dd ?
 parenthesis_stack dd ?
 blocks_stack dd ?
+parsed_lines dd ?
+logical_value_parentheses dd ?
+file_extension dd ?
 
-next_pass_needed db ?
-macro_status db ?
-output_format db ?
-code_type db ?
 labels_type db ?
-prefixed_instruction db ?
+code_type db ?
 virtual_data db ?
-fp_sign db ?
-fp_format db ?
-value_size db ?
-size_override db ?
-address_size db ?
+
 operand_size db ?
+size_override db ?
+operand_prefix db ?
+rex_prefix db ?
+opcode_prefix db ?
+base_code db ?
+extended_code db ?
+supplemental_code db ?
+postbyte_register db ?
+
+immediate_size db ?
+mmx_size db ?
+jump_type db ?
+push_size db ?
+value_size db ?
+address_size db ?
 size_declared db ?
 value_undefined db ?
 value_type db ?
 compare_type db ?
-base_code db ?
-extended_code db ?
-postbyte_register db ?
+logical_value_wrapping db ?
+next_pass_needed db ?
+macro_status db ?
 segment_register db ?
-mmx_size db ?
-jump_type db ?
-push_size db ?
-operand_prefix db ?
-rex_prefix db ?
-immediate_size db ?
+prefixed_instruction db ?
+fp_sign db ?
+fp_format db ?
+output_format db ?
 
 characters rb 100h
 converted rb 100h
+message rb 200h

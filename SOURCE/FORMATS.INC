@@ -1,12 +1,12 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 formatter:
+	mov	[current_offset],edi
 	cmp	[output_file],0
 	jne	output_path_ok
-	push	edi
 	mov	esi,[input_file]
 	mov	edi,[free_additional_memory]
       copy_output_path:
@@ -33,6 +33,8 @@ formatter:
 	lea	eax,[edi+9]
 	cmp	eax,[structures_buffer]
 	jae	out_of_memory
+	cmp	[file_extension],0
+	jne	extension_specified
 	cmp	[output_format],2
 	je	exe_extension
 	jb	bin_extension
@@ -44,12 +46,17 @@ formatter:
 	jne	no_extension
 	cmp	[subsystem],1
 	je	sys_extension
+	cmp	[subsystem],10
+	jae	efi_extension
 	bt	[format_flags],8
 	jnc	exe_extension
 	mov	eax,'.dll'
 	jmp	make_extension
       sys_extension:
 	mov	eax,'.sys'
+	jmp	make_extension
+      efi_extension:
+	mov	eax,'.efi'
 	jmp	make_extension
       bin_extension:
 	mov	eax,'.bin'
@@ -93,6 +100,18 @@ formatter:
 	inc	edi
 	cmp	byte [edi],0
 	jne	adapt_case
+	jmp	extension_ok
+      extension_specified:
+	mov	al,'.'
+	stos	byte [edi]
+	mov	esi,[file_extension]
+      copy_extension:
+	lods	byte [esi]
+	stos	byte [edi]
+	test	al,al
+	jnz	copy_extension
+	dec	edi
+      extension_ok:
 	mov	esi,edi
 	lea	ecx,[esi+1]
 	sub	ecx,[free_additional_memory]
@@ -104,8 +123,30 @@ formatter:
 	inc	edi
 	mov	[structures_buffer],edi
 	mov	[output_file],edi
-	pop	edi
       output_path_ok:
+	cmp	[symbols_file],0
+	je	labels_table_ok
+	mov	ecx,[memory_end]
+	sub	ecx,[labels_list]
+	mov	edi,[display_buffer]
+	sub	edi,8
+	mov	[edi],ecx
+	or	dword [edi+4],-1
+	sub	edi,ecx
+	cmp	edi,[esp]
+	jbe	out_of_memory
+	mov	[display_buffer],edi
+	mov	esi,[memory_end]
+      copy_labels:
+	sub	esi,32
+	cmp	esi,[labels_list]
+	jb	labels_table_ok
+	mov	ecx,32 shr 2
+	rep	movs dword [edi],[esi]
+	sub	esi,32
+	jmp	copy_labels
+      labels_table_ok:
+	mov	edi,[current_offset]
 	cmp	[output_format],4
 	je	coff_formatter
 	cmp	[output_format],5
@@ -120,6 +161,7 @@ formatter:
 	jne	calculate_code_size
 	mov	edi,[undefined_data_start]
       calculate_code_size:
+	mov	[current_offset],edi
 	sub	edi,[code_start]
 	mov	[code_size],edi
 	mov	[written_size],0
@@ -141,6 +183,8 @@ formatter:
 	call	write_code
       output_written:
 	call	close
+	cmp	[symbols_file],0
+	jne	dump_symbols
 	ret
       write_code:
 	mov	eax,[written_size]
@@ -148,6 +192,7 @@ formatter:
 	mov	edx,[code_start]
 	mov	ecx,[code_size]
 	add	[written_size],ecx
+	lea	eax,[edx+ecx]
 	call	write
 	jc	write_failed
 	ret
@@ -178,6 +223,15 @@ format_directive:
 	je	format_coff
 	cmp	al,5
 	je	format_elf
+      format_defined:
+	cmp	byte [esi],86h
+	jne	instruction_assembled
+	cmp	word [esi+1],'('
+	jne	invalid_argument
+	mov	eax,[esi+3]
+	add	esi,3+4
+	mov	[file_extension],esi
+	lea	esi,[esi+eax+1]
 	jmp	instruction_assembled
       format_prefix:
 	lods	byte [esi]
@@ -253,9 +307,19 @@ public_directive:
 	bt	[format_flags],0
 	jc	illegal_instruction
       public_allowed:
+	mov	[base_code],0C0h
+	lods	byte [esi]
+	cmp	al,2
+	je	public_label
+	cmp	al,1Dh
+	jne	invalid_argument
+	lods	byte [esi]
+	and	al,7
+	add	[base_code],al
 	lods	byte [esi]
 	cmp	al,2
 	jne	invalid_argument
+      public_label:
 	lods	dword [esi]
 	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
@@ -281,7 +345,8 @@ public_directive:
 	mov	[ebx+4],esi
 	lods	dword [esi]
 	lea	esi,[esi+eax+1]
-	mov	byte [ebx],80h
+	mov	al,[base_code]
+	mov	[ebx],al
 	jmp	instruction_assembled
 extrn_directive:
 	mov	al,[output_format]
@@ -303,7 +368,7 @@ extrn_directive:
 	cmp	eax,[structures_buffer]
 	jae	out_of_memory
 	mov	[free_additional_memory],eax
-	mov	byte [edx],81h
+	mov	byte [edx],80h
 	mov	[edx+4],ebx
 	lods	byte [esi]
 	cmp	al,86h
@@ -377,7 +442,7 @@ format_mz:
 	mov	word [edx+0Ch],0FFFFh
 	mov	word [edx+10h],1000h
 	mov	[code_type],16
-	jmp	instruction_assembled
+	jmp	format_defined
 mark_mz_relocation:
 	push	eax ebx
 	inc	[number_of_relocations]
@@ -416,11 +481,11 @@ mz_segment:
 	and	eax,1111b
 	sub	ecx,eax
 	mov	edx,edi
-	xor	al,al
+	xor	eax,eax
 	rep	stos byte [edi]
 	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],0
-	mov	[org_registers],0
+	mov	dword [org_origin+4],eax
+	mov	[org_registers],eax
 	mov	[org_start],edi
 	mov	eax,edx
 	call	undefined_data
@@ -567,7 +632,6 @@ write_mz_header:
 	inc	si
 	or	ax,ax
 	jnz	mz_size_ok
-	mov	ax,200h
 	dec	si
       mz_size_ok:
 	mov	[edx+2],ax		; number of bytes in last page
@@ -604,14 +668,14 @@ make_stub:
 	mov	eax,40h+default_stub_end-default_stub
 	mov	cx,100h+default_stub_end-default_stub
 	mov	word [edx],'MZ'
-	mov	word [edx+4],1
+	mov	byte [edx+4],1
 	mov	word [edx+2],ax
-	mov	word [edx+8],4
-	mov	word [edx+0Ah],10h
+	mov	byte [edx+8],4
+	mov	byte [edx+0Ah],10h
 	mov	word [edx+0Ch],0FFFFh
 	mov	word [edx+10h],cx
 	mov	word [edx+3Ch],ax
-	mov	word [edx+18h],40h
+	mov	byte [edx+18h],40h
 	lea	edi,[edx+40h]
 	mov	esi,default_stub
 	mov	ecx,default_stub_end-default_stub
@@ -671,6 +735,10 @@ make_stub:
 	dec	ecx
 	shl	ecx,9
 	movzx	edx,word [esi+2]
+	test	edx,edx
+	jnz	stub_header_size_ok
+	mov	dx,200h
+     stub_header_size_ok:
 	add	ecx,edx
 	mov	edx,edi
 	sub	ecx,eax
@@ -736,7 +804,7 @@ make_stub:
 	mov	[esi+0Ah],ax
       binary_heap_ok:
 	mov	word [esi],'MZ'
-	mov	word [esi+8],4
+	mov	byte [esi+8],4
 	mov	ax,0FFFFh
 	mov	[esi+0Ch],ax
 	dec	ax
@@ -745,7 +813,7 @@ make_stub:
 	mov	[esi+0Eh],ax
 	mov	[esi+16h],ax
 	mov	word [esi+14h],100h
-	mov	word [esi+18h],40h
+	mov	byte [esi+18h],40h
 	mov	eax,[display_buffer]
 	sub	eax,ecx
 	cmp	edi,eax
@@ -800,6 +868,10 @@ format_pe:
 	jc	setting_already_specified
 	and	ax,3Fh
 	mov	[subsystem],ax
+	cmp	ax,10
+	jb	subsystem_type_ok
+	or	[format_flags],8
+      subsystem_type_ok:
 	cmp	byte [esi],'('
 	jne	pe_settings
 	inc	esi
@@ -853,11 +925,11 @@ format_pe:
 	push	edx edi
 	add	edi,[stub_size]
 	test	[format_flags],8
-	jnz	get_pe64_base
+	jnz	get_peplus_base
 	call	get_dword_value
 	mov	[image_base],eax
 	jmp	pe_base_ok
-      get_pe64_base:
+      get_peplus_base:
 	call	get_qword_value
 	mov	[image_base],eax
 	mov	[image_base_high],edx
@@ -905,9 +977,9 @@ format_pe:
 	mov	word [edx],'PE' 	; signature
 	mov	ax,[machine]
 	mov	word [edx+4],ax
-	mov	dword [edx+38h],1000h	; section alignment
-	mov	dword [edx+3Ch],200h	; file alignment
-	mov	word [edx+40h],1	; OS version
+	mov	byte [edx+38h+1],10h	; section alignment
+	mov	byte [edx+3Ch+1],2	; file alignment
+	mov	byte [edx+40h],1	; OS version
 	mov	eax,[subsystem_version]
 	mov	[edx+48h],eax
 	mov	ax,[subsystem]
@@ -920,29 +992,27 @@ format_pe:
       pe_alignment_ok:
 	mov	word [edx+1Ah],VERSION_MAJOR + VERSION_MINOR shl 8
 	test	[format_flags],8
-	jnz	init_pe64_specific
-	mov	dword [edx+14h],0E0h	; size of optional header
+	jnz	init_peplus_specific
+	mov	byte [edx+14h],0E0h	; size of optional header
 	mov	dword [edx+16h],10B010Eh; flags and magic value
 	mov	eax,[image_base]
-	mov	dword [edx+34h],eax
-	mov	dword [edx+60h],1000h	; stack reserve
-	mov	dword [edx+64h],1000h	; stack commit
-	mov	dword [edx+68h],10000h	; heap reserve
-	mov	dword [edx+6Ch],0	; heap commit
-	mov	dword [edx+74h],16	; number of directories
+	mov	[edx+34h],eax
+	mov	byte [edx+60h+1],10h	; stack reserve
+	mov	byte [edx+64h+1],10h	; stack commit
+	mov	byte [edx+68h+2],1	; heap reserve
+	mov	byte [edx+74h],16	; number of directories
 	jmp	pe_header_ok
-      init_pe64_specific:
-	mov	dword [edx+14h],0F0h	; size of optional header
+      init_peplus_specific:
+	mov	byte [edx+14h],0F0h	; size of optional header
 	mov	dword [edx+16h],20B002Eh; flags and magic value
 	mov	eax,[image_base]
-	mov	dword [edx+30h],eax
+	mov	[edx+30h],eax
 	mov	eax,[image_base_high]
-	mov	dword [edx+34h],eax
-	mov	dword [edx+60h],1000h	; stack reserve
-	mov	dword [edx+68h],1000h	; stack commit
-	mov	dword [edx+70h],10000h	; heap reserve
-	mov	dword [edx+78h],0	; heap commit
-	mov	dword [edx+84h],16	; number of directories
+	mov	[edx+34h],eax
+	mov	byte [edx+60h+1],10h	; stack reserve
+	mov	byte [edx+68h+1],10h	; stack commit
+	mov	byte [edx+70h+2],1	; heap reserve
+	mov	byte [edx+84h],16	; number of directories
       pe_header_ok:
 	bsf	ecx,[edx+3Ch]
 	imul	ebx,[number_of_sections],28h
@@ -994,31 +1064,36 @@ format_pe:
 	add	eax,edi
 	adc	ecx,0
 	test	[format_flags],8
-	jnz	pe64_org
+	jnz	peplus_org
 	sub	eax,[edx+34h]
 	sbb	ecx,0
-	mov	[labels_type],2
+	mov	bl,2
 	mov	[code_type],32
 	jmp	pe_org_ok
-      pe64_org:
+      peplus_org:
 	sub	eax,[edx+30h]
 	sbb	ecx,[edx+34h]
-	mov	[labels_type],4
+	mov	bl,4
 	mov	[code_type],64
       pe_org_ok:
+	bt	[resolver_flags],0
+	jc	pe_labels_type_ok
+	xor	bl,bl
+      pe_labels_type_ok:
+	mov	[labels_type],bl
 	mov	dword [org_origin],eax
 	mov	dword [org_origin+4],ecx
 	mov	[org_registers],0
 	mov	[org_start],edi
 	bt	[format_flags],8
 	jnc	dll_flag_ok
-	or	dword [edx+16h],2000h
+	or	byte [edx+16h+1],20h
       dll_flag_ok:
 	bt	[format_flags],9
 	jnc	wdm_flag_ok
-	or	word [edx+5Eh],2000h
+	or	byte [edx+5Eh+1],20h
       wdm_flag_ok:
-	jmp	instruction_assembled
+	jmp	format_defined
 pe_section:
 	call	close_pe_section
 	bts	[format_flags],5
@@ -1061,17 +1136,23 @@ pe_section:
 	sub	eax,[ebx+0Ch]
 	sbb	ecx,0
 	test	[format_flags],8
-	jnz	pe64_section_org
+	jnz	peplus_section_org
 	sub	eax,[edx+34h]
 	sbb	ecx,0
 	mov	[labels_type],2
 	mov	[code_type],32
+	bt	[resolver_flags],0
+	jc	pe_section_org_ok
+	mov	[labels_type],0
 	jmp	pe_section_org_ok
-      pe64_section_org:
+      peplus_section_org:
 	sub	eax,[edx+30h]
 	sbb	ecx,[edx+34h]
 	mov	[labels_type],4
 	mov	[code_type],64
+	bt	[resolver_flags],0
+	jc	pe_section_org_ok
+	mov	[labels_type],0
       pe_section_org_ok:
 	mov	dword [org_origin],eax
 	mov	dword [org_origin+4],ecx
@@ -1090,11 +1171,11 @@ pe_section:
 	inc	esi
 	mov	ecx,ebx
 	test	[format_flags],8
-	jnz	pe64_directory
+	jnz	peplus_directory
 	xchg	ecx,[edx+78h+eax*8]
 	mov	dword [edx+78h+eax*8+4],-1
 	jmp	pe_directory_set
-      pe64_directory:
+      peplus_directory:
 	xchg	ecx,[edx+88h+eax*8]
 	mov	dword [edx+88h+eax*8+4],-1
       pe_directory_set:
@@ -1151,12 +1232,32 @@ pe_section:
 	mov	eax,[code_start]
 	sub	eax,[stub_size]
 	sub	[ebx+14h],eax
+	mov	ecx,[ebx+10h]
+	test	byte [ebx+24h],20h
+	jz	pe_code_sum_ok
+	add	[edx+1Ch],ecx
+	cmp	dword [edx+2Ch],0
+	jne	pe_code_sum_ok
+	mov	eax,[ebx+0Ch]
+	mov	[edx+2Ch],eax
+      pe_code_sum_ok:
+	test	byte [ebx+24h],40h
+	jz	pe_data_sum_ok
+	add	[edx+20h],ecx
+	test	[format_flags],8
+	jnz	pe_data_sum_ok
+	cmp	dword [edx+30h],0
+	jne	pe_data_sum_ok
+	mov	eax,[ebx+0Ch]
+	mov	[edx+30h],eax
+      pe_data_sum_ok:
 	mov	eax,[ebx+8]
 	or	eax,eax
 	jz	udata_ok
 	cmp	dword [ebx+10h],0
 	jne	udata_ok
 	or	byte [ebx+24h],80h
+	add	[edx+24h],ecx
       udata_ok:
 	mov	ecx,[edx+38h]
 	dec	ecx
@@ -1191,10 +1292,10 @@ data_directive:
 	add	ecx,[ebx+0Ch]
 	mov	edx,[code_start]
 	test	[format_flags],8
-	jnz	pe64_data
+	jnz	peplus_data
 	xchg	ecx,[edx+78h+eax*8]
 	jmp	init_pe_data
-      pe64_data:
+      peplus_data:
 	xchg	ecx,[edx+88h+eax*8]
       init_pe_data:
 	or	ecx,ecx
@@ -1218,11 +1319,11 @@ data_directive:
 	add	ecx,[edx+0Ch]
 	mov	edx,[code_start]
 	test	[format_flags],8
-	jnz	end_pe64_data
+	jnz	end_peplus_data
 	sub	ecx,[edx+78h+eax*8]
 	mov	[edx+78h+eax*8+4],ecx
 	jmp	remove_structure_data
-      end_pe64_data:
+      end_peplus_data:
 	sub	ecx,[edx+88h+eax*8]
 	mov	[edx+88h+eax*8+4],ecx
 	jmp	remove_structure_data
@@ -1233,9 +1334,14 @@ pe_entry:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	test	[format_flags],8
-	jnz	pe64_entry
+	jnz	peplus_entry
 	call	get_dword_value
-	cmp	[value_type],2
+	mov	bl,2
+	bt	[resolver_flags],0
+	jc	check_pe_entry_label_type
+	xor	bl,bl
+      check_pe_entry_label_type:
+	cmp	[value_type],bl
 	je	pe_entry_ok
 	cmp	[error_line],0
 	jne	pe_entry_ok
@@ -1247,24 +1353,29 @@ pe_entry:
 	sub	eax,[edx+34h]
 	mov	[edx+28h],eax
 	jmp	instruction_assembled
-      pe64_entry:
+      peplus_entry:
 	call	get_qword_value
-	cmp	[value_type],4
-	je	pe64_entry_type_ok
+	mov	bl,4
+	bt	[resolver_flags],0
+	jc	check_peplus_entry_label_type
+	xor	bl,bl
+      check_peplus_entry_label_type:
+	cmp	[value_type],bl
+	je	peplus_entry_type_ok
 	cmp	[error_line],0
-	jne	pe64_entry_type_ok
+	jne	peplus_entry_type_ok
 	mov	edx,[current_line]
 	mov	[error_line],edx
 	mov	[error],invalid_address
-      pe64_entry_type_ok:
+      peplus_entry_type_ok:
 	mov	ecx,[code_start]
 	sub	eax,[ecx+30h]
 	sbb	edx,[ecx+34h]
-	jz	pe64_entry_range_ok
+	jz	peplus_entry_range_ok
 	mov	edx,[current_line]
 	mov	[error_line],edx
 	mov	[error],value_out_of_range
-      pe64_entry_range_ok:
+      peplus_entry_range_ok:
 	mov	[ecx+28h],eax
 	jmp	instruction_assembled
 pe_stack:
@@ -1274,7 +1385,7 @@ pe_stack:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	test	[format_flags],8
-	jnz	pe64_stack
+	jnz	peplus_stack
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
@@ -1303,7 +1414,7 @@ pe_stack:
 	ja	instruction_assembled
 	mov	dword [edx+64h],eax
 	jmp	instruction_assembled
-      pe64_stack:
+      peplus_stack:
 	call	get_qword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
@@ -1311,7 +1422,7 @@ pe_stack:
 	mov	[ecx+60h],eax
 	mov	[ecx+64h],edx
 	cmp	byte [esi],','
-	jne	default_pe64_stack_commit
+	jne	default_peplus_stack_commit
 	lods	byte [esi]
 	lods	byte [esi]
 	cmp	al,'('
@@ -1327,17 +1438,17 @@ pe_stack:
 	cmp	edx,[ecx+64h]
 	ja	value_out_of_range
 	jb	instruction_assembled
-	cmp	eax,[edx+60h]
+	cmp	eax,[ecx+60h]
 	ja	value_out_of_range
 	jmp	instruction_assembled
-      default_pe64_stack_commit:
-	mov	dword [edx+68h],1000h
-	cmp	dword [edx+64h],0
+      default_peplus_stack_commit:
+	mov	dword [ecx+68h],1000h
+	cmp	dword [ecx+64h],0
 	jne	instruction_assembled
-	mov	eax,[edx+60h]
+	mov	eax,[ecx+60h]
 	cmp	eax,1000h
 	ja	instruction_assembled
-	mov	dword [edx+68h],eax
+	mov	dword [ecx+68h],eax
 	jmp	instruction_assembled
 pe_heap:
 	lods	byte [esi]
@@ -1346,7 +1457,7 @@ pe_heap:
 	cmp	byte [esi],'.'
 	je	invalid_value
 	test	[format_flags],8
-	jnz	pe64_heap
+	jnz	peplus_heap
 	call	get_dword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
@@ -1368,7 +1479,7 @@ pe_heap:
 	cmp	eax,[edx+68h]
 	ja	value_out_of_range
 	jmp	instruction_assembled
-      pe64_heap:
+      peplus_heap:
 	call	get_qword_value
 	cmp	[value_type],0
 	jne	invalid_use_of_symbol
@@ -1397,6 +1508,19 @@ pe_heap:
 	jmp	instruction_assembled
 mark_pe_relocation:
 	push	eax ebx
+	test	[format_flags],8
+	jz	check_pe32_relocation_type
+	cmp	[value_type],4
+	je	pe_relocation_type_ok
+      check_pe32_relocation_type:
+	cmp	[value_type],2
+	je	pe_relocation_type_ok
+	cmp	[error_line],0
+	jne	pe_relocation_type_ok
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	mov	[error],invalid_use_of_symbol
+      pe_relocation_type_ok:
 	mov	ebx,[current_section]
 	mov	eax,edi
 	sub	eax,[ebx+14h]
@@ -1404,11 +1528,18 @@ mark_pe_relocation:
 	mov	ebx,[free_additional_memory]
 	inc	[number_of_relocations]
 	jz	invalid_use_of_symbol
-	mov	[ebx],eax
-	add	ebx,4
+	add	ebx,5
 	cmp	ebx,[structures_buffer]
 	jae	out_of_memory
 	mov	[free_additional_memory],ebx
+	mov	[ebx-5],eax
+	cmp	[value_type],2
+	je	fixup_32bit
+	mov	byte [ebx-1],0Ah
+	jmp	fixup_ok
+      fixup_32bit:
+	mov	byte [ebx-1],3
+      fixup_ok:
 	pop	ebx eax
 	ret
 generate_pe_data:
@@ -1416,6 +1547,54 @@ generate_pe_data:
 	je	make_pe_resource
 	cmp	al,5
 	je	make_pe_fixups
+	ret
+make_pe_fixups:
+	bts	[resolver_flags],0
+	jc	pe_relocatable_ok
+	or	[next_pass_needed],-1
+     pe_relocatable_ok:
+	push	esi
+	mov	ecx,[number_of_relocations]
+	mov	esi,[free_additional_memory]
+	lea	eax,[ecx*5]
+	sub	esi,eax
+	mov	[free_additional_memory],esi
+	or	[number_of_relocations],-1
+	xor	edx,edx
+	mov	ebp,edi
+      make_fixups:
+	cmp	[esi],edx
+	jb	store_fixup
+	mov	eax,edi
+	sub	eax,ebp
+	test	eax,11b
+	jz	fixups_block
+	xor	ax,ax
+	stos	word [edi]
+	add	dword [ebx],2
+      fixups_block:
+	mov	eax,edx
+	add	edx,1000h
+	cmp	[esi],edx
+	jae	fixups_block
+	stos	dword [edi]
+	mov	ebx,edi
+	mov	eax,8
+	stos	dword [edi]
+      store_fixup:
+	jecxz	fixups_done
+	add	dword [ebx],2
+	mov	ah,[esi+1]
+	and	ah,0Fh
+	mov	al,[esi+4]
+	shl	al,4
+	or	ah,al
+	mov	al,[esi]
+	stos	word [edi]
+	add	esi,5
+	loop	make_fixups
+      fixups_done:
+	pop	esi
 	ret
 make_pe_resource:
 	cmp	byte [esi],82h
@@ -1837,7 +2016,7 @@ make_pe_resource:
 	jge	check_next_language_id
 	mov	edx,eax
 	mov	eax,[esp]
-	mov	[current_offset],eax
+	mov	dword [value],eax
       check_next_language_id:
 	pop	esi
 	mov	eax,[esi+16]
@@ -1855,7 +2034,7 @@ make_pe_resource:
 	jae	out_of_memory
 	mov	eax,ebx
 	stos	dword [edi]
-	mov	eax,[current_offset]
+	mov	eax,dword [value]
 	stos	dword [edi]
 	jmp	make_language_id_directory
       language_id_directory_done:
@@ -1983,54 +2162,6 @@ make_pe_resource:
 	mov	[resource_size],eax
       resource_done:
 	ret
-make_pe_fixups:
-	push	esi
-	mov	ecx,[number_of_relocations]
-	mov	esi,[free_additional_memory]
-	mov	eax,ecx
-	shl	eax,2
-	sub	esi,eax
-	mov	[free_additional_memory],esi
-	or	[number_of_relocations],-1
-	xor	edx,edx
-	mov	ebp,edi
-      make_fixups:
-	cmp	[esi],edx
-	jb	store_fixup
-	mov	eax,edi
-	sub	eax,ebp
-	test	eax,11b
-	jz	fixups_block
-	xor	ax,ax
-	stos	word [edi]
-	add	dword [ebx],2
-      fixups_block:
-	mov	eax,edx
-	add	edx,1000h
-	cmp	[esi],edx
-	jae	fixups_block
-	stos	dword [edi]
-	mov	ebx,edi
-	mov	eax,8
-	stos	dword [edi]
-      store_fixup:
-	jecxz	fixups_done
-	add	dword [ebx],2
-	mov	eax,[esi]
-	and	ax,0FFFh
-	test	[format_flags],8
-	jnz	fixup_64bit
-	or	ax,3000h
-	jmp	fixup_ok
-      fixup_64bit:
-	or	ax,0A000h
-      fixup_ok:
-	stos	word [edi]
-	add	esi,4
-	loop	make_fixups
-      fixups_done:
-	pop	esi
-	ret
 close_pe:
 	call	close_pe_section
 	mov	edx,[code_start]
@@ -2039,12 +2170,14 @@ close_pe:
 	mov	edx,[code_start]
 	mov	[edx+8],eax
 	mov	eax,[number_of_relocations]
-	cmp	eax,0
-	jle	pe_flags_ok
-	or	word [edx+16h],1
+	cmp	eax,-1
+	je	pe_relocations_ok
 	shl	eax,2
 	sub	[free_additional_memory],eax
-      pe_flags_ok:
+	btr	[resolver_flags],0
+	jnc	pe_relocations_ok
+	or	[next_pass_needed],-1
+      pe_relocations_ok:
 	mov	eax,[number_of_sections]
 	mov	[edx+6],ax
 	imul	eax,28h
@@ -2123,19 +2256,20 @@ format_coff:
       flat_section_flags_ok:
 	mov	dword [ebx+14h],eax
 	mov	[current_section],ebx
-	mov	[number_of_sections],0
+	xor	eax,eax
+	mov	[number_of_sections],eax
 	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],0
-	mov	[org_registers],0
+	mov	dword [org_origin+4],eax
+	mov	[org_registers],eax
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
 	mov	[labels_type],2
 	mov	[code_type],32
 	test	[format_flags],8
-	jz	instruction_assembled
+	jz	format_defined
 	mov	[labels_type],4
 	mov	[code_type],64
-	jmp	instruction_assembled
+	jmp	format_defined
 coff_section:
 	call	close_coff_section
 	mov	ebx,[free_additional_memory]
@@ -2149,8 +2283,8 @@ coff_section:
 	mov	[ebx],al
 	mov	[ebx+8],edi
 	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],0
-	mov	[org_registers],0
+	mov	dword [org_origin+4],eax
+	mov	[org_registers],eax
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
 	mov	[labels_type],2
@@ -2251,9 +2385,18 @@ mark_coff_relocation:
 	test	[format_flags],8
 	jnz	coff_64bit_relocation
 	mov	al,6
+	cmp	[value_type],5
+	jne	coff_relocation
+	inc	al
 	jmp	coff_relocation
       coff_64bit_relocation:
 	mov	al,1
+	cmp	[value_type],4
+	je	coff_relocation
+	mov	al,2
+	cmp	[value_type],5
+	jne	coff_relocation
+	inc	al
 	jmp	coff_relocation
       coff_relocation_relative:
 	push	ebx
@@ -2339,9 +2482,10 @@ coff_formatter:
 	mov	dl,[esi]
 	or	dl,dl
 	jz	enumerate_section
+	cmp	dl,0C0h
+	jae	enumerate_public
 	cmp	dl,80h
-	je	enumerate_public
-	ja	enumerate_extrn
+	jae	enumerate_extrn
 	add	esi,0Ch
 	jmp	enumerate_symbols
       enumerate_section:
@@ -2356,7 +2500,7 @@ coff_formatter:
       enumerate_public:
 	mov	edx,eax
 	shl	edx,8
-	mov	dl,80h
+	mov	dl,[esi]
 	mov	[esi],edx
 	mov	edx,[esi+8]
 	add	esi,10h
@@ -2364,14 +2508,16 @@ coff_formatter:
 	cmp	byte [edx+11],2
 	jne	enumerate_symbols
 	mov	edx,[edx+20]
-	cmp	byte [edx],81h
-	jne	enumerate_symbols
+	cmp	byte [edx],0C0h
+	jae	enumerate_symbols
+	cmp	byte [edx],80h
+	jb	enumerate_symbols
 	inc	eax
 	jmp	enumerate_symbols
       enumerate_extrn:
 	mov	edx,eax
 	shl	edx,8
-	mov	dl,81h
+	mov	dl,[esi]
 	mov	[esi],edx
 	add	esi,0Ch
 	inc	eax
@@ -2392,9 +2538,10 @@ coff_formatter:
 	mov	al,[ebx]
 	or	al,al
 	jz	skip_other_section
+	cmp	al,0C0h
+	jae	check_public_reference
 	cmp	al,80h
-	je	check_public_reference
-	ja	next_reference
+	jae	next_reference
 	cmp	edx,[ebx+8]
 	je	default_section_ok
       next_reference:
@@ -2431,8 +2578,8 @@ coff_formatter:
 	or	al,al
 	jz	section_found
 	add	esi,0Ch
-	cmp	al,80h
-	jne	find_section
+	cmp	al,0C0h
+	jb	find_section
 	add	esi,4
 	jmp	find_section
       section_found:
@@ -2476,7 +2623,8 @@ coff_formatter:
 	jz	section_relocations_done
 	cmp	al,80h
 	jb	add_relocation
-	ja	next_relocation
+	cmp	al,0C0h
+	jb	next_relocation
 	add	esi,10h
 	jmp	find_relocations
       add_relocation:
@@ -2553,9 +2701,10 @@ coff_formatter:
 	cmp	esi,[free_additional_memory]
 	je	symbols_table_ok
 	mov	al,[esi]
+	cmp	al,0C0h
+	jae	add_public_symbol
 	cmp	al,80h
-	je	add_public_symbol
-	ja	add_extrn_symbol
+	jae	add_extrn_symbol
 	or	al,al
 	jz	add_section_symbol
 	add	esi,0Ch
@@ -2580,10 +2729,10 @@ coff_formatter:
 	mov	[current_line],eax
 	mov	eax,[esi+8]
 	test	byte [eax+8],1
-	jz	undefined_symbol
+	jz	undefined_coff_public
 	mov	cx,[current_pass]
 	cmp	cx,[eax+16]
-	jne	undefined_symbol
+	jne	undefined_coff_public
 	mov	cl,[eax+11]
 	or	cl,cl
 	jz	public_constant
@@ -2592,12 +2741,16 @@ coff_formatter:
 	cmp	cl,2
 	je	public_symbol_type_ok
 	jmp	invalid_use_of_symbol
+      undefined_coff_public:
+	mov	eax,[eax+24]
+	mov	[error_info],eax
+	jmp	undefined_symbol
       check_64bit_public_symbol:
 	cmp	cl,4
 	jne	invalid_use_of_symbol
       public_symbol_type_ok:
 	mov	ecx,[eax+20]
-	cmp	byte [ecx],81h
+	cmp	byte [ecx],80h
 	je	alias_symbol
 	cmp	byte [ecx],0
 	jne	invalid_use_of_symbol
@@ -2613,7 +2766,15 @@ coff_formatter:
       store_public_symbol:
 	mov	eax,[eax]
 	mov	[ebx+8],eax
-	mov	byte [ebx+10h],2
+	mov	al,2
+	cmp	byte [esi],0C0h
+	je	store_symbol_class
+	inc	al
+	cmp	byte [esi],0C1h
+	je	store_symbol_class
+	mov	al,105
+      store_symbol_class:
+	mov	byte [ebx+10h],al
 	add	esi,10h
 	add	ebx,12h
 	jmp	make_symbols_table
@@ -2729,9 +2890,9 @@ format_elf:
 	mov	al,4
 	mov	[ebx+10h],eax
 	test	[format_flags],8
-	jz	instruction_assembled
+	jz	format_defined
 	mov	byte [ebx+10h],8
-	jmp	instruction_assembled
+	jmp	format_defined
       format_elf64:
 	mov	edx,edi
 	mov	ecx,40h shr 2
@@ -2770,8 +2931,8 @@ elf_section:
 	mov	[ebx],al
 	mov	[ebx+8],edi
 	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],0
-	mov	[org_registers],0
+	mov	dword [org_origin+4],eax
+	mov	[org_registers],eax
 	mov	[org_start],edi
 	mov	[org_symbol],ebx
 	test	[format_flags],8
@@ -2844,13 +3005,23 @@ elf_section:
 mark_elf_relocation:
 	cmp	[value_type],3
 	je	elf_relocation_relative
+	cmp	[value_type],7
+	je	elf_relocation_relative
 	push	ebx eax
-	cmp	[value_type],3
+	cmp	[value_type],5
 	je	elf_gotoff_relocation
-	mov	al,1
+	ja	invalid_use_of_symbol
+	mov	al,1			; R_386_32 / R_AMD64_64
+	test	[format_flags],8
+	jz	coff_relocation
+	cmp	[value_type],4
+	je	coff_relocation
+	mov	al,11			; R_AMD64_32S
 	jmp	coff_relocation
       elf_gotoff_relocation:
-	mov	al,9
+	test	[format_flags],8
+	jnz	invalid_use_of_symbol
+	mov	al,9			; R_386_GOTOFF
 	jmp	coff_relocation
       elf_relocation_relative:
 	cmp	[labels_type],0
@@ -2861,7 +3032,10 @@ mark_elf_relocation:
 	sub	ebx,edi
 	sub	eax,ebx
 	push	eax
-	mov	al,2
+	mov	al,2			; R_386_PC32 / R_AMD64_PC32
+	cmp	[value_type],3
+	je	coff_relocation
+	mov	al,4			; R_386_PLT32 / R_AMD64_PLT32
 	jmp	coff_relocation
 close_elf:
 	bt	[format_flags],0
@@ -2889,8 +3063,8 @@ elf_formatter:
 	mov	al,[esi]
 	or	al,al
 	jz	first_section_found
-	cmp	al,80h
-	jne	skip_other_symbol
+	cmp	al,0C0h
+	jb	skip_other_symbol
 	add	esi,4
       skip_other_symbol:
 	add	esi,0Ch
@@ -2907,9 +3081,10 @@ elf_formatter:
 	mov	al,[esi]
 	or	al,al
 	jz	make_section_symbol
+	cmp	al,0C0h
+	jae	skip_public
 	cmp	al,80h
-	je	skip_public
-	ja	skip_extrn
+	jae	skip_extrn
 	or	byte [ebx+14h],40h
       skip_extrn:
 	add	esi,0Ch
@@ -2968,9 +3143,10 @@ elf_formatter:
 	mov	al,[esi]
 	or	al,al
 	jz	skip_section
+	cmp	al,0C0h
+	jae	make_public_symbol
 	cmp	al,80h
-	je	make_public_symbol
-	ja	make_extrn_symbol
+	jae	make_extrn_symbol
 	add	esi,0Ch
 	jmp	find_other_symbols
       skip_section:
@@ -2979,12 +3155,14 @@ elf_formatter:
       make_public_symbol:
 	mov	eax,[esi+0Ch]
 	mov	[current_line],eax
+	cmp	byte [esi],0C0h
+	jne	invalid_argument
 	mov	ebx,[esi+8]
 	test	byte [ebx+8],1
-	jz	undefined_symbol
+	jz	undefined_public
 	mov	ax,[current_pass]
 	cmp	ax,[ebx+16]
-	jne	undefined_symbol
+	jne	undefined_public
 	mov	dl,[ebx+11]
 	or	dl,dl
 	jz	public_absolute
@@ -2998,6 +3176,10 @@ elf_formatter:
 	jne	invalid_use_of_symbol
 	mov	dx,[eax+0Eh]
 	jmp	section_for_public_ok
+      undefined_public:
+	mov	eax,[ebx+24]
+	mov	[error_info],eax
+	jmp	undefined_symbol
       elf64_public:
 	cmp	dl,4
 	jne	invalid_use_of_symbol
@@ -3051,7 +3233,7 @@ elf_formatter:
 	inc	ecx
 	mov	eax,ecx
 	shl	eax,8
-	mov	al,80h
+	mov	al,0C0h
 	mov	[esi],eax
 	add	esi,10h
 	jmp	find_other_symbols
@@ -3091,7 +3273,7 @@ elf_formatter:
 	inc	ecx
 	mov	eax,ecx
 	shl	eax,8
-	mov	al,81h
+	mov	al,80h
 	mov	[esi],eax
 	add	esi,0Ch
 	jmp	find_other_symbols
@@ -3230,7 +3412,8 @@ elf_formatter:
 	jz	relocations_converted
 	cmp	al,80h
 	jb	make_relocation_entry
-	ja	relocation_entry_ok
+	cmp	al,0C0h
+	jb	relocation_entry_ok
 	add	esi,10h
 	jmp	convert_relocations
       make_relocation_entry:
@@ -3391,6 +3574,7 @@ elf_formatter:
 	mov	[edx+1+4],eax
 	mov	dword [edx+1+8],'.str'
 	mov	[edx+1+8+4],eax
+	mov	[resource_data],edx
 	mov	[written_size],0
 	mov	edx,[output_file]
 	call	create
@@ -3455,7 +3639,7 @@ format_elf_exe:
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[symbols_stream],edi
-	jmp	instruction_assembled
+	jmp	format_defined
       format_elf64_exe:
 	add	esi,2
 	or	[format_flags],1
@@ -3515,7 +3699,7 @@ format_elf_exe:
 	mov	[org_registers],0
 	mov	[org_start],edi
 	mov	[symbols_stream],edi
-	jmp	instruction_assembled
+	jmp	format_defined
 elf_entry:
 	lods	byte [esi]
 	cmp	al,'('
@@ -3785,4 +3969,282 @@ close_elf_exe:
 	je	elf64_exe_ok
 	or	[next_pass_needed],-1
       elf64_exe_ok:
+	ret
+
+dump_symbols:
+	mov	ebx,[code_start]
+	mov	dword [ebx],'fas'+1Ah shl 24
+	mov	dword [ebx+4],VERSION_MAJOR + VERSION_MINOR shl 8 + 38h shl 16
+	add	ebx,38h
+	mov	edi,ebx
+	mov	dword [ebx-38h+10h],38h
+	mov	dword [ebx-38h+8],0
+	mov	esi,[input_file]
+	call	copy_asciiz
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[ebx-38h+0Ch],eax
+	mov	esi,[output_file]
+	call	copy_asciiz
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	mov	edx,[symbols_stream]
+	mov	ebp,[free_additional_memory]
+	mov	[number_of_sections],0
+	cmp	[output_format],4
+	je	prepare_strings_table
+	cmp	[output_format],5
+	jne	strings_table_ready
+	bt	[format_flags],0
+	jc	strings_table_ready
+      prepare_strings_table:
+	cmp	edx,ebp
+	je	strings_table_ready
+	mov	al,[edx]
+	test	al,al
+	jz	prepare_string
+	cmp	al,80h
+	je	prepare_string
+	add	edx,0Ch
+	cmp	al,0C0h
+	jne	prepare_strings_table
+	add	edx,4
+	jmp	prepare_strings_table
+      prepare_string:
+	mov	esi,edi
+	sub	esi,ebx
+	xchg	esi,[edx+4]
+	test	al,al
+	jz	prepare_section_string
+	or	dword [edx+4],1 shl 31
+	add	edx,0Ch
+      prepare_external_string:
+	mov	ecx,[esi]
+	add	esi,4
+	rep	movs byte [edi],[esi]
+	mov	byte [edi],0
+	inc	edi
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	jmp	prepare_strings_table
+      prepare_section_string:
+	mov	ecx,[number_of_sections]
+	mov	eax,ecx
+	inc	eax
+	mov	[number_of_sections],eax
+	xchg	eax,[edx+4]
+	shl	ecx,2
+	add	ecx,[free_additional_memory]
+	mov	[ecx],eax
+	add	edx,20h
+	test	esi,esi
+	jz	prepare_default_section_string
+	cmp	[output_format],5
+	jne	prepare_external_string
+	bt	[format_flags],0
+	jc	prepare_external_string
+	mov	esi,[esi]
+	add	esi,[resource_data]
+      copy_elf_section_name:
+	lods	byte [esi]
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	stos	byte [edi]
+	test	al,al
+	jnz	copy_elf_section_name
+	jmp	prepare_strings_table
+      prepare_default_section_string:
+	mov	eax,'.fla'
+	stos	dword [edi]
+	mov	ax,'t'
+	stos	word [edi]
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	jmp	prepare_strings_table
+      strings_table_ready:
+	mov	edx,[display_buffer]
+	mov	ebp,[memory_end]
+	sub	ebp,[labels_list]
+	add	ebp,edx
+      prepare_labels_dump:
+	cmp	edx,ebp
+	je	labels_dump_ok
+	mov	eax,[edx+24]
+	test	eax,eax
+	jz	label_dump_name_ok
+	cmp	eax,[memory_start]
+	jb	label_name_outside_source
+	cmp	eax,[source_start]
+	ja	label_name_outside_source
+	sub	eax,[memory_start]
+	dec	eax
+	mov	[edx+24],eax
+	jmp	label_dump_name_ok
+      label_name_outside_source:
+	mov	esi,eax
+	mov	eax,edi
+	sub	eax,ebx
+	or	eax,1 shl 31
+	mov	[edx+24],eax
+	movzx	ecx,byte [esi-1]
+	lea	eax,[edi+ecx+1]
+	cmp	edi,[display_buffer]
+	jae	out_of_memory
+	rep	movsb
+	xor	al,al
+	stosb
+      label_dump_name_ok:
+	mov	eax,[edx+28]
+	test	eax,eax
+	jz	label_dump_line_ok
+	sub	eax,[memory_start]
+	mov	[edx+28],eax
+      label_dump_line_ok:
+	mov	eax,[edx+20]
+	test	eax,eax
+	jz	base_symbol_for_label_ok
+	cmp	eax,[symbols_stream]
+	mov	eax,[eax+4]
+	jae	base_symbol_for_label_ok
+	xor	eax,eax
+      base_symbol_for_label_ok:
+	mov	[edx+20],eax
+	add	edx,LABEL_STRUCTURE_SIZE
+	jmp	prepare_labels_dump
+      labels_dump_ok:
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[ebx-38h+14h],eax
+	add	eax,38h
+	mov	[ebx-38h+18h],eax
+	mov	ecx,[memory_end]
+	sub	ecx,[labels_list]
+	mov	[ebx-38h+1Ch],ecx
+	add	eax,ecx
+	mov	[ebx-38h+20h],eax
+	mov	ecx,[source_start]
+	sub	ecx,[memory_start]
+	mov	[ebx-38h+24h],ecx
+	add	eax,ecx
+	mov	[ebx-38h+28h],eax
+	mov	eax,[number_of_sections]
+	shl	eax,2
+	mov	[ebx-38h+34h],eax
+	mov	esi,[memory_start]
+      prepare_preprocessed_source:
+	cmp	esi,[source_start]
+	jae	preprocessed_source_ok
+	mov	eax,[memory_start]
+	mov	edx,[input_file]
+	cmp	[esi],edx
+	jne	line_not_from_main_input
+	mov	[esi],eax
+      line_not_from_main_input:
+	sub	[esi],eax
+	test	byte [esi+7],1 shl 7
+	jz	prepare_next_preprocessed_line
+	sub	[esi+8],eax
+	sub	[esi+12],eax
+      prepare_next_preprocessed_line:
+	add	esi,16
+	call	skip_foreign_line
+	jmp	prepare_preprocessed_source
+      preprocessed_source_ok:
+	mov	esi,[labels_list]
+	mov	ebp,edi
+      make_lines_dump:
+	cmp	esi,[display_buffer]
+	je	lines_dump_ok
+	mov	eax,[esi-4]
+	mov	ecx,[esi-8]
+	sub	esi,8
+	sub	esi,ecx
+	cmp	eax,1
+	jne	make_lines_dump
+	mov	eax,[esi+4]
+	sub	eax,[code_start]
+	add	eax,[headers_size]
+	cmp	byte [esi+1Ah],0
+	je	store_offset
+	xor	eax,eax
+      store_offset:
+	stos	dword [edi]
+	mov	eax,[esi]
+	sub	eax,[memory_start]
+	stos	dword [edi]
+	mov	eax,[esi+4]
+	xor	edx,edx
+	sub	eax,[esi+8]
+	sbb	edx,[esi+8+4]
+	stos	dword [edi]
+	mov	eax,edx
+	stos	dword [edi]
+	mov	eax,[esi+10h]
+	stos	dword [edi]
+	mov	eax,[esi+14h]
+	test	eax,eax
+	jz	base_symbol_for_line_ok
+	cmp	eax,[symbols_stream]
+	mov	eax,[eax+4]
+	jae	base_symbol_for_line_ok
+	xor	eax,eax
+      base_symbol_for_line_ok:
+	stos	dword [edi]
+	mov	eax,[esi+18h]
+	and	eax,001FFFFh
+	stos	dword [edi]
+	jmp	make_lines_dump
+      lines_dump_ok:
+	mov	edx,edi
+	mov	eax,[current_offset]
+	sub	eax,[code_start]
+	add	eax,[headers_size]
+	stos	dword [edi]
+	mov	ecx,edi
+	sub	ecx,ebx
+	sub	ecx,[ebx-38h+14h]
+	mov	[ebx-38h+2Ch],ecx
+	add	ecx,[ebx-38h+28h]
+	mov	[ebx-38h+30h],ecx
+      find_inexisting_offsets:
+	sub	edx,1Ch
+	cmp	edx,ebp
+	jb	write_symbols
+	test	byte [edx+1Ah],1
+	jnz	find_inexisting_offsets
+	cmp	eax,[edx]
+	jb	correct_inexisting_offset
+	mov	eax,[edx]
+	jmp	find_inexisting_offsets
+      correct_inexisting_offset:
+	mov	dword [edx],0
+	or	byte [edx+1Ah],2
+	jmp	find_inexisting_offsets
+      write_symbols:
+	mov	edx,[symbols_file]
+	call	create
+	jc	write_failed
+	mov	edx,[code_start]
+	mov	ecx,[edx+14h]
+	add	ecx,38h
+	call	write
+	mov	edx,[display_buffer]
+	mov	ecx,[memory_end]
+	sub	ecx,[labels_list]
+	call	write
+	mov	edx,[memory_start]
+	mov	ecx,[source_start]
+	sub	ecx,edx
+	call	write
+	mov	edx,ebp
+	mov	ecx,edi
+	sub	ecx,edx
+	call	write
+	mov	edx,[free_additional_memory]
+	mov	ecx,[number_of_sections]
+	shl	ecx,2
+	call	write
+	call	close
 	ret

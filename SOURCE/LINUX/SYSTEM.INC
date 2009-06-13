@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 0003o
@@ -198,7 +198,7 @@ display_string:
 	neg	ecx
 	sub	ecx,2
 	mov	eax,4
-	mov	ebx,1
+	mov	ebx,[con_handle]
 	xchg	ecx,edx
 	int	0x80
 	pop	ebx
@@ -207,9 +207,9 @@ display_character:
 	push	ebx
 	mov	[character],dl
 	mov	eax,4
-	mov	ebx,1
+	mov	ebx,[con_handle]
 	mov	ecx,character
-	mov	edx,ebx
+	mov	edx,1
 	int	0x80
 	pop	ebx
 	ret
@@ -248,7 +248,7 @@ display_number:
 
 display_user_messages:
 	mov	[displayed_count],0
-	call	flush_display_buffer
+	call	show_display_buffer
 	cmp	[displayed_count],0
 	je	line_break_ok
 	cmp	[last_displayed],0Ah
@@ -264,7 +264,7 @@ display_block:
 	mov	[last_displayed],al
 	push	ebx
 	mov	eax,4
-	mov	ebx,1
+	mov	ebx,[con_handle]
 	mov	edx,ecx
 	mov	ecx,esi
 	int	0x80
@@ -273,6 +273,7 @@ display_block:
 	ret
 
 fatal_error:
+	mov	[con_handle],2
 	mov	esi,error_prefix
 	call	display_string
 	pop	esi
@@ -282,10 +283,14 @@ fatal_error:
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
+	mov	[con_handle],2
 	call	display_user_messages
 	push	dword 0
 	mov	ebx,[current_line]
       get_error_lines:
+	mov	eax,[ebx]
+	cmp	byte [eax],0
+	je	get_next_error_line
 	push	ebx
 	test	byte [ebx+7],80h
 	jz	display_error_line
@@ -295,6 +300,7 @@ assembler_error:
 	test	byte [edx+7],80h
 	jnz	find_definition_origin
 	push	edx
+      get_next_error_line:
 	mov	ebx,[ebx+8]
 	jmp	get_error_lines
       display_error_line:

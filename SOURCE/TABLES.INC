@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 include_variable db 'INCLUDE',0
@@ -61,6 +61,7 @@ single_operand_operators:
  db 1,'+',0
  db 1,'-',083h
  db 3,'not',0D0h
+ db 3,'plt',0E1h
  db 3,'rva',0E0h
  db 0
 
@@ -78,297 +79,295 @@ directive_operators:
  db 4,'used',89h
  db 0
 
-formatter_symbols:
- db 5,'align',1Ch,0
- db 6,'binary',18h,10h
- db 4,'code',19h,5
- db 4,'coff',18h,40h
- db 7,'console',1Bh,3
- db 4,'data',19h,6
- db 11,'discardable',19h,25
- db 3,'dll',1Bh,80h
- db 3,'elf',18h,50h
- db 5,'elf64',18h,58h
- db 10,'executable',19h,29
- db 6,'export',1Ah,0
- db 6,'fixups',1Ah,5
- db 3,'gui',1Bh,2
- db 6,'import',1Ah,1
- db 8,'linkinfo',19h,9
- db 10,'linkremove',19h,11
- db 2,'ms',17h,41h
- db 4,'ms64',17h,49h
- db 2,'mz',18h,20h
- db 6,'native',1Bh,1
- db 11,'notpageable',19h,27
- db 2,'pe',18h,30h
- db 4,'pe64',18h,38h
- db 8,'readable',19h,30
- db 8,'resource',1Ah,2
- db 9,'shareable',19h,28
- db 3,'wdm',1Bh,81h
- db 8,'writable',19h,31
- db 9,'writeable',19h,31
- db 0
-
 address_registers:
- db 2,'bp',0,25h
- db 2,'bx',0,23h
- db 2,'di',0,27h
- db 3,'eax',0,40h
- db 3,'ebp',0,45h
- db 3,'ebx',0,43h
- db 3,'ecx',0,41h
- db 3,'edi',0,47h
- db 3,'edx',0,42h
- db 3,'esi',0,46h
- db 3,'esp',0,44h
- db 3,'r10',0,8Ah
- db 4,'r10d',0,4Ah
- db 3,'r11',0,8Bh
- db 4,'r11d',0,4Bh
- db 3,'r12',0,8Ch
- db 4,'r12d',0,4Ch
- db 3,'r13',0,8Dh
- db 4,'r13d',0,4Dh
- db 3,'r14',0,8Eh
- db 4,'r14d',0,4Eh
- db 3,'r15',0,8Fh
- db 4,'r15d',0,4Fh
- db 2,'r8',0,88h
- db 3,'r8d',0,48h
- db 2,'r9',0,89h
- db 3,'r9d',0,49h
- db 3,'rax',0,80h
- db 3,'rbp',0,85h
- db 3,'rbx',0,83h
- db 3,'rcx',0,81h
- db 3,'rdi',0,87h
- db 3,'rdx',0,82h
- db 3,'rip',0,0F0h
- db 3,'rsi',0,86h
- db 3,'rsp',0,84h
- db 2,'si',0,26h
+ db 2,'bp',25h
+ db 2,'bx',23h
+ db 2,'di',27h
+ db 3,'eax',40h
+ db 3,'ebp',45h
+ db 3,'ebx',43h
+ db 3,'ecx',41h
+ db 3,'edi',47h
+ db 3,'edx',42h
+ db 3,'eip',0F4h
+ db 3,'esi',46h
+ db 3,'esp',44h
+ db 3,'r10',8Ah
+ db 4,'r10d',4Ah
+ db 3,'r11',8Bh
+ db 4,'r11d',4Bh
+ db 3,'r12',8Ch
+ db 4,'r12d',4Ch
+ db 3,'r13',8Dh
+ db 4,'r13d',4Dh
+ db 3,'r14',8Eh
+ db 4,'r14d',4Eh
+ db 3,'r15',8Fh
+ db 4,'r15d',4Fh
+ db 2,'r8',88h
+ db 3,'r8d',48h
+ db 2,'r9',89h
+ db 3,'r9d',49h
+ db 3,'rax',80h
+ db 3,'rbp',85h
+ db 3,'rbx',83h
+ db 3,'rcx',81h
+ db 3,'rdi',87h
+ db 3,'rdx',82h
+ db 3,'rip',0F8h
+ db 3,'rsi',86h
+ db 3,'rsp',84h
+ db 2,'si',26h
  db 0
 
 address_sizes:
- db 4,'byte',0,1
- db 5,'dword',0,4
- db 5,'qword',0,8
- db 4,'word',0,2
+ db 4,'byte',1
+ db 5,'dword',4
+ db 5,'qword',8
+ db 4,'word',2
  db 0
 
 symbols:
- db 2,'ah',10h,04h
- db 2,'al',10h,10h
- db 2,'ax',10h,20h
- db 2,'bh',10h,07h
- db 2,'bl',10h,13h
- db 2,'bp',10h,25h
- db 3,'bpl',10h,15h
- db 2,'bx',10h,23h
- db 4,'byte',11h,1
- db 2,'ch',10h,05h
- db 2,'cl',10h,11h
- db 3,'cr0',10h,50h
- db 3,'cr1',10h,51h
- db 3,'cr2',10h,52h
- db 3,'cr3',10h,53h
- db 3,'cr4',10h,54h
- db 3,'cr5',10h,55h
- db 3,'cr6',10h,56h
- db 3,'cr7',10h,57h
- db 3,'cr8',10h,58h
- db 3,'cr9',10h,59h
- db 4,'cr10',10h,5Ah
- db 4,'cr11',10h,5Bh
- db 4,'cr12',10h,5Ch
- db 4,'cr13',10h,5Dh
- db 4,'cr14',10h,5Eh
- db 4,'cr15',10h,5Fh
- db 2,'cs',10h,62h
- db 2,'cx',10h,21h
- db 2,'dh',10h,06h
- db 2,'di',10h,27h
- db 3,'dil',10h,17h
- db 2,'dl',10h,12h
- db 6,'dqword',11h,16
- db 3,'dr0',10h,70h
- db 3,'dr1',10h,71h
- db 3,'dr2',10h,72h
- db 3,'dr3',10h,73h
- db 3,'dr4',10h,74h
- db 3,'dr5',10h,75h
- db 3,'dr6',10h,76h
- db 3,'dr7',10h,77h
- db 3,'dr8',10h,78h
- db 3,'dr9',10h,79h
- db 4,'dr10',10h,7Ah
- db 4,'dr11',10h,7Bh
- db 4,'dr12',10h,7Ch
- db 4,'dr13',10h,7Dh
- db 4,'dr14',10h,7Eh
- db 4,'dr15',10h,7Fh
- db 2,'ds',10h,64h
- db 5,'dword',11h,4
- db 2,'dx',10h,22h
- db 3,'eax',10h,40h
- db 3,'ebp',10h,45h
- db 3,'ebx',10h,43h
- db 3,'ecx',10h,41h
- db 3,'edi',10h,47h
- db 3,'edx',10h,42h
- db 2,'es',10h,61h
- db 3,'esi',10h,46h
- db 3,'esp',10h,44h
- db 3,'far',12h,3
- db 2,'fs',10h,65h
- db 5,'fword',11h,6
- db 2,'gs',10h,66h
- db 3,'mm0',10h,0B0h
- db 3,'mm1',10h,0B1h
- db 3,'mm2',10h,0B2h
- db 3,'mm3',10h,0B3h
- db 3,'mm4',10h,0B4h
- db 3,'mm5',10h,0B5h
- db 3,'mm6',10h,0B6h
- db 3,'mm7',10h,0B7h
- db 4,'near',12h,2
- db 5,'pword',11h,6
- db 5,'qword',11h,8
- db 3,'r10',10h,8Ah
- db 4,'r10b',10h,1Ah
- db 4,'r10d',10h,4Ah
- db 4,'r10w',10h,2Ah
- db 3,'r11',10h,8Bh
- db 4,'r11b',10h,1Bh
- db 4,'r11d',10h,4Bh
- db 4,'r11w',10h,2Bh
- db 3,'r12',10h,8Ch
- db 4,'r12b',10h,1Ch
- db 4,'r12d',10h,4Ch
- db 4,'r12w',10h,2Ch
- db 3,'r13',10h,8Dh
- db 4,'r13b',10h,1Dh
- db 4,'r13d',10h,4Dh
- db 4,'r13w',10h,2Dh
- db 3,'r14',10h,8Eh
- db 4,'r14b',10h,1Eh
- db 4,'r14d',10h,4Eh
- db 4,'r14w',10h,2Eh
- db 3,'r15',10h,8Fh
- db 4,'r15b',10h,1Fh
- db 4,'r15d',10h,4Fh
- db 4,'r15w',10h,2Fh
- db 2,'r8',10h,88h
- db 3,'r8b',10h,18h
- db 3,'r8d',10h,48h
- db 3,'r8w',10h,28h
- db 2,'r9',10h,89h
- db 3,'r9b',10h,19h
- db 3,'r9d',10h,49h
- db 3,'r9w',10h,29h
- db 3,'rax',10h,80h
- db 3,'rbp',10h,85h
- db 3,'rbx',10h,83h
- db 3,'rcx',10h,81h
- db 3,'rdi',10h,87h
- db 3,'rdx',10h,82h
- db 3,'rsi',10h,86h
- db 3,'rsp',10h,84h
- db 5,'short',12h,1
- db 2,'si',10h,26h
- db 3,'sil',10h,16h
- db 2,'sp',10h,24h
- db 3,'spl',10h,14h
- db 2,'ss',10h,63h
- db 2,'st',10h,0A0h
- db 3,'st0',10h,0A0h
- db 3,'st1',10h,0A1h
- db 3,'st2',10h,0A2h
- db 3,'st3',10h,0A3h
- db 3,'st4',10h,0A4h
- db 3,'st5',10h,0A5h
- db 3,'st6',10h,0A6h
- db 3,'st7',10h,0A7h
- db 5,'tbyte',11h,0Ah
- db 3,'tr0',10h,90h
- db 3,'tr1',10h,91h
- db 3,'tr2',10h,92h
- db 3,'tr3',10h,93h
- db 3,'tr4',10h,94h
- db 3,'tr5',10h,95h
- db 3,'tr6',10h,96h
- db 3,'tr7',10h,97h
- db 5,'tword',11h,0Ah
- db 5,'use16',13h,16
- db 5,'use32',13h,32
- db 5,'use64',13h,64
- db 4,'word',11h,2
- db 4,'xmm0',10h,0C0h
- db 4,'xmm1',10h,0C1h
- db 5,'xmm10',10h,0CAh
- db 5,'xmm11',10h,0CBh
- db 5,'xmm12',10h,0CCh
- db 5,'xmm13',10h,0CDh
- db 5,'xmm14',10h,0CEh
- db 5,'xmm15',10h,0CFh
- db 4,'xmm2',10h,0C2h
- db 4,'xmm3',10h,0C3h
- db 4,'xmm4',10h,0C4h
- db 4,'xmm5',10h,0C5h
- db 4,'xmm6',10h,0C6h
- db 4,'xmm7',10h,0C7h
- db 4,'xmm8',10h,0C8h
- db 4,'xmm9',10h,0C9h
- db 0
+ dw symbols_2-symbols,(symbols_3-symbols_2)/(2+2)
+ dw symbols_3-symbols,(symbols_4-symbols_3)/(3+2)
+ dw symbols_4-symbols,(symbols_5-symbols_4)/(4+2)
+ dw symbols_5-symbols,(symbols_6-symbols_5)/(5+2)
+ dw symbols_6-symbols,(symbols_7-symbols_6)/(6+2)
+ dw symbols_7-symbols,(symbols_8-symbols_7)/(7+2)
+ dw symbols_8-symbols,(symbols_9-symbols_8)/(8+2)
+ dw symbols_9-symbols,(symbols_10-symbols_9)/(9+2)
+ dw symbols_10-symbols,(symbols_11-symbols_10)/(10+2)
+ dw symbols_11-symbols,(symbols_end-symbols_11)/(11+2)
 
-data_handlers:
- dw data_bytes-assembler
- dw data_file-assembler
- dw reserve_bytes-assembler
- dw data_words-assembler
- dw data_unicode-assembler
- dw reserve_words-assembler
- dw data_dwords-assembler
- dw reserve_dwords-assembler
- dw data_pwords-assembler
- dw reserve_pwords-assembler
- dw data_qwords-assembler
- dw reserve_qwords-assembler
- dw data_twords-assembler
- dw reserve_twords-assembler
-
-data_directives:
- db 2,'db',1,0
- db 2,'dd',4,6
- db 2,'df',6,8
- db 2,'dp',6,8
- db 2,'dq',8,10
- db 2,'dt',10,12
- db 2,'du',2,4
- db 2,'dw',2,3
- db 4,'file',1,1
- db 2,'rb',1,2
- db 2,'rd',4,7
- db 2,'rf',6,9
- db 2,'rp',6,9
- db 2,'rq',8,11
- db 2,'rt',10,13
- db 2,'rw',2,5
- db 0
+symbols_2:
+ db 'ah',10h,04h
+ db 'al',10h,10h
+ db 'ax',10h,20h
+ db 'bh',10h,07h
+ db 'bl',10h,13h
+ db 'bp',10h,25h
+ db 'bx',10h,23h
+ db 'ch',10h,05h
+ db 'cl',10h,11h
+ db 'cs',10h,62h
+ db 'cx',10h,21h
+ db 'dh',10h,06h
+ db 'di',10h,27h
+ db 'dl',10h,12h
+ db 'ds',10h,64h
+ db 'dx',10h,22h
+ db 'es',10h,61h
+ db 'fs',10h,65h
+ db 'gs',10h,66h
+ db 'ms',17h,41h
+ db 'mz',18h,20h
+ db 'pe',18h,30h
+ db 'r8',10h,88h
+ db 'r9',10h,89h
+ db 'si',10h,26h
+ db 'sp',10h,24h
+ db 'ss',10h,63h
+ db 'st',10h,0A0h
+symbols_3:
+ db 'bpl',10h,15h
+ db 'cr0',10h,50h
+ db 'cr1',10h,51h
+ db 'cr2',10h,52h
+ db 'cr3',10h,53h
+ db 'cr4',10h,54h
+ db 'cr5',10h,55h
+ db 'cr6',10h,56h
+ db 'cr7',10h,57h
+ db 'cr8',10h,58h
+ db 'cr9',10h,59h
+ db 'dil',10h,17h
+ db 'dll',1Bh,80h
+ db 'dr0',10h,70h
+ db 'dr1',10h,71h
+ db 'dr2',10h,72h
+ db 'dr3',10h,73h
+ db 'dr4',10h,74h
+ db 'dr5',10h,75h
+ db 'dr6',10h,76h
+ db 'dr7',10h,77h
+ db 'dr8',10h,78h
+ db 'dr9',10h,79h
+ db 'eax',10h,40h
+ db 'ebp',10h,45h
+ db 'ebx',10h,43h
+ db 'ecx',10h,41h
+ db 'edi',10h,47h
+ db 'edx',10h,42h
+ db 'efi',1Bh,10
+ db 'eip',10h,0F4h
+ db 'elf',18h,50h
+ db 'esi',10h,46h
+ db 'esp',10h,44h
+ db 'far',12h,3
+ db 'gui',1Bh,2
+ db 'mm0',10h,0B0h
+ db 'mm1',10h,0B1h
+ db 'mm2',10h,0B2h
+ db 'mm3',10h,0B3h
+ db 'mm4',10h,0B4h
+ db 'mm5',10h,0B5h
+ db 'mm6',10h,0B6h
+ db 'mm7',10h,0B7h
+ db 'r10',10h,8Ah
+ db 'r11',10h,8Bh
+ db 'r12',10h,8Ch
+ db 'r13',10h,8Dh
+ db 'r14',10h,8Eh
+ db 'r15',10h,8Fh
+ db 'r8b',10h,18h
+ db 'r8d',10h,48h
+ db 'r8l',10h,18h
+ db 'r8w',10h,28h
+ db 'r9b',10h,19h
+ db 'r9d',10h,49h
+ db 'r9l',10h,19h
+ db 'r9w',10h,29h
+ db 'rax',10h,80h
+ db 'rbp',10h,85h
+ db 'rbx',10h,83h
+ db 'rcx',10h,81h
+ db 'rdi',10h,87h
+ db 'rdx',10h,82h
+ db 'rip',10h,0F8h
+ db 'rsi',10h,86h
+ db 'rsp',10h,84h
+ db 'sil',10h,16h
+ db 'spl',10h,14h
+ db 'st0',10h,0A0h
+ db 'st1',10h,0A1h
+ db 'st2',10h,0A2h
+ db 'st3',10h,0A3h
+ db 'st4',10h,0A4h
+ db 'st5',10h,0A5h
+ db 'st6',10h,0A6h
+ db 'st7',10h,0A7h
+ db 'tr0',10h,90h
+ db 'tr1',10h,91h
+ db 'tr2',10h,92h
+ db 'tr3',10h,93h
+ db 'tr4',10h,94h
+ db 'tr5',10h,95h
+ db 'tr6',10h,96h
+ db 'tr7',10h,97h
+ db 'wdm',1Bh,81h
+symbols_4:
+ db 'byte',11h,1
+ db 'code',19h,5
+ db 'coff',18h,40h
+ db 'cr10',10h,5Ah
+ db 'cr11',10h,5Bh
+ db 'cr12',10h,5Ch
+ db 'cr13',10h,5Dh
+ db 'cr14',10h,5Eh
+ db 'cr15',10h,5Fh
+ db 'data',19h,6
+ db 'dr10',10h,7Ah
+ db 'dr11',10h,7Bh
+ db 'dr12',10h,7Ch
+ db 'dr13',10h,7Dh
+ db 'dr14',10h,7Eh
+ db 'dr15',10h,7Fh
+ db 'ms64',17h,49h
+ db 'near',12h,2
+ db 'pe64',18h,38h
+ db 'r10b',10h,1Ah
+ db 'r10d',10h,4Ah
+ db 'r10l',10h,1Ah
+ db 'r10w',10h,2Ah
+ db 'r11b',10h,1Bh
+ db 'r11d',10h,4Bh
+ db 'r11l',10h,1Bh
+ db 'r11w',10h,2Bh
+ db 'r12b',10h,1Ch
+ db 'r12d',10h,4Ch
+ db 'r12l',10h,1Ch
+ db 'r12w',10h,2Ch
+ db 'r13b',10h,1Dh
+ db 'r13d',10h,4Dh
+ db 'r13l',10h,1Dh
+ db 'r13w',10h,2Dh
+ db 'r14b',10h,1Eh
+ db 'r14d',10h,4Eh
+ db 'r14l',10h,1Eh
+ db 'r14w',10h,2Eh
+ db 'r15b',10h,1Fh
+ db 'r15d',10h,4Fh
+ db 'r15l',10h,1Fh
+ db 'r15w',10h,2Fh
+ db 'word',11h,2
+ db 'xmm0',10h,0C0h
+ db 'xmm1',10h,0C1h
+ db 'xmm2',10h,0C2h
+ db 'xmm3',10h,0C3h
+ db 'xmm4',10h,0C4h
+ db 'xmm5',10h,0C5h
+ db 'xmm6',10h,0C6h
+ db 'xmm7',10h,0C7h
+ db 'xmm8',10h,0C8h
+ db 'xmm9',10h,0C9h
+symbols_5:
+ db 'align',1Ch,0
+ db 'dword',11h,4
+ db 'elf64',18h,58h
+ db 'fword',11h,6
+ db 'pword',11h,6
+ db 'qword',11h,8
+ db 'short',12h,1
+ db 'tbyte',11h,0Ah
+ db 'tword',11h,0Ah
+ db 'use16',13h,16
+ db 'use32',13h,32
+ db 'use64',13h,64
+ db 'xmm10',10h,0CAh
+ db 'xmm11',10h,0CBh
+ db 'xmm12',10h,0CCh
+ db 'xmm13',10h,0CDh
+ db 'xmm14',10h,0CEh
+ db 'xmm15',10h,0CFh
+symbols_6:
+ db 'binary',18h,10h
+ db 'dqword',11h,16
+ db 'export',1Ah,0
+ db 'fixups',1Ah,5
+ db 'import',1Ah,1
+ db 'native',1Bh,1
+ db 'static',1Dh,1
+symbols_7:
+ db 'console',1Bh,3
+ db 'efiboot',1Bh,11
+symbols_8:
+ db 'linkinfo',19h,9
+ db 'readable',19h,30
+ db 'resource',1Ah,2
+ db 'writable',19h,31
+symbols_9:
+ db 'shareable',19h,28
+ db 'writeable',19h,31
+symbols_10:
+ db 'efiruntime',1Bh,12
+ db 'executable',19h,29
+ db 'linkremove',19h,11
+symbols_11:
+ db 'discardable',19h,25
+ db 'notpageable',19h,27
+symbols_end:
 
 instructions:
- dw instructions_2-instructions
- dw instructions_3-instructions
- dw instructions_4-instructions
- dw instructions_5-instructions
- dw instructions_6-instructions
- dw instructions_7-instructions
- dw instructions_8-instructions
- dw instructions_9-instructions
- dw instructions_10-instructions
- dw instructions_11-instructions
+ dw instructions_2-instructions,(instructions_3-instructions_2)/(2+3)
+ dw instructions_3-instructions,(instructions_4-instructions_3)/(3+3)
+ dw instructions_4-instructions,(instructions_5-instructions_4)/(4+3)
+ dw instructions_5-instructions,(instructions_6-instructions_5)/(5+3)
+ dw instructions_6-instructions,(instructions_7-instructions_6)/(6+3)
+ dw instructions_7-instructions,(instructions_8-instructions_7)/(7+3)
+ dw instructions_8-instructions,(instructions_9-instructions_8)/(8+3)
+ dw instructions_9-instructions,(instructions_10-instructions_9)/(9+3)
+ dw instructions_10-instructions,(instructions_11-instructions_10)/(10+3)
+ dw instructions_11-instructions,(instructions_end-instructions_11)/(11+3)
 
 instructions_2:
  db 'bt',4
@@ -399,7 +398,6 @@ instructions_2:
  dw conditional_jump-assembler
  db 'or',08h
  dw basic_instruction-assembler
- db 0
 instructions_3:
  db 'aaa',37h
  dw simple_instruction_except64-assembler
@@ -453,6 +451,8 @@ instructions_3:
  dw single_operand_instruction-assembler
  db 'end',0
  dw end_directive-assembler
+ db 'err',0
+ dw err_directive-assembler
  db 'fld',0
  dw fld_instruction-assembler
  db 'fst',2
@@ -524,7 +524,7 @@ instructions_3:
  db 'neg',3
  dw single_operand_instruction-assembler
  db 'nop',90h
- dw simple_instruction-assembler
+ dw nop_instruction-assembler
  db 'not',2
  dw single_operand_instruction-assembler
  db 'org',0
@@ -534,7 +534,7 @@ instructions_3:
  db 'pop',0
  dw pop_instruction-assembler
  db 'por',0EBh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'rcl',2
  dw sh_instruction-assembler
  db 'rcr',3
@@ -573,7 +573,6 @@ instructions_3:
  dw simple_extended_instruction-assembler
  db 'xor',30h
  dw basic_instruction-assembler
- db 0
 instructions_4:
  db 'arpl',0
  dw arpl_instruction-assembler
@@ -581,6 +580,8 @@ instructions_4:
  dw call_instruction-assembler
  db 'cdqe',98h
  dw simple_instruction_64bit-assembler
+ db 'clgi',0DDh
+ dw simple_vmx_instruction-assembler
  db 'clts',6
  dw simple_extended_instruction-assembler
  db 'cmps',0A6h
@@ -589,6 +590,10 @@ instructions_4:
  dw simple_instruction_32bit-assembler
  db 'data',0
  dw data_directive-assembler
+ db 'dppd',41h
+ dw sse4_instruction_3a_imm8-assembler
+ db 'dpps',40h
+ dw sse4_instruction_3a_imm8-assembler
  db 'else',0
  dw else_directive-assembler
  db 'emms',77h
@@ -696,7 +701,7 @@ instructions_4:
  db 'outs',6Eh
  dw outs_instruction-assembler
  db 'pand',0DBh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'popa',61h
  dw simple_instruction_except64-assembler
  db 'popd',4
@@ -710,7 +715,7 @@ instructions_4:
  db 'push',0
  dw push_instruction-assembler
  db 'pxor',0EFh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'repe',0F3h
  dw prefix_instruction-assembler
  db 'repz',0F3h
@@ -763,6 +768,8 @@ instructions_4:
  dw pm_store_word_instruction-assembler
  db 'smsw',14h
  dw pm_store_word_instruction-assembler
+ db 'stgi',0DCh
+ dw simple_vmx_instruction-assembler
  db 'stos',0AAh
  dw stos_instruction-assembler
  db 'test',0
@@ -779,7 +786,6 @@ instructions_4:
  dw xchg_instruction-assembler
  db 'xlat',0D7h
  dw xlat_instruction-assembler
- db 0
 instructions_5:
  db 'addpd',58h
  dw sse_pd_instruction-assembler
@@ -837,6 +843,8 @@ instructions_5:
  dw simple_instruction_16bit-assembler
  db 'cpuid',0A2h
  dw simple_extended_instruction-assembler
+ db 'crc32',0
+ dw crc32_instruction-assembler
  db 'divpd',5Eh
  dw sse_pd_instruction-assembler
  db 'divps',5Eh
@@ -851,6 +859,8 @@ instructions_5:
  dw entry_directive-assembler
  db 'extrn',0
  dw extrn_directive-assembler
+ db 'extrq',0
+ dw extrq_instruction-assembler
  db 'f2xm1',110000b
  dw simple_fpu_instruction-assembler
  db 'faddp',0
@@ -917,6 +927,8 @@ instructions_5:
  dw simple_instruction-assembler
  db 'fyl2x',110001b
  dw simple_fpu_instruction-assembler
+ db 'icebp',0F1h
+ dw simple_instruction-assembler
  db 'iretd',0CFh
  dw simple_instruction_32bit-assembler
  db 'iretq',0CFh
@@ -951,6 +963,8 @@ instructions_5:
  dw loop_instruction_16bit-assembler
  db 'loopz',0E1h
  dw loop_instruction-assembler
+ db 'lzcnt',0BDh
+ dw popcnt_instruction-assembler
  db 'maxpd',5Fh
  dw sse_pd_instruction-assembler
  db 'maxps',5Fh
@@ -997,22 +1011,28 @@ instructions_5:
  dw simple_instruction_32bit-assembler
  db 'outsw',6Fh
  dw simple_instruction_16bit-assembler
+ db 'pabsb',1Ch
+ dw ssse3_instruction-assembler
+ db 'pabsd',1Eh
+ dw ssse3_instruction-assembler
+ db 'pabsw',1Dh
+ dw ssse3_instruction-assembler
  db 'paddb',0FCh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'paddd',0FEh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'paddq',0D4h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'paddw',0FDh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pandn',0DFh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pause',0
  dw pause_instruction-assembler
  db 'pavgb',0E0h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pavgw',0E3h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pf2id',1Dh
  dw amd3dnow_instruction-assembler
  db 'pf2iw',1Ch
@@ -1062,13 +1082,15 @@ instructions_5:
  db 'psrlw',0D1h
  dw mmx_ps_instruction-assembler
  db 'psubb',0F8h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'psubd',0FAh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'psubq',0FBh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'psubw',0F9h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'ptest',17h
+ dw sse4_instruction_38-assembler
  db 'pusha',60h
  dw simple_instruction_except64-assembler
  db 'pushd',4
@@ -1167,6 +1189,8 @@ instructions_5:
  dw sse_ss_instruction-assembler
  db 'times',0
  dw times_directive-assembler
+ db 'vmrun',0D8h
+ dw simple_svm_instruction-assembler
  db 'vmxon',6
  dw vmxon_instruction-assembler
  db 'while',0
@@ -1179,7 +1203,6 @@ instructions_5:
  dw sse_pd_instruction-assembler
  db 'xorps',57h
  dw sse_ps_instruction-assembler
- db 0
 instructions_6:
  db 'andnpd',55h
  dw sse_pd_instruction-assembler
@@ -1275,6 +1298,10 @@ instructions_6:
  dw fnsave_instruction-assembler
  db 'frstpm',0E5h
  dw fninit_instruction-assembler
+ db 'fsaved',6
+ dw fsave_instruction_32bit-assembler
+ db 'fsavew',6
+ dw fsave_instruction_16bit-assembler
  db 'fscale',111101b
  dw simple_fpu_instruction-assembler
  db 'fsetpm',0E4h
@@ -1289,6 +1316,8 @@ instructions_6:
  dw ffree_instruction-assembler
  db 'fxsave',0
  dw fxsave_instruction-assembler
+ db 'getsec',37h
+ dw simple_extended_instruction-assembler
  db 'haddpd',07Ch
  dw sse_pd_instruction-assembler
  db 'haddps',07Ch
@@ -1297,6 +1326,8 @@ instructions_6:
  dw sse_pd_instruction-assembler
  db 'hsubps',07Dh
  dw cvtpd2dq_instruction-assembler
+ db 'invept',80h
+ dw vmx_inv_instruction-assembler
  db 'invlpg',0
  dw invlpg_instruction-assembler
  db 'lfence',0E8h
@@ -1346,43 +1377,93 @@ instructions_6:
  db 'movups',10h
  dw movps_instruction-assembler
  db 'paddsb',0ECh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'paddsw',0EDh
- dw mmx_instruction-assembler
- db 'pextrw',0C5h
+ dw basic_mmx_instruction-assembler
+ db 'pextrb',14h
+ dw pextrb_instruction-assembler
+ db 'pextrd',16h
+ dw pextrd_instruction-assembler
+ db 'pextrq',16h
+ dw pextrq_instruction-assembler
+ db 'pextrw',15h
  dw pextrw_instruction-assembler
  db 'pfnacc',8Ah
  dw amd3dnow_instruction-assembler
  db 'pfsubr',0AAh
  dw amd3dnow_instruction-assembler
+ db 'phaddd',2
+ dw ssse3_instruction-assembler
+ db 'phaddw',1
+ dw ssse3_instruction-assembler
+ db 'phsubd',6
+ dw ssse3_instruction-assembler
+ db 'phsubw',5
+ dw ssse3_instruction-assembler
+ db 'pinsrb',20h
+ dw pinsrb_instruction-assembler
+ db 'pinsrd',22h
+ dw pinsrd_instruction-assembler
+ db 'pinsrq',22h
+ dw pinsrq_instruction-assembler
  db 'pinsrw',0C4h
  dw pinsrw_instruction-assembler
+ db 'pmaxsb',3Ch
+ dw sse4_instruction_38-assembler
+ db 'pmaxsd',3Dh
+ dw sse4_instruction_38-assembler
  db 'pmaxsw',0EEh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pmaxub',0DEh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pmaxud',3Fh
+ dw sse4_instruction_38-assembler
+ db 'pmaxuw',3Eh
+ dw sse4_instruction_38-assembler
+ db 'pminsb',38h
+ dw sse4_instruction_38-assembler
+ db 'pminsd',39h
+ dw sse4_instruction_38-assembler
  db 'pminsw',0EAh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pminub',0DAh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pminud',3Bh
+ dw sse4_instruction_38-assembler
+ db 'pminuw',3Ah
+ dw sse4_instruction_38-assembler
+ db 'pmuldq',28h
+ dw sse4_instruction_38-assembler
  db 'pmulhw',0E5h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pmulld',40h
+ dw sse4_instruction_38-assembler
  db 'pmullw',0D5h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'popcnt',0B8h
+ dw popcnt_instruction-assembler
  db 'psadbw',0F6h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pshufb',0
+ dw ssse3_instruction-assembler
  db 'pshufd',66h
  dw pshufd_instruction-assembler
  db 'pshufw',0
  dw pshufw_instruction-assembler
+ db 'psignb',8
+ dw ssse3_instruction-assembler
+ db 'psignd',0Ah
+ dw ssse3_instruction-assembler
+ db 'psignw',9
+ dw ssse3_instruction-assembler
  db 'pslldq',111b
  dw ps_dq_instruction-assembler
  db 'psrldq',011b
  dw ps_dq_instruction-assembler
  db 'psubsb',0E8h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'psubsw',0E9h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pswapd',0BBh
  dw amd3dnow_instruction-assembler
  db 'public',0
@@ -1397,6 +1478,8 @@ instructions_6:
  dw simple_instruction_only64-assembler
  db 'pushfw',9Ch
  dw simple_instruction_16bit-assembler
+ db 'rdmsrq',32h
+ dw simple_extended_instruction_64bit-assembler
  db 'rdtscp',1
  dw swapgs_instruction-assembler
  db 'repeat',0
@@ -1414,9 +1497,11 @@ instructions_6:
  db 'sfence',0F8h
  dw fence_instruction-assembler
  db 'shufpd',0C6h
- dw sse_pd_instruction-assembler
+ dw sse_pd_instruction_imm8-assembler
  db 'shufps',0C6h
- dw sse_ps_instruction-assembler
+ dw sse_ps_instruction_imm8-assembler
+ db 'skinit',0
+ dw skinit_instruction-assembler
  db 'sqrtpd',51h
  dw sse_pd_instruction-assembler
  db 'sqrtps',51h
@@ -1431,14 +1516,23 @@ instructions_6:
  dw simple_extended_instruction-assembler
  db 'vmcall',0C1h
  dw simple_vmx_instruction-assembler
+ db 'vmload',0DAh
+ dw simple_svm_instruction-assembler
  db 'vmread',0
  dw vmread_instruction-assembler
+ db 'vmsave',0DBh
+ dw simple_svm_instruction-assembler
  db 'vmxoff',0C4h
  dw simple_vmx_instruction-assembler
  db 'wbinvd',9
  dw simple_extended_instruction-assembler
- db 0
+ db 'wrmsrq',30h
+ dw simple_extended_instruction_64bit-assembler
 instructions_7:
+ db 'blendpd',0Dh
+ dw sse4_instruction_3a_imm8-assembler
+ db 'blendps',0Ch
+ dw sse4_instruction_3a_imm8-assembler
  db 'clflush',111b
  dw fxsave_instruction-assembler
  db 'cmovnae',42h
@@ -1489,12 +1583,28 @@ instructions_7:
  dw simple_fpu_instruction-assembler
  db 'fincstp',110111b
  dw simple_fpu_instruction-assembler
+ db 'fldenvd',4
+ dw fldenv_instruction_32bit-assembler
+ db 'fldenvw',4
+ dw fldenv_instruction_32bit-assembler
+ db 'fnsaved',6
+ dw fnsave_instruction_32bit-assembler
+ db 'fnsavew',6
+ dw fnsave_instruction_16bit-assembler
  db 'fnstenv',6
  dw fldenv_instruction-assembler
  db 'frndint',111100b
  dw simple_fpu_instruction-assembler
+ db 'frstord',4
+ dw fnsave_instruction_32bit-assembler
+ db 'frstorw',4
+ dw fnsave_instruction_16bit-assembler
  db 'fsincos',111011b
  dw simple_fpu_instruction-assembler
+ db 'fstenvd',6
+ dw fstenv_instruction_32bit-assembler
+ db 'fstenvw',6
+ dw fstenv_instruction_16bit-assembler
  db 'fucomip',0E8h
  dw fcomip_instruction-assembler
  db 'fucompp',0
@@ -1505,6 +1615,12 @@ instructions_7:
  dw simple_fpu_instruction-assembler
  db 'fyl2xp1',111001b
  dw simple_fpu_instruction-assembler
+ db 'insertq',0
+ dw insertq_instruction-assembler
+ db 'invlpga',0DFh
+ dw invlpga_instruction-assembler
+ db 'invvpid',81h
+ dw vmx_inv_instruction-assembler
  db 'ldmxcsr',10b
  dw fxsave_instruction-assembler
  db 'loopned',0E0h
@@ -1535,26 +1651,40 @@ instructions_7:
  dw movntdq_instruction-assembler
  db 'movntps',2Bh
  dw movntps_instruction-assembler
+ db 'movntsd',2Bh
+ dw movntsd_instruction-assembler
+ db 'movntss',2Bh
+ dw movntss_instruction-assembler
  db 'movq2dq',0
  dw movq2dq_instruction-assembler
+ db 'mpsadbw',42h
+ dw sse4_instruction_3a_imm8-assembler
  db 'paddusb',0DCh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'paddusw',0DDh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'palignr',0
+ dw palignr_instruction-assembler
  db 'pavgusb',0BFh
  dw amd3dnow_instruction-assembler
+ db 'pblendw',0Eh
+ dw sse4_instruction_3a_imm8-assembler
  db 'pcmpeqb',74h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pcmpeqd',76h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pcmpeqq',29h
+ dw sse4_instruction_38-assembler
  db 'pcmpeqw',75h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pcmpgtb',64h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pcmpgtd',66h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pcmpgtq',37h
+ dw sse4_instruction_38-assembler
  db 'pcmpgtw',65h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pfcmpeq',0B0h
  dw amd3dnow_instruction-assembler
  db 'pfcmpge',90h
@@ -1565,22 +1695,34 @@ instructions_7:
  dw amd3dnow_instruction-assembler
  db 'pfrsqrt',97h
  dw amd3dnow_instruction-assembler
+ db 'phaddsw',3
+ dw ssse3_instruction-assembler
+ db 'phsubsw',7
+ dw ssse3_instruction-assembler
  db 'pmaddwd',0F5h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pmulhrw',0B7h
  dw amd3dnow_instruction-assembler
  db 'pmulhuw',0E4h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pmuludq',0F4h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'pshufhw',0F3h
  dw pshufd_instruction-assembler
  db 'pshuflw',0F2h
  dw pshufd_instruction-assembler
  db 'psubusb',0D8h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'psubusw',0D9h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'roundpd',9
+ dw sse4_instruction_3a_imm8-assembler
+ db 'roundps',8
+ dw sse4_instruction_3a_imm8-assembler
+ db 'roundsd',0Bh
+ dw sse4_sd_instruction_3a_imm8-assembler
+ db 'roundss',0Ah
+ dw sse4_ss_instruction_3a_imm8-assembler
  db 'rsqrtps',52h
  dw sse_ps_instruction-assembler
  db 'rsqrtss',52h
@@ -1595,6 +1737,8 @@ instructions_7:
  dw simple_extended_instruction-assembler
  db 'sysexit',35h
  dw simple_extended_instruction-assembler
+ db 'sysretq',07h
+ dw simple_extended_instruction_64bit-assembler
  db 'ucomisd',2Eh
  dw comisd_instruction-assembler
  db 'ucomiss',2Eh
@@ -1603,18 +1747,23 @@ instructions_7:
  dw virtual_directive-assembler
  db 'vmclear',6
  dw vmclear_instruction-assembler
+ db 'vmmcall',0D9h
+ dw simple_vmx_instruction-assembler
  db 'vmptrld',6
  dw vmx_instruction-assembler
  db 'vmptrst',7
  dw vmx_instruction-assembler
  db 'vmwrite',0
  dw vmwrite_instruction-assembler
- db 0
 instructions_8:
  db 'addsubpd',0D0h
  dw sse_pd_instruction-assembler
  db 'addsubps',0D0h
  dw cvtpd2dq_instruction-assembler
+ db 'blendvpd',15h
+ dw sse4_instruction_38_xmm0-assembler
+ db 'blendvps',14h
+ dw sse4_instruction_38_xmm0-assembler
  db 'cmpneqpd',4
  dw cmp_pd_instruction-assembler
  db 'cmpneqps',4
@@ -1681,22 +1830,34 @@ instructions_8:
  dw cvtss2si_instruction-assembler
  db 'fcmovnbe',0D0h
  dw fcomi_instruction-assembler
+ db 'fnstenvd',6
+ dw fldenv_instruction_32bit-assembler
+ db 'fnstenvw',6
+ dw fldenv_instruction_16bit-assembler
+ db 'insertps',0
+ dw insertps_instruction-assembler
  db 'maskmovq',0
  dw maskmovq_instruction-assembler
  db 'movmskpd',0
  dw movmskpd_instruction-assembler
  db 'movmskps',0
  dw movmskps_instruction-assembler
+ db 'movntdqa',0
+ dw movntdqa_instruction-assembler
  db 'movshdup',16h
  dw cvtdq2pd_instruction-assembler
  db 'movsldup',12h
  dw cvtdq2pd_instruction-assembler
  db 'packssdw',6Bh
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'packsswb',63h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'packusdw',2Bh
+ dw sse4_instruction_38-assembler
  db 'packuswb',67h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
+ db 'pblendvb',10h
+ dw sse4_instruction_38_xmm0-assembler
  db 'pfrcpit1',0A6h
  dw amd3dnow_instruction-assembler
  db 'pfrcpit2',0B6h
@@ -1704,11 +1865,39 @@ instructions_8:
  db 'pfrsqit1',0A7h
  dw amd3dnow_instruction-assembler
  db 'pmovmskb',0D7h
- dw pextrw_instruction-assembler
+ dw pmovmskb_instruction-assembler
+ db 'pmovsxbd',21h
+ dw pmovsxbd_instruction-assembler
+ db 'pmovsxbq',22h
+ dw pmovsxbq_instruction-assembler
+ db 'pmovsxbw',20h
+ dw pmovsxbw_instruction-assembler
+ db 'pmovsxdq',25h
+ dw pmovsxdq_instruction-assembler
+ db 'pmovsxwd',23h
+ dw pmovsxwd_instruction-assembler
+ db 'pmovsxwq',24h
+ dw pmovsxwq_instruction-assembler
+ db 'pmovzxbd',31h
+ dw pmovsxbd_instruction-assembler
+ db 'pmovzxbq',32h
+ dw pmovsxbq_instruction-assembler
+ db 'pmovzxbw',30h
+ dw pmovsxbw_instruction-assembler
+ db 'pmovzxdq',35h
+ dw pmovsxdq_instruction-assembler
+ db 'pmovzxwd',33h
+ dw pmovsxwd_instruction-assembler
+ db 'pmovzxwq',34h
+ dw pmovsxwq_instruction-assembler
+ db 'pmulhrsw',0Bh
+ dw ssse3_instruction-assembler
  db 'prefetch',0
  dw amd_prefetch_instruction-assembler
  db 'sysenter',34h
  dw simple_extended_instruction-assembler
+ db 'sysexitq',35h
+ dw simple_extended_instruction_64bit-assembler
  db 'unpckhpd',15h
  dw sse_pd_instruction-assembler
  db 'unpckhps',15h
@@ -1721,7 +1910,6 @@ instructions_8:
  dw simple_vmx_instruction-assembler
  db 'vmresume',0C3h
  dw simple_vmx_instruction-assembler
- db 0
 instructions_9:
  db 'cmpxchg8b',8
  dw cmpxchgx_instruction-assembler
@@ -1737,21 +1925,32 @@ instructions_9:
  dw cvtsd2si_instruction-assembler
  db 'cvttss2si',2Ch
  dw cvtss2si_instruction-assembler
+ db 'extractps',0
+ dw extractps_instruction-assembler
+ db 'pcmpestri',61h
+ dw sse4_instruction_3a_imm8-assembler
+ db 'pcmpestrm',60h
+ dw sse4_instruction_3a_imm8-assembler
+ db 'pcmpistri',63h
+ dw sse4_instruction_3a_imm8-assembler
+ db 'pcmpistrm',62h
+ dw sse4_instruction_3a_imm8-assembler
+ db 'pmaddubsw',4
+ dw ssse3_instruction-assembler
  db 'prefetchw',1
  dw amd_prefetch_instruction-assembler
  db 'punpckhbw',68h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'punpckhdq',6Ah
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'punpckhwd',69h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'punpcklbw',60h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'punpckldq',62h
- dw mmx_instruction-assembler
+ dw basic_mmx_instruction-assembler
  db 'punpcklwd',61h
- dw mmx_instruction-assembler
- db 0
+ dw basic_mmx_instruction-assembler
 instructions_10:
  db 'cmpunordpd',3
  dw cmp_pd_instruction-assembler
@@ -1769,6 +1968,8 @@ instructions_10:
  dw simple_extended_instruction-assembler
  db 'maskmovdqu',0
  dw maskmovdqu_instruction-assembler
+ db 'phminposuw',41h
+ dw sse4_instruction_38-assembler
  db 'prefetcht0',1
  dw prefetch_instruction-assembler
  db 'prefetcht1',2
@@ -1779,8 +1980,49 @@ instructions_10:
  dw sse_pd_instruction-assembler
  db 'punpcklqdq',6Ch
  dw sse_pd_instruction-assembler
- db 0
 instructions_11:
  db 'prefetchnta',0
  dw prefetch_instruction-assembler
- db 0
+instructions_end:
+
+data_directives:
+ dw data_directives_2-data_directives,(data_directives_3-data_directives_2)/(2+3)
+ dw data_directives_3-data_directives,(data_directives_4-data_directives_3)/(3+3)
+ dw data_directives_4-data_directives,(data_directives_end-data_directives_4)/(4+3)
+
+data_directives_2:
+ db 'db',1
+ dw data_bytes-assembler
+ db 'dd',4
+ dw data_dwords-assembler
+ db 'df',6
+ dw data_pwords-assembler
+ db 'dp',6
+ dw data_pwords-assembler
+ db 'dq',8
+ dw data_qwords-assembler
+ db 'dt',10
+ dw data_twords-assembler
+ db 'du',2
+ dw data_unicode-assembler
+ db 'dw',2
+ dw data_words-assembler
+ db 'rb',1
+ dw reserve_bytes-assembler
+ db 'rd',4
+ dw reserve_dwords-assembler
+ db 'rf',6
+ dw reserve_pwords-assembler
+ db 'rp',6
+ dw reserve_pwords-assembler
+ db 'rq',8
+ dw reserve_qwords-assembler
+ db 'rt',10
+ dw reserve_twords-assembler
+ db 'rw',2
+ dw reserve_words-assembler
+data_directives_3:
+data_directives_4:
+ db 'file',1
+ dw data_file-assembler
+data_directives_end:

@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2006, Tomasz Grysztar.
+; Copyright (c) 1999-2009, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF executable
@@ -9,6 +9,8 @@
 segment readable executable
 
 start:
+
+	mov	[con_handle],1
 	mov	esi,_logo
 	call	display_string
 
@@ -21,6 +23,17 @@ start:
 	jc	information
 
 	call	init_memory
+
+	mov	esi,_memory_prefix
+	call	display_string
+	mov	eax,[memory_end]
+	sub	eax,[memory_start]
+	add	eax,[additional_memory_end]
+	sub	eax,[additional_memory]
+	shr	eax,10
+	call	display_number
+	mov	esi,_memory_suffix
+	call	display_string
 
 	mov	eax,78
 	mov	ebx,buffer
@@ -95,6 +108,7 @@ get_params:
 	mov	ebx,[command_line]
 	mov	[input_file],0
 	mov	[output_file],0
+	mov	[symbols_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
 	mov	ecx,[ebx]
@@ -126,6 +140,10 @@ get_params:
 	je	passes_option
 	cmp	al,'P'
 	je	passes_option
+	cmp	al,'s'
+	je	symbols_option
+	cmp	al,'S'
+	je	symbols_option
       bad_params:
 	stc
 	ret
@@ -166,14 +184,22 @@ get_params:
 	je	bad_params
 	clc
 	ret
+      symbols_option:
+	cmp	byte [esi],0
+	jne	get_symbols_setting
+	dec	ecx
+	jz	bad_params
+	add	ebx,4
+	mov	esi,[ebx]
+      get_symbols_setting:
+	mov	[symbols_file],esi
+	jmp	next_param
       get_option_value:
 	xor	eax,eax
 	mov	edx,eax
       get_option_digit:
 	lodsb
 	cmp	al,20h
-	je	option_value_ok
-	cmp	al,0Dh
 	je	option_value_ok
 	or	al,al
 	jz	option_value_ok
@@ -198,11 +224,18 @@ include 'system.inc'
 
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2005, Tomasz Grysztar',0xA,0
+_copyright db 'Copyright (c) 1999-2009, Tomasz Grysztar',0xA,0
 
-_logo db 'flat assembler  version ',VERSION_STRING,0xA,0
-_usage db 'usage: fasm source [output]',0xA,0
-
+_logo db 'flat assembler  version ',VERSION_STRING,0
+_usage db 0xA
+       db 'usage: fasm <source> [output]',0xA
+       db 'optional settings:',0xA
+       db ' -m <limit>    set the limit in kilobytes for the available memory',0Dh,0Ah
+       db ' -p <limit>    set the maximum allowed number of passes',0Dh,0Ah
+       db ' -s <file>     dump symbolic information for debugging',0Dh,0Ah
+       db 0
+_memory_prefix db '  (',0
+_memory_suffix db ' kilobytes memory)',0xA,0
 _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0xA,0
@@ -214,7 +247,9 @@ include '..\parser.inc'
 include '..\assemble.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+
 include '..\tables.inc'
+include '..\messages.inc'
 
 segment readable writeable
 
@@ -226,6 +261,7 @@ command_line dd ?
 memory_setting dd ?
 environment dd ?
 start_time dd ?
+con_handle dd ?
 displayed_count dd ?
 last_displayed db ?
 character db ?
