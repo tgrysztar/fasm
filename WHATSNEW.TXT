@@ -2,6 +2,64 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.70 (Apr 17, 2012)
+
+[+] Added support for AVX, AVX2, AES, CLMUL, FMA, RDRAND, FSGSBASE, F16C,
+    FMA4, XOP, MOVBE, BMI, TBM, INVPCID, HLE and RTM instruction sets.
+
+[+] Added half-precision floating point values support.
+
+[+] Extended the syntax of "rept" directive to allow numerical expressions
+    to be calculated by preprocessor in its arguments.
+
+[+] Added "large" and "NX" settings from PE format.
+
+[+] Allowed PE fixups to be resolved anywhere in the generated executable.
+
+[+] Allowed to specify branding value (use 3 for Linux) after the
+    "format ELF executable" setting.
+
+[+] Added "intepreter", "dynamic" and "note" keywords for creation of
+    special segments in ELF executables.
+
+[-] Fixed long mode opcode generator to allow absolute addresses to be
+    generated with "qword" keyword inside square brackets.
+
+[-] Disallowed negative immediates with "int", "enter", "ret" instructions.
+
+[+] Allowed symbolic information dump file to be created even in case of error.
+    In such case it contains only the preprocessed source that can be extracted
+    with PREPSRC tool. If error occured during preprocessing, only the source up
+    to the point of error is provided.
+
+[+] Added symbol references table to symbolic dump file.
+
+[-] Corrected the "defined" and "used" flags in the symbols dump to reflect the
+    state from the final assembly pass.
+
+[+] Added "assert" directive.
+
+[-] Formatter symbols like "PE" or "readable" are now recognized only in the
+    context of formatter directives, and thus are no longer disallowed as
+    labels.
+
+[+] Macroinstruction argument now can have default value, defined with "="
+    symbol followed by value after the argument name in definition.
+
+[+] Added "relativeto" operator, which can be used in logical expressions
+    to test whether two values differ only by a constant and not relocatable
+    amount.
+
+[-] Revised the expression calculator, it now is able to correctly perform
+    calculations in signed and unsigned ranges in full 64-bit. This fixes
+    a number of issues - the overflow will now be correctly detected for
+    64-bit values in cases, where previous versions could not distinguish
+    whether it was an overflow or not. The effect of these corrections is
+    that "dq" directive will now behave consistently with behavior of the
+    data directives for smaller sizes, and the same applies to all the
+    places where "qword" size for value is used.
+
+
 version 1.68 (Jun 13, 2009)
 
 [+] Added SSSE3 (Supplemental SSE3), SSE4.1, SSE4.2 and SSE4a instructions.
@@ -63,11 +121,11 @@ version 1.66 (May 7, 2006)
     that "define" doesn't process symbolic constants in the value before
     assigning it. For example:
 
-	a equ 1
-	a equ a+a
+        a equ 1
+        a equ a+a
 
-	define b 1
-	define b b+b
+        define b 1
+        define b b+b
 
     defines the "a" constant with value "1+1", but the "b" is defined with
     value "b+b". This directive may be useful in some advanced
@@ -79,9 +137,9 @@ version 1.66 (May 7, 2006)
     evaluated by the parser and if they are enough to determine the condition,
     the whole block is processed accordingly. Thus this block:
 
-	if eax eq EAX | 0/0
-		nop
-	end if
+        if eax eq EAX | 0/0
+                nop
+        end if
 
     is parsed into just "nop" instruction, since parser is able to determine
     that the condition is true, even though one of the logical values makes no
@@ -91,9 +149,9 @@ version 1.66 (May 7, 2006)
 [-] Also the assembler is now calculating only as many logical values as it
     needs to determine the condition. So this block:
 
-	if defined alpha & alpha
+        if defined alpha & alpha
 
-	end if
+        end if
 
     will not cause error when "alpha" is not defined, as it would with previous
     versions. This is because after checking that "defined alpha" is false

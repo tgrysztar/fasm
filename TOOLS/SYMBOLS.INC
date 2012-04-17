@@ -76,12 +76,36 @@ symbols:
 	stosb
 	stosb
      symbol_name_ok:
+	test	byte [edx+9],2
+	jnz	negative_value
 	mov	eax,': 0x'
 	stosd
 	mov	eax,[edx+4]
 	call	write_hex_dword
 	mov	eax,[edx]
 	call	write_hex_dword
+	jmp	write_address_registers
+     negative_value:
+	mov	eax,': -0'
+	stosd
+	mov	al,'x'
+	stosb
+	mov	ecx,[edx]
+	mov	eax,[edx+4]
+	not	ecx
+	not	eax
+	add	ecx,1
+	adc	eax,0
+	push	ecx
+	or	ecx,eax
+	jnz	negative_value_ok
+	mov	byte [edi],'1'
+	inc	edi
+      negative_value_ok:
+	call	write_hex_dword
+	pop	eax
+	call	write_hex_dword
+     write_address_registers:
 	mov	bl,[edx+12]
 	mov	bh,[edx+14]
 	call	write_address_register

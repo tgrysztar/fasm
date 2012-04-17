@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Unix/libc
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 extrn malloc
@@ -45,7 +45,8 @@ exit_program:
 	movzx	eax,al
 	push	eax
 	ccall	free,[additional_memory]
-	call	exit
+	pop	eax
+	ccall	exit,eax
 	mov	esp,[stack_frame]
 	pop	ebp
 	ret
@@ -108,9 +109,9 @@ close:
 	ccall	fclose,ebx
 	ret
 read:
-	push	ebx ecx edx esi edi
+	push	ebx ecx edx esi edi ebp
 	ccall	fread,edx,1,ecx,ebx
-	pop	edi esi edx ecx ebx
+	pop	ebp edi esi edx ecx ebx
 	cmp	eax,ecx
 	jne	file_error
 	clc
@@ -119,9 +120,9 @@ read:
 	stc
 	ret
 write:
-	push	ebx ecx edx esi edi
+	push	ebx ecx edx esi edi ebp
 	ccall	fwrite,edx,1,ecx,ebx
-	pop	edi esi edx ecx ebx
+	pop	ebp edi esi edx ecx ebx
 	cmp	eax,ecx
 	jne	file_error
 	clc
@@ -322,7 +323,8 @@ assembler_error:
 
 make_timestamp:
 	ccall	time,timestamp
-	mov	eax,[timestamp]
+	mov	eax,dword [timestamp]
+	mov	edx,dword [timestamp+4]
 	ret
 
 open_mode db 'r',0

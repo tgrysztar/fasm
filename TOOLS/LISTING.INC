@@ -9,6 +9,8 @@ listing:
 	jb	invalid_input
 	cmp	dword [eax],1A736166h
 	jne	invalid_input
+	cmp	dword [eax+44],0
+	je	incomplete_input
 	add	[eax+16],eax
 	add	[eax+24],eax
 	add	[eax+32],eax
@@ -44,10 +46,12 @@ listing:
 	cmp	dword [edx+12],0
 	jne	get_next_offset
 	mov	[edx+12],esi
-	xor	ecx,ecx
+	movzx	ecx,byte [esi+27]
+	and	cl,1
 	mov	edi,[esi+20]
 	test	edi,edi
 	jz	base_name_length_ok
+	xor	ecx,ecx
 	btr	edi,31
 	jc	count_base_name_characters
 	dec	edi
@@ -134,11 +138,18 @@ listing:
 	test	byte [ebx+26],11b
 	jnz	no_code_listing
 	push	esi
+	mov	edx,[esi]
+	mov	ecx,[esi+4]
      find_next_code_point:
 	add	esi,16
 	call	skip_preprocessed_line
 	cmp	esi,ebp
 	je	last_code_point
+	cmp	edx,[esi]
+	jne	next_line_ok
+	cmp	ecx,[esi+4]
+	je	find_next_code_point
+     next_line_ok:
 	test	byte [esi+7],1 shl 7
 	jnz	find_next_code_point
 	mov	eax,[esi+12]
@@ -230,10 +241,17 @@ listing:
 	call	write_source_line
 	pop	ebp esi
 	jmp	write_supplemental_rows
-       next_line:
+      next_line:
+	mov	edx,[esi]
+	mov	ecx,[esi+4]
+      find_next_line:
 	add	esi,16
 	call	skip_preprocessed_line
-	jmp	generate_listing
+	cmp	edx,[esi]
+	jne	generate_listing
+	cmp	ecx,[esi+4]
+	jne	generate_listing
+	jmp	find_next_line
     list_address:
 	cmp	[show_addresses],0
 	je	address_ok
@@ -281,14 +299,33 @@ listing:
 	mov	al,':'
 	test	edx,80000000h
 	jz	address_separator_ok
+	cmp	byte [ebx+27],0
+	jne	address_separator_ok
 	mov	al,'+'
       address_separator_ok:
 	stosb
       write_main_address:
+	cmp	byte [ebx+27],0
+	jne	write_negative_address
 	mov	edx,[ebx+8+4]
 	call	write_hex_dword
 	mov	edx,[ebx+8]
 	call	write_hex_dword
+	jmp	write_address_registers
+      write_negative_address:
+	mov	al,'-'
+	stosb
+	mov	eax,[ebx+8]
+	mov	edx,[ebx+8+4]
+	not	eax
+	not	edx
+	add	eax,1
+	adc	edx,0
+	push	eax
+	call	write_hex_dword
+	pop	edx
+	call	write_hex_dword
+      write_address_registers:
 	mov	dl,[ebx+16]
 	mov	dh,[ebx+18]
 	call	address_register
@@ -601,6 +638,9 @@ writing_error:
 invalid_input:
 	call	error
 	db	'input file is not a recognized assembly information format',0
+incomplete_input:
+	call	error
+	db	'input file does not contain an assembly dump',0
 
 symbol_characters db 27, 9,0Ah,0Dh,1Ah,20h,'+-/*=<>()[]{}:,|&~#`;\'
 

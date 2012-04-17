@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 parser:
@@ -33,6 +33,7 @@ parser:
 	inc	[parsed_lines]
 	add	esi,16
       parse_line:
+	mov	[formatter_symbols_allowed],0
 	cmp	byte [esi],1Ah
 	jne	empty_instruction
 	push	edi
@@ -104,16 +105,18 @@ parser:
 	stos	word [edi]
 	mov	al,dl
 	stos	byte [edi]
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	je	parse_block
-	cmp	bx,repeat_directive-assembler
+	cmp	bx,repeat_directive-instruction_handler
 	je	parse_block
-	cmp	bx,while_directive-assembler
+	cmp	bx,while_directive-instruction_handler
 	je	parse_block
-	cmp	bx,end_directive-assembler
+	cmp	bx,end_directive-instruction_handler
 	je	parse_end_directive
-	cmp	bx,else_directive-assembler
+	cmp	bx,else_directive-instruction_handler
 	je	parse_else
+	cmp	bx,assert_directive-instruction_handler
+	je	parse_assert
       common_parse:
 	call	parse_line_contents
 	jmp	parse_next_line
@@ -126,6 +129,7 @@ parser:
 	dec	esi
 	cmp	al,3Bh
 	je	skip_rest_of_line
+	mov	[parenthesis_stack],0
 	call	parse_argument
 	jmp	parse_next_line
       empty_line:
@@ -159,9 +163,9 @@ parser:
 	shl	eax,16
 	push	eax
 	inc	[blocks_stack]
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	je	parse_if
-	cmp	bx,while_directive-assembler
+	cmp	bx,while_directive-instruction_handler
 	je	parse_while
 	call	parse_line_contents
 	jmp	parse_next_line
@@ -188,11 +192,11 @@ parser:
 	lods	byte [esi]
 	or	al,al
 	jnz	extra_characters_on_line
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	je	close_parsing_block
-	cmp	bx,repeat_directive-assembler
+	cmp	bx,repeat_directive-instruction_handler
 	je	close_parsing_block
-	cmp	bx,while_directive-assembler
+	cmp	bx,while_directive-instruction_handler
 	je	close_parsing_block
 	jmp	parse_next_line
       close_parsing_block:
@@ -202,7 +206,7 @@ parser:
 	jne	unexpected_instruction
 	dec	[blocks_stack]
 	pop	eax edx
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	jne	parse_next_line
 	test	al,1100b
 	jz	parse_next_line
@@ -251,7 +255,7 @@ parser:
       parse_else:
 	cmp	[blocks_stack],0
 	je	unexpected_instruction
-	cmp	word [esp+2],if_directive-assembler
+	cmp	word [esp+2],if_directive-instruction_handler
 	jne	unexpected_instruction
 	lods	byte [esi]
 	or	al,al
@@ -264,7 +268,7 @@ parser:
 	call	get_instruction
 	jc	extra_characters_on_line
 	pop	edi
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	jne	extra_characters_on_line
 	test	byte [esp],100b
 	jnz	skip_true_condition_else
@@ -276,6 +280,19 @@ parser:
 	mov	al,dl
 	stos	byte [edi]
 	jmp	parse_if
+      parse_assert:
+	push	edi
+	call	parse_line_contents
+	xor	al,al
+	stos	byte [edi]
+	xchg	esi,[esp]
+	mov	edi,esi
+	call	preevaluate_logical_expression
+	pop	esi
+	or	al,al
+	jz	parse_next_line
+	stos	byte [edi]
+	jmp	parse_next_line
       skip_true_condition_else:
 	sub	edi,4
 	or	byte [esp],1
@@ -311,15 +328,15 @@ parser:
 	lea	esi,[esi+ecx+1]
 	jmp	skip_parsing_line
       skip_parsing_instruction:
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	je	skip_parsing_block
-	cmp	bx,repeat_directive-assembler
+	cmp	bx,repeat_directive-instruction_handler
 	je	skip_parsing_block
-	cmp	bx,while_directive-assembler
+	cmp	bx,while_directive-instruction_handler
 	je	skip_parsing_block
-	cmp	bx,end_directive-assembler
+	cmp	bx,end_directive-instruction_handler
 	je	skip_parsing_end_directive
-	cmp	bx,else_directive-assembler
+	cmp	bx,else_directive-instruction_handler
 	je	skip_parsing_else
       skip_parsing_contents:
 	lods	byte [esi]
@@ -369,11 +386,11 @@ parser:
 	lods	byte [esi]
 	or	al,al
 	jnz	extra_characters_on_line
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	je	close_skip_parsing_block
-	cmp	bx,repeat_directive-assembler
+	cmp	bx,repeat_directive-instruction_handler
 	je	close_skip_parsing_block
-	cmp	bx,while_directive-assembler
+	cmp	bx,while_directive-instruction_handler
 	je	close_skip_parsing_block
 	jmp	skip_parsing
       close_skip_parsing_block:
@@ -385,7 +402,7 @@ parser:
 	pop	eax edx
 	test	al,1
 	jz	skip_parsing
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	jne	parse_next_line
 	test	al,10000b
 	jz	parse_next_line
@@ -394,15 +411,15 @@ parser:
 	mov	eax,[current_line]
 	stos	dword [edi]
 	inc	[parsed_lines]
-	mov	eax,1 + (end_directive-assembler) shl 8
+	mov	eax,1 + (end_directive-instruction_handler) shl 8
 	stos	dword [edi]
-	mov	eax,1 + (if_directive-assembler) shl 8
+	mov	eax,1 + (if_directive-instruction_handler) shl 8
 	stos	dword [edi]
 	jmp	parse_next_line
       skip_parsing_else:
 	cmp	[blocks_stack],0
 	je	unexpected_instruction
-	cmp	word [esp+2],if_directive-assembler
+	cmp	word [esp+2],if_directive-instruction_handler
 	jne	unexpected_instruction
 	lods	byte [esi]
 	or	al,al
@@ -415,7 +432,7 @@ parser:
 	call	get_instruction
 	jc	extra_characters_on_line
 	pop	edi
-	cmp	bx,if_directive-assembler
+	cmp	bx,if_directive-instruction_handler
 	jne	extra_characters_on_line
 	mov	al,[esp]
 	test	al,1
@@ -432,7 +449,7 @@ parser:
 	stos	dword [edi]
 	inc	[parsed_lines]
       parse_else_if:
-	mov	eax,1 + (if_directive-assembler) shl 8
+	mov	eax,1 + (if_directive-instruction_handler) shl 8
 	stos	dword [edi]
 	jmp	parse_if
       skip_parsing_pure_else:
@@ -451,22 +468,31 @@ parser:
 parse_line_contents:
 	mov	[parenthesis_stack],0
       parse_instruction_arguments:
-	cmp	bx,prefix_instruction-assembler
+	cmp	bx,prefix_instruction-instruction_handler
 	je	allow_embedded_instruction
-	cmp	bx,times_directive-assembler
+	cmp	bx,times_directive-instruction_handler
 	je	parse_times_directive
-	cmp	bx,end_directive-assembler
+	cmp	bx,end_directive-instruction_handler
 	je	allow_embedded_instruction
-	cmp	bx,label_directive-assembler
+	cmp	bx,label_directive-instruction_handler
 	je	parse_label_directive
-	cmp	bx,segment_directive-assembler
-	je	parse_label_directive
-	cmp	bx,load_directive-assembler
+	cmp	bx,segment_directive-instruction_handler
+	je	parse_segment_directive
+	cmp	bx,load_directive-instruction_handler
 	je	parse_load_directive
-	cmp	bx,extrn_directive-assembler
+	cmp	bx,extrn_directive-instruction_handler
 	je	parse_extrn_directive
-	cmp	bx,public_directive-assembler
+	cmp	bx,public_directive-instruction_handler
 	je	parse_public_directive
+	cmp	bx,section_directive-instruction_handler
+	je	parse_formatter_argument
+	cmp	bx,format_directive-instruction_handler
+	je	parse_formatter_argument
+	cmp	bx,data_directive-instruction_handler
+	je	parse_formatter_argument
+	jmp	parse_argument
+      parse_formatter_argument:
+	or	[formatter_symbols_allowed],-1
       parse_argument:
 	lea	eax,[edi+100h]
 	cmp	eax,[labels_list]
@@ -477,7 +503,7 @@ parse_line_contents:
 	cmp	al,','
 	je	separator
 	cmp	al,'='
-	je	separator
+	je	expression_comparator
 	cmp	al,'|'
 	je	separator
 	cmp	al,'&'
@@ -535,13 +561,19 @@ parse_line_contents:
 	stos	byte [edi]
 	cmp	al,80h
 	je	forced_expression
+	cmp	al,8Ch
+	je	forced_expression
 	cmp	al,81h
 	je	forced_parenthesis
 	cmp	al,82h
 	je	parse_from_operator
 	cmp	al,89h
 	je	parse_label_operator
+	cmp	al,0F8h
+	je	forced_expression
 	jmp	argument_parsed
+      instruction_separator:
+	stos	byte [edi]
       allow_embedded_instruction:
 	cmp	byte [esi],1Ah
 	jne	parse_argument
@@ -576,6 +608,8 @@ parse_line_contents:
 	jne	allow_embedded_instruction
 	movs	byte [edi],[esi]
 	jmp	allow_embedded_instruction
+      parse_segment_directive:
+	or	[formatter_symbols_allowed],-1
       parse_label_directive:
 	cmp	byte [esi],1Ah
 	jne	argument_parsed
@@ -622,7 +656,9 @@ parse_line_contents:
 	inc	esi
 	push	esi ecx
 	push	edi
+	or	[formatter_symbols_allowed],-1
 	call	get_symbol
+	mov	[formatter_symbols_allowed],0
 	pop	edi
 	jc	parse_public_label
 	cmp	al,1Dh
@@ -778,6 +814,29 @@ parse_line_contents:
 	stos	byte [edi]
 	inc	[parenthesis_stack]
 	jmp	parse_argument
+      expression_comparator:
+	stos	byte [edi]
+	jmp	forced_expression
+      greater:
+	cmp	byte [esi],'='
+	jne	separator
+	inc	esi
+	mov	al,0F2h
+	jmp	separator
+      less:
+	cmp	byte [edi-1],0F6h
+	je	separator
+	cmp	byte [esi],'>'
+	je	not_equal
+	cmp	byte [esi],'='
+	jne	separator
+	inc	esi
+	mov	al,0F3h
+	jmp	separator
+      not_equal:
+	inc	esi
+	mov	al,0F1h
+	jmp	expression_comparator
       expression:
 	mov	al,'('
 	stos	byte [edi]
@@ -786,11 +845,16 @@ parse_line_contents:
 	stos	byte [edi]
 	jmp	expression_parsed
       forced_expression:
+	xor	al,al
+	xchg	al,[formatter_symbols_allowed]
+	push	eax
 	mov	al,'('
 	stos	byte [edi]
 	call	convert_expression
 	mov	al,')'
 	stos	byte [edi]
+	pop	eax
+	mov	[formatter_symbols_allowed],al
 	jmp	argument_parsed
       address_argument:
 	call	parse_address
@@ -855,30 +919,6 @@ parse_line_contents:
 	mov	al,'}'
       separator:
 	stos	byte [edi]
-	jmp	argument_parsed
-      instruction_separator:
-	stos	byte [edi]
-	jmp	allow_embedded_instruction
-      greater:
-	cmp	byte [esi],'='
-	jne	separator
-	inc	esi
-	mov	al,0F2h
-	jmp	separator
-      less:
-	cmp	byte [edi-1],0F6h
-	je	separator
-	cmp	byte [esi],'>'
-	je	not_equal
-	cmp	byte [esi],'='
-	jne	separator
-	inc	esi
-	mov	al,0F3h
-	jmp	separator
-      not_equal:
-	inc	esi
-	mov	al,0F1h
-	jmp	separator
       argument_parsed:
 	cmp	[parenthesis_stack],0
 	je	parse_argument
@@ -947,6 +987,7 @@ get_operator:
 	jne	next_operator
 	repe	cmps byte [esi],[edi]
 	je	operator_found
+	jb	no_operator
       next_operator:
 	mov	edi,ebx
 	inc	edi
@@ -1008,9 +1049,14 @@ get_symbol:
 	repe	cmps byte [esi],[edi]
 	ja	symbols_up
 	jb	symbols_down
+	mov	ax,[edi]
+	cmp	al,18h
+	jb	symbol_ok
+	cmp	[formatter_symbols_allowed],0
+	je	no_symbol
+      symbol_ok:
 	pop	esi
 	add	esi,ebp
-	mov	ax,[edi]
 	clc
 	ret
       no_symbol:
@@ -1046,7 +1092,7 @@ get_instruction:
 	mov	ebp,ecx
 	call	lower_case
 	mov	ecx,ebp
-	cmp	cl,11
+	cmp	cl,16
 	ja	no_instruction
 	sub	cl,2
 	jc	no_instruction
@@ -1156,9 +1202,13 @@ get_label_id:
 	ret
       anonymous_back:
 	mov	eax,[anonymous_reverse]
-	or	eax,eax
-	jz	new_anonymous
 	add	esi,2
+	or	eax,eax
+	jz	bogus_anonymous
+	jmp	anonymous_ok
+      bogus_anonymous:
+	call	allocate_label
+	mov	[anonymous_reverse],eax
 	jmp	anonymous_ok
       new_anonymous:
 	add	esi,2
@@ -1174,7 +1224,15 @@ get_label_id:
 	cmp	byte [esi],'%'
 	je	get_predefined_id
 	cmp	byte [esi],'$'
+	je	current_address_label
+	cmp	byte [esi],'?'
 	jne	find_label
+	cmp	ecx,1
+	jne	find_label
+	inc	esi
+	mov	eax,0Fh
+	ret
+      current_address_label:
 	cmp	ecx,2
 	ja	find_label
 	inc	esi

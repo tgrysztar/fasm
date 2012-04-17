@@ -2,16 +2,7 @@
 	format	ELF
 	public	main
 
-macro ccall proc,[arg]
- { common
-    local size
-    size = 0
-   reverse
-    pushd arg
-    size = size+4
-   common
-    call proc
-    add esp,size }
+include 'ccall.inc'
 
 section '.text' executable align 16
 

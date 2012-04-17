@@ -1,21 +1,31 @@
 
 ; flat assembler interface for Unix/libc
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF
 	public	main
 
 macro ccall proc,[arg]
- { common
-    local size
-    size = 0
-   reverse
-    pushd arg
-    size = size+4
-   common
-    call proc
-    add esp,size }
+  { common
+     local size 
+     size = 0 
+     mov ebp,esp
+     if ~ arg eq
+    forward
+     size = size + 4
+    common
+     sub esp,size
+     end if
+     and esp,-16
+     if ~ arg eq
+     add esp,size
+    reverse
+     pushd arg
+    common
+     end if
+     call proc 
+     mov esp,ebp }
 
 extrn gettimeofday
 
@@ -234,7 +244,7 @@ include 'system.inc'
 
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2009, Tomasz Grysztar',0xA,0
+_copyright db 'Copyright (c) 1999-2012, Tomasz Grysztar',0xA,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0
 _usage db 0xA
@@ -251,12 +261,15 @@ _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0xA,0
 
 include '..\errors.inc'
-include '..\expressi.inc'
+include '..\symbdump.inc'
 include '..\preproce.inc'
 include '..\parser.inc'
+include '..\exprpars.inc'
 include '..\assemble.inc'
+include '..\exprcalc.inc'
 include '..\formats.inc'
 include '..\x86_64.inc'
+include '..\avx.inc'
 
 include '..\tables.inc'
 include '..\messages.inc'
@@ -270,7 +283,7 @@ argv dd ?
 stack_frame dd ?
 memory_setting dd ?
 start_time dd ?
-timestamp dd ?
+timestamp dq ?
 con_handle dd ?
 displayed_count dd ?
 last_displayed db ?

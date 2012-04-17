@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	MZ
@@ -53,11 +53,17 @@ start:
 	mov	ax,dx
 	mov	[start_time],eax
 
+	cmp	[mode],dpmi
+	je	compile
+	jmp	main+(first_segment shr 4):first_gate-first_segment
+
+compile:
 	call	preprocessor
 	call	parser
 	call	assembler
 	call	formatter
 
+finish:
 	call	display_user_messages
 	movzx	eax,[current_pass]
 	inc	eax
@@ -257,40 +263,10 @@ get_params:
 	stc
 	ret
 
-include 'system.inc'
-
 include '..\version.inc'
 
 _logo db 'flat assembler  version ',VERSION_STRING,24h
-
-include '..\errors.inc'
-include '..\expressi.inc'
-include '..\preproce.inc'
-include '..\parser.inc'
-include '..\assemble.inc'
-include '..\formats.inc'
-include '..\x86_64.inc'
-
-if $>=10000h
- if UNREAL_ENABLED>0
-  UNREAL_ENABLED = -1
- else
-  UNREAL_ENABLED = 0
- end if
-else
- if UNREAL_ENABLED<0
-  UNREAL_ENABLED = -1
- else
-  UNREAL_ENABLED = 1
- end if
-end if
-
-include 'sysdpmi.inc'
-
-include '..\tables.inc'
-include '..\messages.inc'
-
-_copyright db 'Copyright (c) 1999-2009, Tomasz Grysztar',0Dh,0Ah,0
+_copyright db 'Copyright (c) 1999-2012, Tomasz Grysztar',0Dh,0Ah,0
 
 _usage db 0Dh,0Ah
        db 'usage: fasm <source> [output]',0Dh,0Ah
@@ -310,6 +286,57 @@ error_suffix db '.'
 cr_lf db 0Dh,0Ah,0
 line_number_start db ' [',0
 line_data_start db ':',0Dh,0Ah,0
+
+align 16
+first_segment:
+
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\exprpars.inc'
+
+align 16
+second_segment:
+
+include '..\exprcalc.inc'
+include '..\errors.inc'
+include '..\symbdump.inc'
+
+include 'system.inc'
+
+first_gate:
+	call	preprocessor
+	call	parser
+	jmp	main+(second_segment shr 4):second_gate-second_segment
+first_segment_top = $ - first_segment
+
+include '..\assemble.inc'
+include '..\formats.inc'
+include '..\x86_64.inc'
+include '..\avx.inc'
+
+second_gate:
+	call	assembler
+	call	formatter
+	jmp	main:finish
+
+second_segment_top = $ - second_segment
+
+if first_segment_top>=10000h | second_segment_top>=10000h
+ if UNREAL_ENABLED>0
+  UNREAL_ENABLED = -1
+ else
+  UNREAL_ENABLED = 0
+ end if
+else
+ if UNREAL_ENABLED<0
+  UNREAL_ENABLED = -1
+ else
+  UNREAL_ENABLED = 1
+ end if
+end if
+
+include '..\tables.inc'
+include '..\messages.inc'
 
 align 4
 

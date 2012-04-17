@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 _out_of_memory db 'out of memory',0
@@ -25,7 +25,7 @@ _operand_size_not_specified db 'operand size not specified',0
 _operand_sizes_do_not_match db 'operand sizes do not match',0
 _invalid_address_size db 'invalid size of address value',0
 _address_sizes_do_not_agree db 'address sizes do not agree',0
-_prefix_conflict db 'disallowed combination of registers',0
+_disallowed_combination_of_registers db 'disallowed combination of registers',0
 _long_immediate_not_encodable db 'not encodable with long immediate',0
 _relative_jump_out_of_range db 'relative jump out of range',0
 _invalid_expression db 'invalid expression',0
@@ -48,4 +48,5 @@ _section_not_aligned_enough db 'section is not aligned enough',0
 _setting_already_specified db 'setting already specified',0
 _data_already_defined db 'data already defined',0
 _too_many_repeats db 'too many repeats',0
-_invoked_error db 'error directive invoked in source file',0
+_invoked_error db 'error directive encountered in source file',0
+_assertion_failed db 'assertion failed',0

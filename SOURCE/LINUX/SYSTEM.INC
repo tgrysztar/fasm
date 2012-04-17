@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 0003o
@@ -387,8 +387,10 @@ assembler_error:
 
 make_timestamp:
 	mov	eax,13
-	xor	ebx,ebx
+	mov	ebx,timestamp
 	int	0x80
+	mov	eax,dword [timestamp]
+	mov	edx,dword [timestamp+4]
 	ret
 
 error_prefix db 'error: ',0

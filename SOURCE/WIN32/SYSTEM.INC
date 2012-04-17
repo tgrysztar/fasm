@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 CREATE_NEW	       = 1
@@ -42,6 +42,8 @@ PAGE_GUARD	       = 100h
 PAGE_NOCACHE	       = 200h
 
 init_memory:
+	xor	eax,eax
+	mov	[memory_start],eax
 	mov	eax,esp
 	and	eax,not 0FFFh
 	add	eax,1000h-10000h
@@ -84,6 +86,14 @@ init_memory:
 exit_program:
 	movzx	eax,al
 	push	eax
+	mov	eax,[memory_start]
+	test	eax,eax
+	jz	do_exit
+	push	MEM_RELEASE
+	push	0
+	push	eax
+	call	[VirtualFree]
+    do_exit:
 	call	[ExitProcess]
 
 get_environment_variable:
@@ -473,12 +483,8 @@ make_timestamp:
 	mul	ebx
 	movzx	ecx,word [buffer+12]
 	add	eax,ecx
+	adc	edx,0
 	ret
-
-character db ?
-bytes_count dd ?
-displayed_count dd ?
-last_displayed rb 2
 
 error_prefix db 'error: ',0
 error_suffix db '.'

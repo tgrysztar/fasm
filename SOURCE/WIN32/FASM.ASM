@@ -1,9 +1,11 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2009, Tomasz Grysztar.
+; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	PE console
+
+section '.text' code readable executable
 
 start:
 
@@ -240,9 +242,25 @@ get_params:
 
 include 'system.inc'
 
+include '..\errors.inc'
+include '..\symbdump.inc'
+include '..\preproce.inc'
+include '..\parser.inc'
+include '..\exprpars.inc'
+include '..\assemble.inc'
+include '..\exprcalc.inc'
+include '..\formats.inc'
+include '..\x86_64.inc'
+include '..\avx.inc'
+
+include '..\tables.inc'
+include '..\messages.inc'
+
+section '.data' data readable writeable
+
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2009, Tomasz Grysztar',0Dh,0Ah,0
+_copyright db 'Copyright (c) 1999-2012, Tomasz Grysztar',0Dh,0Ah,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0
 _usage db 0Dh,0Ah
@@ -258,17 +276,6 @@ _passes_suffix db ' passes, ',0
 _seconds_suffix db ' seconds, ',0
 _bytes_suffix db ' bytes.',0Dh,0Ah,0
 
-include '..\errors.inc'
-include '..\expressi.inc'
-include '..\preproce.inc'
-include '..\parser.inc'
-include '..\assemble.inc'
-include '..\formats.inc'
-include '..\x86_64.inc'
-
-include '..\tables.inc'
-include '..\messages.inc'
-
 align 4
 
 include '..\variable.inc'
@@ -276,6 +283,10 @@ include '..\variable.inc'
 con_handle dd ?
 memory_setting dd ?
 start_time dd ?
+bytes_count dd ?
+displayed_count dd ?
+character db ?
+last_displayed rb 2
 
 params rb 1000h
 options rb 1000h
@@ -299,6 +310,7 @@ section '.idata' import data readable writeable
     GetEnvironmentVariable dd rva _GetEnvironmentVariable
     GetStdHandle dd rva _GetStdHandle
     VirtualAlloc dd rva _VirtualAlloc
+    VirtualFree dd rva _VirtualFree
     GetTickCount dd rva _GetTickCount
     GetSystemTime dd rva _GetSystemTime
     GlobalMemoryStatus dd rva _GlobalMemoryStatus
@@ -326,6 +338,8 @@ section '.idata' import data readable writeable
     db 'GetStdHandle',0
   _VirtualAlloc dw 0
     db 'VirtualAlloc',0
+  _VirtualFree dw 0
+    db 'VirtualFree',0
   _GetTickCount dw 0
     db 'GetTickCount',0
   _GetSystemTime dw 0

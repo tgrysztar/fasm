@@ -5,7 +5,7 @@
                            Û  ÜßßßßÛ   ßßßßÜ Û  Û  Û
                            Û  ßÜÜÜÜÛÜ ÜÜÜÜÜß Û  Û  Û
 
-                              flat assembler 1.68
+                              flat assembler 1.70
                               Programmer's Manual
 
 
@@ -51,7 +51,10 @@ Chapter 2  Instruction set
         2.1.18  AMD 3DNow! instructions
         2.1.19  The x86-64 long mode instructions
         2.1.20  SSE4 instructions
-        2.1.21  Other extensions of instruction set
+        2.1.21  AVX instructions
+        2.1.22  AVX2 instructions
+        2.1.23  Auxiliary sets of computational instructions
+        2.1.24  Other extensions of instruction set
 
         2.2  Control directives
         2.2.1  Numerical constants
@@ -142,21 +145,21 @@ done, how much time it took, and how many bytes were written into the
 destination file.
 The following is an example of the compilation summary:
 
-flat assembler  version 1.68 (16384 kilobytes memory)
+flat assembler  version 1.70 (16384 kilobytes memory)
 38 passes, 5.3 seconds, 77824 bytes.
 
 In case of error during the compilation process, the program will display an
 error message. For example, when compiler can't find the input file, it will
 display the following message:
 
-flat assembler  version 1.68 (16384 kilobytes memory)
+flat assembler  version 1.70 (16384 kilobytes memory)
 error: source file not found.
 
 If the error is connected with a specific part of source code, the source line
 that caused the error will be also displayed. Also placement of this line in
 the source is given to help you finding this error, for example:
 
-flat assembler  version 1.68 (16384 kilobytes memory)
+flat assembler  version 1.70 (16384 kilobytes memory)
 example.asm [3]:
         mob     ax,1
 error: illegal instruction.
@@ -166,7 +169,7 @@ encountered an unrecognized instruction. When the line that caused error
 contains a macroinstruction, also the line in macroinstruction definition
 that generated the erroneous instruction is displayed:
 
-flat assembler  version 1.68 (16384 kilobytes memory)
+flat assembler  version 1.70 (16384 kilobytes memory)
 example.asm [6]:
         stoschar 7
 example.asm [3] stoschar [1]:
@@ -215,8 +218,8 @@ that are individual items even when are not spaced from the other ones.
 Any of the "+-*/=<>()[]{}:,|&~#`" is the symbol character. The sequence of
 other characters, separated from other items with either blank spaces or
 symbol characters, is a symbol. If the first character of symbol is either a
-single or double quote, it integrates the any sequence of characters following
-it, even the special ones, into a quoted string, which should end with the same
+single or double quote, it integrates any sequence of characters following it,
+even the special ones, into a quoted string, which should end with the same
 character, with which it began (the single or double quote) - however if there
 are two such characters in a row (without any other character between them),
 they are integrated into quoted string as just one of them and the quoted
@@ -252,6 +255,9 @@ brackets or after the "ptr" operator).
   ³ tbyte    ³ 80   ³ 10    ³
   ³ tword    ³ 80   ³ 10    ³
   ³ dqword   ³ 128  ³ 16    ³
+  ³ xword    ³ 128  ³ 16    ³
+  ³ qqword   ³ 256  ³ 32    ³
+  ³ yword    ³ 256  ³ 32    ³
   ÀÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
 
    Table 1.2  Registers
@@ -273,6 +279,8 @@ brackets or after the "ptr" operator).
   ³ MMX     ³ 64   ³ mm0   mm1   mm2   mm3   mm4   mm5   mm6   mm7  ³
   ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
   ³ SSE     ³ 128  ³ xmm0  xmm1  xmm2  xmm3  xmm4  xmm5  xmm6  xmm7 ³
+  ÃÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+  ³ AVX     ³ 256  ³ ymm0  ymm1  ymm2  ymm3  ymm4  ymm5  ymm6  ymm7 ³
   ÀÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
 
@@ -402,14 +410,24 @@ These special symbol are case-insensitive.
 In the above examples all the numerical expressions were the simple numbers,
 constants or labels. But they can be more complex, by using the arithmetical
 or logical operators for calculations at compile time. All these operators
-with their priority values are listed in table 1.4.
-The operations with higher priority value will be calculated first, you can
-of course change this behavior by putting some parts of expression into
-parenthesis. The "+", "-", "*" and "/" are standard arithmetical operations,
-"mod" calculates the remainder from division. The "and", "or", "xor", "shl",
-"shr" and "not" perform the same logical operations as assembly instructions
-of those names. The "rva" performs the conversion of an address into the
-relocatable offset and is specific to some of the output formats (see 2.4).
+with their priority values are listed in table 1.4. The operations with higher
+priority value will be calculated first, you can of course change this
+behavior by putting some parts of expression into parenthesis. The "+", "-",
+"*" and "/" are standard arithmetical operations, "mod" calculates the
+remainder from division. The "and", "or", "xor", "shl", "shr" and "not"
+perform the same logical operations as assembly instructions of those names.
+The "rva" and "plt" are special unary operators that perform conversions
+between different kinds of addresses, they can be used only with few of the
+output formats and their meaning may vary (see 2.4).
+  The arithmetical and logical calculations are usually processed as if they
+operated on infinite precision 2-adic numbers, and assembler signalizes an
+overflow error if because of its limitations it is not table to perform the
+required calculation, or if the result is too large number to fit in either
+signed or unsigned range for the destination unit size. However "not", "xor"
+and "shr" operators are exceptions from this rule - if the value specified
+by numerical expression has to fit in a unit of specified size, and the
+arguments for operation fit into that size, the operation will be performed
+with precision limited to that size.
   The numbers in the expression are by default treated as a decimal, binary
 numbers should have the "b" letter attached at the end, octal number should
 end with "o" letter, hexadecimal numbers should begin with "0x" characters
@@ -449,7 +467,7 @@ while simple "1" defines an integer value.
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
   ³ 5        ³ not          ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 6        ³ rva          ³
+  ³ 6        ³ rva  plt     ³
   ÀÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
 
@@ -462,7 +480,7 @@ instruction "jmp dword [0]" will become the far jump and when assembler is
 in 32-bit mode, it will become the near jump. To force this instruction to be
 treated differently, use the "jmp near dword [0]" or "jmp far dword [0]" form.
   When operand of near jump is the immediate value, assembler will generate
-the shortest variant of this jump instruction if possible (but won't create
+the shortest variant of this jump instruction if possible (but will not create
 32-bit instruction in 16-bit mode nor 16-bit instruction in 32-bit mode,
 unless there is a size operator stating it). By specifying the jump type
 you can force it to always generate long variant (for example "jmp near 0")
@@ -770,12 +788,12 @@ base. Rules for the operand are the same as for the "aam" instruction.
 
 2.1.5  Logical instructions
 
-"not" inverts the bits in the specified operand to form a one's
-complement of the operand. It has no effect on the flags. Rules for the
-operand are the same as for the "inc" instruction.
-  "and", "or" and "xor" instructions perform the standard
-logical operations. They update the SF, ZF and PF flags. Rules for the
-operands are the same as for the "add" instruction.
+"not" inverts the bits in the specified operand to form a one's complement 
+of the operand. It has no effect on the flags. Rules for the operand are the 
+same as for the "inc" instruction.
+  "and", "or" and "xor" instructions perform the standard logical operations. 
+They update the SF, ZF and PF flags. Rules for the operands are the same as 
+for the "add" instruction.
   "bt", "bts", "btr" and "btc" instructions operate on a single bit which can
 be in memory or in a general register. The location of the bit is specified
 as an offset from the low order end of the operand. The value of the offset
@@ -1161,7 +1179,7 @@ or the byte in memory.
 
   "salc" instruction sets the all bits of AL register when the carry flag is
 set and zeroes the AL register otherwise. This instruction has no arguments.
-  The instructions obtained by attaching the condition mnemonic to the "cmov"
+  The instructions obtained by attaching the condition mnemonic to "cmov"
 mnemonic transfer the word or double word from the general register or memory
 to the general register only when the condition is true. The destination
 operand should be general register, the source operand can be general register
@@ -1368,7 +1386,7 @@ format.
 commonly used contants onto the FPU register stack. The loaded constants are
 +1.0, +0.0, lb 10, lb e, pi, lg 2 and ln 2 respectively. These instructions
 have no operands.
-  "fild" convert the singed integer source operand into double extended
+  "fild" converts the signed integer source operand into double extended
 precision floating-point format and pushes the result onto the FPU register
 stack. The source operand can be a 16-bit, 32-bit or 64-bit memory location.
 
@@ -1930,10 +1948,11 @@ operand. "cvtpd2dq" and "cvttpd2dq" convert packed double precision floating
 point values to packed two double word integers, storing the result in the low
 quad word of the destination operand. "cvtdq2ps" converts packed four
 double word integers to packed single precision floating point values.
-"cvtdq2pd" converts packed two double word integers from the low quad word
-of the source operand to packed double precision floating point values.
 For all these instruction destination operand must be a SSE register, the
 source operand can be a 128-bit memory location or SSE register.
+"cvtdq2pd" converts packed two double word integers from the source operand to
+packed double precision floating point values, the source can be a 64-bit 
+memory location or SSE register, destination has to be SSE register.
   "movdqa" and "movdqu" transfer a double quad word operand containing packed
 integers from source operand to destination operand. At least one of the
 operands have to be a SSE register, the second one can be also a SSE register
@@ -1951,7 +1970,7 @@ SSE register to the destination MMX register.
 mnemonics starting with "p") are extended to operate on 128-bit packed
 integers located in SSE registers. Additional syntax for these instructions
 needs an SSE register where MMX register was needed, and the 128-bit memory
-location or SSE register where 64-bit memory location of MMX register were
+location or SSE register where 64-bit memory location or MMX register were
 needed. The exception is "pshufw" instruction, which doesn't allow extended
 syntax, but has two new variants: "pshufhw" and "pshuflw", which allow only
 the extended syntax, and perform the same operation as "pshufw" on the high
@@ -1968,7 +1987,7 @@ multiplication of low double words from each corresponding quad words and
 returns the results in packed quad words. These instructions follow the same
 rules for operands as the general MMX operations described in 2.1.14.
   "pslldq" and "psrldq" perform logical shift left or right of the double
-quad word in the destination operand by the amount of bits specified in the
+quad word in the destination operand by the amount of bytes specified in the
 source operand. The destination operand should be a SSE register, source
 operand should be an 8-bit immediate value.
   "punpckhqdq" interleaves the high quad word of the source operand and the
@@ -2015,10 +2034,10 @@ operand should be SSE register, the source operand can be SSE register or
   "movddup" loads the 64-bit source value and duplicates it into high and low
 quad word of the destination operand. The destination operand should be SSE
 register, the source operand can be SSE register or 64-bit memory location.
-  "lddqu" is functionally equivalent to "movdqu" instruction with memory as
-source operand, but it may improve performance when the source operand crosses
-a cacheline boundary. The destination operand has to be SSE register, the
-source operand must be 128-bit memory location.
+  "lddqu" is functionally equivalent to "movdqu" with memory as source 
+operand, but it may improve performance when the source operand crosses a 
+cacheline boundary. The destination operand has to be SSE register, the source
+operand must be 128-bit memory location.
   "addsubps" performs single precision addition of second and fourth pairs and
 single precision substracion of the first and third pairs of floating point
 values in the operands. "addsubpd" performs double precision addition of the
@@ -2152,28 +2171,28 @@ low order portions of the larger ones. You can still access the "ah", "bh",
 instruction with any of the new registers.
 
    Table 2.4  New registers in long mode
-  ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
-  ³ Type ³          General          ³  SSE  ³
-  ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÂÄÄÄÄÄÄÂÄÄÄÄÄÄÂÄÄÄÄÄÄÅÄÄÄÄÄÄÄ´
-  ³ Bits ³  8   ³  16  ³  32  ³  64  ³  128  ³
-  ÆÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍÍµ
-  ³      ³      ³      ³      ³ rax  ³       ³
-  ³      ³      ³      ³      ³ rcx  ³       ³
-  ³      ³      ³      ³      ³ rdx  ³       ³
-  ³      ³      ³      ³      ³ rbx  ³       ³
-  ³      ³ spl  ³      ³      ³ rsp  ³       ³
-  ³      ³ bpl  ³      ³      ³ rbp  ³       ³
-  ³      ³ sil  ³      ³      ³ rsi  ³       ³
-  ³      ³ dil  ³      ³      ³ rdi  ³       ³
-  ³      ³ r8b  ³ r8w  ³ r8d  ³ r8   ³ xmm8  ³
-  ³      ³ r9b  ³ r9w  ³ r9d  ³ r9   ³ xmm9  ³
-  ³      ³ r10b ³ r10w ³ r10d ³ r10  ³ xmm10 ³
-  ³      ³ r11b ³ r11w ³ r11d ³ r11  ³ xmm11 ³
-  ³      ³ r12b ³ r12w ³ r12d ³ r12  ³ xmm12 ³
-  ³      ³ r13b ³ r13w ³ r13d ³ r13  ³ xmm13 ³
-  ³      ³ r14b ³ r14w ³ r14d ³ r14  ³ xmm14 ³
-  ³      ³ r15b ³ r15w ³ r15d ³ r15  ³ xmm15 ³
-  ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
+  ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄ¿
+  ³ Type ³          General          ³  SSE  ³  AVX  ³
+  ÃÄÄÄÄÄÄÅÄÄÄÄÄÄÂÄÄÄÄÄÄÂÄÄÄÄÄÄÂÄÄÄÄÄÄÅÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄ´
+  ³ Bits ³  8   ³  16  ³  32  ³  64  ³  128  ³  256  ³
+  ÆÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍØÍÍÍÍÍÍÍØÍÍÍÍÍÍÍµ
+  ³      ³      ³      ³      ³ rax  ³       ³       ³
+  ³      ³      ³      ³      ³ rcx  ³       ³       ³
+  ³      ³      ³      ³      ³ rdx  ³       ³       ³
+  ³      ³      ³      ³      ³ rbx  ³       ³       ³
+  ³      ³ spl  ³      ³      ³ rsp  ³       ³       ³
+  ³      ³ bpl  ³      ³      ³ rbp  ³       ³       ³
+  ³      ³ sil  ³      ³      ³ rsi  ³       ³       ³
+  ³      ³ dil  ³      ³      ³ rdi  ³       ³       ³
+  ³      ³ r8b  ³ r8w  ³ r8d  ³ r8   ³ xmm8  ³ ymm8  ³
+  ³      ³ r9b  ³ r9w  ³ r9d  ³ r9   ³ xmm9  ³ ymm9  ³
+  ³      ³ r10b ³ r10w ³ r10d ³ r10  ³ xmm10 ³ ymm10 ³
+  ³      ³ r11b ³ r11w ³ r11d ³ r11  ³ xmm11 ³ ymm11 ³
+  ³      ³ r12b ³ r12w ³ r12d ³ r12  ³ xmm12 ³ ymm12 ³
+  ³      ³ r13b ³ r13w ³ r13d ³ r13  ³ xmm13 ³ ymm13 ³
+  ³      ³ r14b ³ r14w ³ r14d ³ r14  ³ xmm14 ³ ymm14 ³
+  ³      ³ r15b ³ r15w ³ r15d ³ r15  ³ xmm15 ³ ymm15 ³
+  ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÙ
 
    In general any instruction from x86 architecture, which allowed 16-bit or
 32-bit operand sizes, in long mode allows also the 64-bit operands. The 64-bit
@@ -2211,30 +2230,30 @@ destination operand being 64-bit general purpose register. Trying to force the
 the upper 32 bits of the 64-bit registers containing them are filled with
 zeros. This is unlike the operations on 16-bit or 8-bit portions of those
 registers, which preserve the upper bits.
-  Three new type conversion instructions are available. The "cdqe" sign extends
-the double word in EAX into quad word and stores the result in RAX register.
-"cqo" sign extends the quad word in RAX into double quad word and stores the
-extra bits in the RDX register. These instructions have no operands. "movsxd"
-sign extends the double word source operand, being either the 32-bit register
-or memory, into 64-bit destination operand, which has to be register.
-No analogous instruction is needed for the zero extension, since it is done
-automatically by any operations on 32-bit registers, as noted in previous
-paragraph. And the "movzx" and "movsx" instructions, conforming to the general
-rule, can be used with 64-bit destination operand, allowing extension of byte
-or word values into quad words.
-  All the binary arithmetic and logical instruction are promoted to allow
-64-bit operands in long mode. The use of decimal arithmetic instructions in
-long mode is prohibited.
+  Three new type conversion instructions are available. The "cdqe" sign 
+extends the double word in EAX into quad word and stores the result in RAX 
+register. "cqo" sign extends the quad word in RAX into double quad word and 
+stores the extra bits in the RDX register. These instructions have no 
+operands. "movsxd" sign extends the double word source operand, being either
+the 32-bit register or memory, into 64-bit destination operand, which has to
+be register. No analogous instruction is needed for the zero extension, since
+it is done automatically by any operations on 32-bit registers, as noted in
+previous paragraph. And the "movzx" and "movsx" instructions, conforming to
+the general rule, can be used with 64-bit destination operand, allowing
+extension of byte or word values into quad words.
+  All the binary arithmetic and logical instruction have been promoted to
+allow 64-bit operands in long mode. The use of decimal arithmetic instructions
+in long mode is prohibited.
   The stack operations, like "push" and "pop" in long mode default to 64-bit
 operands and it's not possible to use 32-bit operands with them. The "pusha"
 and "popa" are disallowed in long mode.
-  The indirect near jumps and calls in long mode default to 64-bit operands and
-it's not possible to use the 32-bit operands with them. On the other hand, the
-indirect far jumps and calls allow any operands that were allowed by the x86
-architecture and also 80-bit memory operand is allowed (though only EM64T seems
-to implement such variant), with the first eight bytes defining the offset and
-two last bytes specifying the selector. The direct far jumps and calls are not
-allowed in long mode.
+  The indirect near jumps and calls in long mode default to 64-bit operands
+and it's not possible to use the 32-bit operands with them. On the other hand,
+the indirect far jumps and calls allow any operands that were allowed by the 
+x86 architecture and also 80-bit memory operand is allowed (though only EM64T
+seems to implement such variant), with the first eight bytes defining the 
+offset and two last bytes specifying the selector. The direct far jumps and 
+calls are not allowed in long mode.
   The I/O instructions, "in", "out", "ins" and "outs" are the exceptional
 instructions that are not extended to accept quad word operands in long mode.
 But all other string operations are, and there are new short forms "movsq",
@@ -2249,6 +2268,9 @@ in long mode require the 80-bit memory operand.
   The "cmpxchg16b" is the 64-bit equivalent of "cmpxchg8b" instruction, it uses
 the double quad word memory operand and 64-bit registers to perform the
 analoguous operation.
+  The "fxsave64" and "fxrstor64" are new variants of "fxsave" and "fxrstor"
+instructions, available only in long mode, which use a different format of
+storage area in order to store some pointers in full 64-bit size.  
   "swapgs" is the new instruction, which swaps the contents of GS register and
 the KernelGSbase model-specific register (MSR address 0C0000102h).
   "syscall" and "sysret" is the pair of new instructions that provide the
@@ -2287,23 +2309,9 @@ the bitwise NOT of the source operand is zero, and zeroes the CF otherwise.
 "pcmpeqq" compares packed quad words for equality, and fills the
 corresponding elements of destination operand with either ones or zeros,
 depending on the result of comparison.
-  "paskusdw" converts packed signed double words from both the source and
+  "packusdw" converts packed signed double words from both the source and
 destination operand into the unsigned words using saturation, and stores
 the eight resulting word values into the destination register.
-  "pmovsxbw" and "pmovzxbw" perform sign extension or zero extension of the
-lowest eight byte values from the source operand into packed word values in
-destination operand. "pmovsxbd" and "pmovzxbd" perform sign extension or zero
-extension of the lowest four byte values from the source operand into packed
-double word values in destination operand. "pmovsxbq" and "pmovzxbq" perform
-sign extension or zero extension of the lowest two byte values from the source
-operand into packed quad word value in destination operand. "pmovsxwd" and
-"pmovzxwd" perform sign extension or zero extension of the lowest four word
-values from the source operand into packed double words in destination operand.
-"pmovsxwq" and "pmovzxwq" perform sign extension or zero extension of the
-lowest two word values from the source operand into packed quad words in
-destination operand. "pmovsxdq" and "pmovzxdq" perform signe extension or
-zero extension of the lowest two double word values from the source operand
-into packed quad words in destination operand.
   "phminposuw" finds the minimum unsigned word value in source operand and
 places it into the lowest word of destination operand, setting the remaining
 upper bits of destination to zero.
@@ -2334,7 +2342,7 @@ at the position one byte after the position of previous block. The four bytes
 from the source stay the same each time. This way eight sums of absolute
 differencies are calculated and stored as packed word values into the
 destination operand. The instructions described in this paragraph follow the
-same reules for operands, as "roundps" instruction.
+same rules for operands, as "roundps" instruction.
   "blendps", "blendvps", "blendpd" and "blendvpd" conditionally copy the
 values from source operand into the destination operand, depending on the bits
 of the mask provided by third operand. If a mask bit is set, the corresponding
@@ -2390,6 +2398,28 @@ SSE2, but SSE4 extends it to allow memory operand as destination.
 
     pextrw [ebx],xmm3,7 ; extract highest word into memory
 
+  "pmovsxbw" and "pmovzxbw" perform sign extension or zero extension of eight 
+byte values from the source operand into packed word values in destination 
+operand, which has to be SSE register. The source can be 64-bit memory or SSE 
+register - when it is register, only its low portion is used. "pmovsxbd" and 
+"pmovzxbd" perform sign extension or zero extension of the four byte values 
+from the source operand into packed double word values in destination operand, 
+the source can be 32-bit memory or SSE register. "pmovsxbq" and "pmovzxbq" 
+perform sign extension or zero extension of the two byte values from the 
+source operand into packed quad word values in destination operand, the source
+can be 16-bit memory or SSE register. "pmovsxwd" and "pmovzxwd" perform sign
+extension or zero extension of the four word values from the source operand 
+into packed double words in destination operand, the source can be 64-bit 
+memory or SSE register. "pmovsxwq" and "pmovzxwq" perform sign extension or 
+zero extension of the two word values from the source operand into packed quad
+words in destination operand, the source can be 32-bit memory or SSE register. 
+"pmovsxdq" and "pmovzxdq" perform sign extension or zero extension of the two 
+double word values from the source operand into packed quad words in 
+destination operand, the source can be 64-bit memory or SSE register.
+
+    pmovzxbq xmm0,word [si]  ; zero-extend bytes to quad words
+    pmovsxwq xmm0,xmm1       ; sign-extend words to quad words 
+
   "movntdqa" loads double quad word from the source operand to the destination
 using a non-temporal hint. The destination operand should be SSE register,
 and the source operand should be 128-bit memory location.
@@ -2428,7 +2458,7 @@ and stores this count in the destination operand, which has to be register of
 the same size as source operand. The 64-bit variant is available only in long
 mode.
 
-    popcnt ecx,eax ; count bits set to 1
+    popcnt ecx,eax        ; count bits set to 1
 
   The SSE4a extension, which also includes the "popcnt" instruction introduced
 by SSE4.2, at the same time adds the "lzcnt" instruction, which follows the
@@ -2443,8 +2473,8 @@ as second and third operand, or by SSE register as second operand (and there
 is no third operand in such case), which should contain position value in bits
 8-13 and length of bit string in bits 0-5.
 
-    extrq xmm0,8,7  ; extract 8 bits from position 7
-    extrq xmm0,xmm5 ; extract bits defined by register
+    extrq xmm0,8,7        ; extract 8 bits from position 7
+    extrq xmm0,xmm5       ; extract bits defined by register
 
   "insertq" writes the sequence of bits from the low quad word of the source
 operand into specified position in low quad word of the destination operand,
@@ -2463,21 +2493,682 @@ value from the source SSE register into 32-bit or 64-bit destination memory
 location respectively, using non-temporal hint.
 
 
-2.1.21  Other extensions of instruction set
+2.1.21  AVX instructions
+
+The Advanced Vector Extensions introduce instructions that are new variants 
+of SSE instructions, with new scheme of encoding that allows extended syntax 
+having a destination operand separate from all the source operands. It also 
+introduces 256-bit AVX registers, which extend up the old 128-bit SSE 
+registers. Any AVX instruction that puts some result into SSE register, puts 
+zero bits into high portion of the AVX register containing it.
+  The AVX version of SSE instruction has the mnemonic obtained by prepending
+SSE instruction name with "v". For any SSE arithmetic instruction which had a
+destination operand also being used as one of the source values, the AVX 
+variant has a new syntax with three operands - the destination and two sources. 
+The destination and first source can be SSE registers, and second source can be
+SSE register or memory. If the operation is performed on single pair of values,
+the remaining bits of first source SSE register are copied into the the 
+destination register.
+ 
+    vsubss xmm0,xmm2,xmm3         ; substract two 32-bit floats
+    vmulsd xmm0,xmm7,qword [esi]  ; multiply two 64-bit floats 
+
+In case of packed operations, each instruction can also operate on the 256-bit 
+data size when the AVX registers are specified instead of SSE registers, and 
+the size of memory operand is also doubled then.
+
+    vaddps ymm1,ymm5,yword [esi]  ; eight sums of 32-bit float pairs 
+
+The instructions that operate on packed integer types (in particular the ones
+that earlier had been promoted from MMX to SSE) also acquired the new syntax
+with three operands, however they are only allowed to operate on 128-bit 
+packed types and thus cannot use the whole AVX registers.
+
+    vpavgw xmm3,xmm0,xmm2         ; average of 16-bit integers
+    vpslld xmm1,xmm0,1            ; shift double words left
+     
+If the SSE version of instruction had a syntax with three operands, the third
+one being an immediate value, the AVX version of such instruction takes four
+operands, with immediate remaining the last one.
+
+    vshufpd ymm0,ymm1,ymm2,10010011b ; shuffle 64-bit floats
+    vpalignr xmm0,xmm4,xmm2,3        ; extract byte aligned value
+     
+The promotion to new syntax according to the rules described above has been 
+applied to all the instructions from SSE extensions up to SSE4, with the 
+exceptions described below.   
+  "vdppd" instruction has syntax extended to four operans, but it does not 
+have a 256-bit version.
+  The are a few instructions, namely "vsqrtpd", "vsqrtps", "vrcpps" and
+"vrsqrtps", which can operate on 256-bit data size, but retained the syntax 
+with only two operands, because they use data from only one source:
+    
+    vsqrtpd ymm1,ymm0         ; put square roots into other register
+
+In a similar way "vroundpd" and "vroundps" retained the syntax with three 
+operands, the last one being immediate value.   
+
+    vroundps ymm0,ymm1,0011b  ; round toward zero
+                              
+  Also some of the operations on packed integers kept their two-operand or
+three-operand syntax while being promoted to AVX version. In such case these
+instructions follow exactly the same rules for operands as their SSE 
+counterparts (since operations on packed integers do not have 256-bit variants
+in AVX extension). These include "vpcmpestri", "vpcmpestrm", "vpcmpistri",
+"vpcmpistrm", "vphminposuw", "vpshufd", "vpshufhw", "vpshuflw". And there are 
+more instructions that in AVX versions keep exactly the same syntax for 
+operands as the one from SSE, without any additional options: "vcomiss", 
+"vcomisd", "vcvtss2si", "vcvtsd2si", "vcvttss2si", "vcvttsd2si", "vextractps", 
+"vpextrb", "vpextrw", "vpextrd", "vpextrq", "vmovd", "vmovq", "vmovntdqa", 
+"vmaskmovdqu", "vpmovmskb", "vpmovsxbw", "vpmovsxbd", "vpmovsxbq", "vpmovsxwd", 
+"vpmovsxwq", "vpmovsxdq", "vpmovzxbw", "vpmovzxbd", "vpmovzxbq", "vpmovzxwd", 
+"vpmovzxwq" and "vpmovzxdq".
+  The move and conversion instructions have mostly been promoted to allow
+256-bit size operands in addition to the 128-bit variant with syntax identical
+to that from SSE version of the same instruction. Each of the "vcvtdq2ps", 
+"vcvtps2dq" and "vcvttps2dq", "vmovaps", "vmovapd", "vmovups", "vmovupd",
+"vmovdqa", "vmovdqu", "vlddqu", "vmovntps", "vmovntpd", "vmovntdq", 
+"vmovsldup", "vmovshdup", "vmovmskps" and "vmovmskpd" inherits the 128-bit 
+syntax from SSE without any changes, and also allows a new form with 256-bit 
+operands in place of 128-bit ones.  
+
+    vmovups [edi],ymm6        ; store unaligned 256-bit data
+    
+  "vmovddup" has the identical 128-bit syntax as its SSE version, and it also 
+has a 256-bit version, which stores the duplicates of the lowest quad word 
+from the source operand in the lower half of destination operand, and in the 
+upper half of destination the duplicates of the low quad word from the upper 
+half of source. Both source and destination operands need then to be 256-bit 
+values.
+  "vmovlhps" and "vmovhlps" have only 128-bit versions, and each takes three
+operands, which all must be SSE registers. "vmovlhps" copies two single 
+precision values from the low quad word of second source register to the high 
+quad word of destination register, and copies the low quad word of first 
+source register into the low quad word of destination register. "vmovhlps" 
+copies two single  precision values from the high quad word of second source 
+register to the low quad word of destination register, and copies the high 
+quad word of first source register into the high quad word of destination 
+register. 
+  "vmovlps", "vmovhps", "vmovlpd" and "vmovhpd" have only 128-bit versions and
+their syntax varies depending on whether memory operand is a destination or
+source. When memory is destination, the syntax is identical to the one of
+equivalent SSE instruction, and when memory is source, the instruction requires
+three operands, first two being SSE registers and the third one 64-bit memory.
+The value put into destination is then the value copied from first source with
+either low or high quad word replaced with value from second source (the
+memory operand).
+
+    vmovhps [esi],xmm7       ; store upper half to memory
+    vmovlps xmm0,xmm7,[ebx]  ; low from memory, rest from register  
+  
+  "vmovss" and "vmovsd" have syntax identical to their SSE equivalents as long
+as one of the operands is memory, while the versions that operate purely on 
+registers require three operands (each being SSE register). The value stored
+in destination is then the value copied from first source with lowest data
+element replaced with the lowest value from second source.
+
+    vmovss xmm3,[edi]        ; low from memory, rest zeroed
+    vmovss xmm0,xmm1,xmm2    ; one value from xmm2, three from xmm1 
+  
+  "vcvtss2sd", "vcvtsd2ss", "vcvtsi2ss" and "vcvtsi2d" use the three-operand
+syntax, where destination and first source are always SSE registers, and the
+second source follows the same rules and the source in syntax of equivalent
+SSE instruction. The value stored in destination is then the value copied from
+first source with lowest data element replaced with the result of conversion. 
+
+    vcvtsi2sd xmm4,xmm4,ecx  ; 32-bit integer to 64-bit float
+    vcvtsi2ss xmm0,xmm0,rax  ; 64-bit integer to 32-bit float
+
+  "vcvtdq2pd" and "vcvtps2pd" allow the same syntax as their SSE equivalents, 
+plus the new variants with AVX register as destination and SSE register or 
+128-bit memory as source. Analogously "vcvtpd2dq", "vcvttpd2dq" and 
+"vcvtpd2ps", in addition to variant with syntax identical to SSE version, 
+allow a variant with SSE register as destination and AVX register or 256-bit 
+memory as source.          
+  "vinsertps", "vpinsrb", "vpinsrw", "vpinsrd", "vpinsrq" and "vpblendw" use 
+a syntax with four operands, where destination and first source have to be SSE
+registers, and the third and fourth operand follow the same rules as second 
+and third operand in the syntax of equivalent SSE instruction. Value stored in 
+destination is the the value copied from first source with some data elements 
+replaced with values extracted from the second source, analogously to the 
+operation of corresponding SSE instruction.   
+  
+    vpinsrd xmm0,xmm0,eax,3  ; insert double word
+
+  "vblendvps", "vblendvpd" and "vpblendvb" use a new syntax with four register
+operands: destination, two sources and a mask, where second source can also be
+a memory operand. "vblendvps" and "vblendvpd" have 256-bit variant, where 
+operands are AVX registers or 256-bit memory, as well as 128-bit variant, 
+which has operands being SSE registers or 128-bit memory. "vpblendvb" has only
+a 128-bit variant. Value stored in destination is the value copied from the
+first source with some data elements replaced, according to mask, by values 
+from the second source.
+
+    vblendvps ymm3,ymm1,ymm2,ymm7  ; blend according to mask     
+   
+  "vptest" allows the same syntax as its SSE version and also has a 256-bit
+version, with both operands doubled in size. There are also two new 
+instructions, "vtestps" and "vtestpd", which perform analogous tests, but only
+of the sign bits of corresponding single precision or double precision values,
+and set the ZF and CF accordingly. They follow the same syntax rules as 
+"vptest".
+
+    vptest ymm0,yword [ebx]  ; test 256-bit values
+    vtestpd xmm0,xmm1        ; test sign bits of 64-bit floats
+
+  "vbroadcastss", "vbroadcastsd" and "vbroadcastf128" are new instructions, 
+which broadcast the data element defined by source operand into all elements
+of corresponing size in the destination register. "vbroadcastss" needs
+source to be 32-bit memory and destination to be either SSE or AVX register. 
+"vbroadcastsd" requires 64-bit memory as source, and AVX register as 
+destination. "vbroadcastf128" requires 128-bit memory as source, and AVX
+register as destination.
+
+    vbroadcastss ymm0,dword [eax]  ; get eight copies of value          
+
+  "vinsertf128" is the new instruction, which takes four operands. The
+destination and first source have to be AVX registers, second source can be 
+SSE register or 128-bit memory location, and fourth operand should be an 
+immediate value. It stores in destination the value obtained by taking 
+contents of first source and replacing one of its 128-bit units with value of
+the second source. The lowest bit of fourth operand specifies at which 
+position that replacement is done (either 0 or 1). 
+  "vextractf128" is the new instruction with three operands. The destination
+needs to be SSE register or 128-bit memory location, the source must be AVX
+register, and the third operand should be an immediate value. It extracts
+into destination one of the 128-bit units from source. The lowest bit of third
+operand specifies, which unit is extracted.  
+  "vmaskmovps" and "vmaskmovpd" are the new instructions with three operands
+that selectively store in destination the elements from second source 
+depending on the sign bits of corresponding elements from first source. These
+instructions can operate on either 128-bit data (SSE registers) or 256-bit 
+data (AVX registers). Either destination or second source has to be a memory
+location of appropriate size, the two other operands should be registers.   
+  
+    vmaskmovps [edi],xmm0,xmm5  ; conditionally store
+    vmaskmovpd ymm5,ymm0,[esi]  ; conditionally load   
+
+  "vpermilpd" and "vpermilps" are the new instructions with three operands 
+that permute the values from first source according to the control fields from 
+second source and put the result into destination operand. It allows to use
+either three SSE registers or three AVX registers as its operands, the second
+source can be a memory of size equal to the registers used. In alternative
+form the second source can be immediate value and then the first source
+can be a memory location of the size equal to destination register.
+  "vperm2f128" is the new instruction with four operands, which selects 
+128-bit blocks of floating point data from first and second source according
+to the bit fields from fourth operand, and stores them in destination.
+Destination and first source need to be AVX registers, second source can be
+AVX register or 256-bit memory area, and fourth operand should be an immediate
+value.
+
+    vperm2f128 ymm0,ymm6,ymm7,12h  ; permute 128-bit blocks
+
+  "vzeroall" instruction sets all the AVX registers to zero. "vzeroupper" sets
+the upper 128-bit portions of all AVX registers to zero, leaving the SSE 
+registers intact. These new instructions take no operands.
+  "vldmxcsr" and "vstmxcsr" are the AVX versions of "ldmxcsr" and "stmxcsr"
+instructions. The rules for their operands remain unchanged.  
+
+  
+2.1.22  AVX2 instructions
+
+The AVX2 extension allows all the AVX instructions operating on packed integers
+to use 256-bit data types, and introduces some new instructions as well.
+  The AVX instructions that operate on packed integers and had only a 128-bit
+variants, have been supplemented with 256-bit variants, and thus their syntax
+rules became analogous to AVX instructions operating on packed floating point
+types.
+
+    vpsubb ymm0,ymm0,[esi]   ; substract 32 packed bytes
+    vpavgw ymm3,ymm0,ymm2    ; average of 16-bit integers
+
+However there are some instructions that have not been equipped with the 
+256-bit variants. "vpcmpestri", "vpcmpestrm", "vpcmpistri", "vpcmpistrm", 
+"vpextrb", "vpextrw", "vpextrd", "vpextrq", "vpinsrb", "vpinsrw", "vpinsrd", 
+"vpinsrq" and "vphminposuw" are not affected by AVX2 and allow only the 
+128-bit operands.
+  The packed shift instructions, which allowed the third operand specifying
+amount to be SSE register or 128-bit memory location, use the same rules
+for the third operand in their 256-bit variant.
+
+    vpsllw ymm2,ymm2,xmm4        ; shift words left
+    vpsrad ymm0,ymm3,xword [ebx] ; shift double words right
+
+  There are also new packed shift instructions with standard three-operand AVX
+syntax, which shift each element from first source by the amount specified in 
+corresponding element of second source, and store the results in destination. 
+"vpsllvd" shifts 32-bit elements left, "vpsllvq" shifts 64-bit elements left, 
+"vpsrlvd" shifts 32-bit elements right logically, "vpsrlvq" shifts 64-bit 
+elements right logically and "vpsravd" shifts 32-bit elements right 
+arithmetically.
+  The sign-extend and zero-extend instructions, which in AVX versions allowed
+source operand to be SSE register or a memory of specific size, in the new
+256-bit variant need memory of that size doubled or SSE register as source and
+AVX register as destination.
+
+    vpmovzxbq ymm0,dword [esi]   ; bytes to quad words
+    
+  Also "vmovntdqa" has been upgraded with 256-bit variant, so it allows to 
+transfer 256-bit value from memory to AVX register, it needs memory address 
+to be aligned to 32 bytes.   
+  "vpmaskmovd" and "vpmaskmovq" are the new instructions with syntax identical
+to "vmaskmovps" or "vmaskmovpd", and they performs analogous operation on
+packed 32-bit or 64-bit values.    
+  "vinserti128", "vextracti128", "vbroadcasti128" and "vperm2i128" are the new 
+instructions with syntax identical to "vinsertf128", "vextractf128",
+"vbroadcastf128" and "vperm2f128" respectively, and they perform analogous 
+operations on 128-bit blocks of integer data.
+  "vbroadcastss" and "vbroadcastsd" instructions have been extended to allow
+SSE register as a source operand (which in AVX could only be a memory).
+  "vpbroadcastb", "vpbroadcastw", "vpbroadcastd" and "vpbroadcastq" are the 
+new instructions which broadcast the byte, word, double word or quad word from
+the source operand into all elements of corresponing size in the destination 
+register. The destination operand can be either SSE or AVX register, and the
+source operand can be SSE register or memory of size equal to the size of data
+element.
+
+    vpbroadcastb ymm0,byte [ebx]  ; get 32 identical bytes
+                 
+  "vpermd" and "vpermps" are new three-operand instructions, which use each 
+32-bit element from first source as an index of element in second source which
+is copied into destination at position corresponding to element containing
+index. The destination and first source have to be AVX registers, and the
+second source can be AVX register or 256-bit memory.
+  "vpermq" and "vpermpd" are new three-operand instructions, which use 2-bit
+indexes from the immediate value specified as third operand to determine which
+element from source store at given position in destination. The destination
+has to be AVX register, source can be AVX register or 256-bit memory, and the
+third operand must be 8-bit immediate value.    
+  The family of new instructions performing "gather" operation have special
+syntax, as in their memory operand they use addressing mode that is unique to
+them. The base of address can be a 32-bit or 64-bit general purpose register
+(the latter only in long mode), and the index (possibly multiplied by scale
+value, as in standard addressing) is specified by SSE or AVX register. It is
+possible to use only index without base and any numerical displacement can be
+added to the address. Each of those instructions takes three operands. First 
+operand is the destination register, second operand is memory addressed with
+a vector index, and third operand is register containing a mask. The most 
+significant bit of each element of mask determines whether a value will be 
+loaded from memory into corresponding element in destination. The address of
+each element to load is determined by using the corresponding element from 
+index register in memory operand to calculate final address with given base
+and displacement. When the index register contains less elements than the 
+destination and mask registers, the higher elements of destination are zeroed.
+After the value is successfuly loaded, the corresponding element in mask 
+register is set to zero. The destination, index and mask should all be
+distinct registers, it is not allowed to use the same register in two 
+different roles.
+  "vgatherdps" loads single precision floating point values addressed by 
+32-bit indexes. The destination, index and mask should all be registers of the
+same type, either SSE or AVX. The data addressed by memory operand is 32-bit
+in size. 
+
+    vgatherdps xmm0,[eax+xmm1],xmm3    ; gather four floats
+    vgatherdps ymm0,[ebx+ymm7*4],ymm3  ; gather eight floats
+
+  "vgatherqps" loads single precision floating point values addressed by
+64-bit indexes. The destination and mask should always be SSE registers, while
+index register can be either SSE or AVX register. The data addressed by memory
+operand is 32-bit in size.
+  
+    vgatherqps xmm0,[xmm2],xmm3        ; gather two floats     
+    vgatherqps xmm0,[ymm2+64],xmm3     ; gather four floats  
+  
+  "vgatherdpd" loads double precision floating point values addressed by
+32-bit indexes. The index register should always be SSE register, the 
+destination and mask should be two registers of the same type, either SSE or
+AVX. The data addressed by memory operand is 64-bit in size. 
+  
+    vgatherdpd xmm0,[ebp+xmm1],xmm3    ; gather two doubles
+    vgatherdpd ymm0,[xmm3*8],ymm5      ; gather four doubles
+
+  "vgatherqpd" loads double precision floating point values addressed by
+64-bit indexes. The destination, index and mask should all be registers of the
+same type, either SSE or AVX. The data addressed by memory operand is 64-bit
+in size.      
+  "vpgatherdd" and "vpgatherqd" load 32-bit values addressed by either 32-bit
+or 64-bit indexes. They follow the same rules as "vgatherdps" and "vgatherqps"
+respectively.  
+  "vpgatherdq" and "vpgatherqq" load 64-bit values addressed by either 32-bit
+or 64-bit indexes. They follow the same rules as "vgatherdpd" and "vgatherqpd"
+respectively.  
+  
+
+2.1.23  Auxiliary sets of computational instructions
+
+  There is a number of additional instruction set extensions related to 
+AVX. They introduce new vector instructions (and sometimes also their SSE 
+equivalents that use classic instruction encoding), and even some new
+instructions operating on general registers that use the AVX-like encoding
+allowing the extended syntax with separate destination and source operands.
+The CPU support for each of these instruction sets needs to be determined
+separately.    
+  The AES extension provides a specialized set of instructions for the 
+purpose of cryptographic computations defined by Advanced Encryption Standard.
+Each of these instructions has two versions: the AVX one and the one with 
+SSE-like syntax that uses classic encoding. Refer to the Intel manuals for the
+details of operation of these instructions.
+  "aesenc" and "aesenclast" perform a single round of AES encryption on data
+from first source with a round key from second source, and store result in
+destination. The destination and first source are SSE registers, and the 
+second source can be SSE register or 128-bit memory. The AVX versions of these
+instructions, "vaesenc" and "vaesenclast", use the syntax with three operands,
+while the SSE-like version has only two operands, with first operand being 
+both the destination and first source.
+  "aesdec" and "aesdeclast" perform a single round of AES decryption on data
+from first source with a round key from second source. The syntax rules for
+them and their AVX versions are the same as for "aesenc".
+  "aesimc" performs the InvMixColumns transformation of source operand and
+store the result in destination. Both "aesimc" and "vaesimc" use only two
+operands, destination being SSE register, and source being SSE register or
+128-bit memory location.
+  "aeskeygenassist" is a helper instruction for generating the round key.
+It needs three operands: destination being SSE register, source being SSE
+register or 128-bit memory, and third operand being 8-bit immediate value.  
+The AVX version of this instruction uses the same syntax.  
+  The CLMUL extension introduces just one instruction, "pclmulqdq", and its
+AVX version as well. This instruction performs a carryless multiplication of
+two 64-bit values selected from first and second source according to the bit
+fields in immediate value. The destination and first source are SSE registers,
+second source is SSE register or 128-bit memory, and immediate value is 
+provided as last operand. "vpclmulqdq" takes four operands, while "pclmulqdq"
+takes only three operands, with the first one serving both the role of 
+destination and first source.
+  The FMA (Fused Multiply-Add) extension introduces additional AVX 
+instructions which perform multiplication and summation as single operation. 
+Each one takes three operands, first one serving both the role of destination 
+and first source, and the following ones being the second and third source. 
+The mnemonic of FMA instruction is obtained by appending to "vf" prefix: first 
+either "m" or "nm" to select whether result of multiplication should be taken 
+as-is or negated, then either "add" or "sub" to select whether third value 
+will be added to the product or substracted from the product, then either 
+"132", "213" or "231" to select which source operands are multiplied and which 
+one is added or substracted, and finally the type of data on which the 
+instruction operates, either "ps", "pd", "ss" or "sd". As it was with SSE 
+instructions promoted to AVX, instructions operating on packed floating point 
+values allow 128-bit or 256-bit syntax, in former all the operands are SSE 
+registers, but the third one can also be a 128-bit memory, in latter the 
+operands are AVX registers and the third one can also be a 256-bit memory. 
+Instructions that compute just one floating point result need operands to be 
+SSE registers, and the third operand can also be a memory, either 32-bit for 
+single precision or 64-bit for double precision.
+
+    vfmsub231ps ymm1,ymm2,ymm3     ; multiply and substract
+    vfnmadd132sd xmm0,xmm5,[ebx]   ; multiply, negate and add        
+
+In addition to the instructions created by the rule described above, there are
+families of instructions with mnemonics starting with either "vfmaddsub" or
+"vfmsubadd", followed by either "132", "213" or "231" and then either "ps" or
+"pd" (the operation must always be on packed values in this case). They add
+to the result of multiplication or substract from it depending on the position
+of value in packed data - instructions from the "vfmaddsub" group add when the
+position is odd and substract when the position is even, instructions from the
+"vfmsubadd" group add when the position is even and subtstract when the 
+position is odd. The rules for operands are the same as for other FMA 
+instructions.
+  The FMA4 instructions are similar to FMA, but use syntax with four operands
+and thus allow destination to be different than all the sources. Their 
+mnemonics are identical to FMA instructions with the "132", "213" or "231" cut
+out, as having separate destination operand makes such selection of operands
+superfluous. The multiplication is always performed on values from the first 
+and second source, and then the value from third source is added or 
+substracted. Either second or third source can be a memory operand, and the
+rules for the sizes of operands are the same as for FMA instructions.
+
+    vfmaddpd ymm0,ymm1,[esi],ymm2  ; multiply and add   
+    vfmsubss xmm0,xmm1,xmm2,[ebx]  ; multiply and substract
+    
+  The F16C extension consists of two instructions, "vcvtps2ph" and 
+"vcvtph2ps", which convert floating point values between single precision and
+half precision (the 16-bit floating point format). "vcvtps2ph" takes three
+operands: destination, source, and rounding controls. The third operand is
+always an immediate, the source is either SSE or AVX register containing 
+single precision values, and the destination is SSE register or memory, the
+size of memory is 64 bits when the source is SSE register and 128 bits when
+the source is AVX register. "vcvtph2ps" takes two operands, the destination
+that can be SSE or AVX register, and the source that is SSE register or memory
+with size of the half of destination operand's size.
+  The AMD XOP extension introduces a number of new vector instructions with 
+encoding and syntax analogous to AVX instructions. "vfrczps", "vfrczss",
+"vfrczpd" and "vfrczsd" extract fractional portions of single or double
+precision values, they all take two operands. The packed operations allow
+either SSE or AVX register as destination, for the other two it has to be SSE
+register. Source can be register of the same type as destination, or memory
+of appropriate size (256-bit for destination being AVX register, 128-bit for
+packed operation with destination being SSE register, 64-bit for operation
+on a solitary double precision value and 32-bit for operation on a solitary 
+single precision value).
+
+    vfrczps ymm0,[esi]           ; load fractional parts
+    
+  "vpcmov" copies bits from either first or second source into destination
+depending on the values of corresponding bits in the fourth operand (the
+selector). If the bit in selector is set, the corresponding bit from first
+source is copied into the same position in destination, otherwise the bit from
+second source is copied. Either second source or selector can be memory
+location, 128-bit or 256-bit depending on whether SSE registers or AVX
+registers are specified as the other operands.
+
+    vpcmov xmm0,xmm1,xmm2,[ebx]  ; selector in memory
+    vpcmov ymm0,ymm5,[esi],ymm2  ; source in memory
+
+The family of packed comparison instructions take four operands, the 
+destination and first source being SSE register, second source being SSE
+register or 128-bit memory and the fourth operand being immediate value
+defining the type of comparison. The mnemonic or instruction is created
+by appending to "vpcom" prefix either "b" or "ub" to compare signed or 
+unsigned bytes, "w" or "uw" to compare signed or unsigned words, "d" or "ud"
+to compare signed or unsigned double words, "q" or "uq" to compare signed or
+unsigned quad words. The respective values from the first and second source 
+are compared and the corresponding data element in destination is set to
+either all ones or all zeros depending on the result of comparison. The fourth
+operand has to specify one of the eight comparison types (table 2.5). All
+these instruction have also variants with only three operands and the type 
+of comparison encoded within the instruction name by inserting the comparison 
+mnemonic after "vpcom".
+
+    vpcomb   xmm0,xmm1,xmm2,4    ; test for equal bytes
+    vpcomgew xmm0,xmm1,[ebx]     ; compare signed words
+
+   Table 2.5  XOP comparisons
+  ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+  ³ Code ³ Mnemonic ³ Description             ³
+  ÆÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
+  ³ 0    ³ lt       ³ less than               ³
+  ³ 1    ³ le       ³ less than or equal      ³
+  ³ 2    ³ gt       ³ greater than            ³
+  ³ 3    ³ ge       ³ greater than or equal   ³
+  ³ 4    ³ eq       ³ equal                   ³
+  ³ 5    ³ neq      ³ not equal               ³
+  ³ 6    ³ false    ³ false                   ³
+  ³ 7    ³ true     ³ true                    ³
+  ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+  "vpermil2ps" and "vpermil2pd" set the elements in destination register to
+zero or to a value selected from first or second source depending on the 
+corresponding bit fields from the fourth operand (the selector) and the 
+immediate value provided in fifth operand. Refer to the AMD manuals for the
+detailed explanation of the operation performed by these instructions. Each
+of the first four operands can be a register, and either second source or
+selector can be memory location, 128-bit or 256-bit depending on whether SSE 
+registers or AVX registers are used for the other operands.
+
+    vpermil2ps ymm0,ymm3,ymm7,ymm2,0  ; permute from two sources
+  
+  "vphaddbw" adds pairs of adjacent signed bytes to form 16-bit values and 
+stores them at the same positions in destination. "vphaddubw" does the same 
+but treats the bytes as unsigned. "vphaddbd" and "vphaddubd" sum all bytes 
+(either signed or unsigned) in each four-byte block to 32-bit results, 
+"vphaddbq" and "vphaddubq" sum all bytes in each eight-byte block to 
+64-bit results, "vphaddwd" and "vphadduwd" add pairs of words to 32-bit 
+results, "vphaddwq" and "vphadduwq" sum all words in each four-word block to 
+64-bit results, "vphadddq" and "vphaddudq" add pairs of double words to 64-bit
+results. "vphsubbw" substracts in each two-byte block the byte at higher 
+position from the one at lower position, and stores the result as a signed 
+16-bit value at the corresponding position in destination, "vphsubwd" 
+substracts in each two-word block the word at higher position from the one at
+lower position and makes signed 32-bit results, "vphsubdq" substract in each
+block of two double word the one at higher position from the one at lower
+position and makes signed 64-bit results. Each of these instructions takes
+two operands, the destination being SSE register, and the source being SSE
+register or 128-bit memory.
+
+    vphadduwq xmm0,xmm1          ; sum quadruplets of words 
+  
+  "vpmacsww" and "vpmacssww" multiply the corresponding signed 16-bit values 
+from the first and second source and then add the products to the parallel 
+values from the third source, then "vpmacsww" takes the lowest 16 bits of the 
+result and "vpmacssww" saturates the result down to 16-bit value, and they 
+store the final 16-bit results in the destination. "vpmacsdd" and "vpmacssdd" 
+perform the analogous operation on 32-bit values. "vpmacswd" and "vpmacswd" do 
+the same calculation only on the low 16-bit values from each 32-bit block and 
+form the 32-bit results. "vpmacsdql" and "vpmacssdql" perform such operation 
+on the low 32-bit values from each 64-bit block and form the 64-bit results, 
+while "vpmacsdqh" and "vpmacssdqh" do the same on the high 32-bit values from 
+each 64-bit block, also forming the 64-bit results. "vpmadcswd" and 
+"vpmadcsswd" multiply the corresponding signed 16-bit value from the first
+and second source, then sum all the four products and add this sum to each
+16-bit element from third source, storing the truncated or saturated result
+in destination. All these instructions take four operands, the second source
+can be 128-bit memory or SSE register, all the other operands have to be
+SSE registers.
+
+    vpmacsdd xmm6,xmm1,[ebx],xmm6  ; accumulate product
+
+  "vpperm" selects bytes from first and second source, optionally applies a
+separate transformation to each of them, and stores them in the destination. 
+The bit fields in fourth operand (the selector) specify for each position in 
+destination what byte from which source is taken and what operation is applied 
+to it before it is stored there. Refer to the AMD manuals for the detailed 
+information about these bit fields. This instruction takes four operands, 
+either second source or selector can be a 128-bit memory (or they can be SSE
+registers both), all the other operands have to be SSE registers.
+  "vpshlb", "vpshlw", "vpshld" and "vpshlq" shift logically bytes, words, double
+words or quad words respectively. The amount of bits to shift by is specified
+for each element separately by the signed byte placed at the corresponding
+position in the third operand. The source containing elements to shift is
+provided as second operand. Either second or third operand can be 128-bit 
+memory (or they can be SSE registers both) and the other operands have to be 
+SSE registers.
+
+    vpshld xmm3,xmm1,[ebx]       ; shift bytes from xmm1
+ 
+"vpshab", "vpshaw", "vpshad" and "vpshaq" arithmetically shift bytes, words, 
+double words or quad words. These instructions follow the same rules as the 
+logical shifts described above. "vprotb", "vprotw", "vprotd" and "vprotq" 
+rotate bytes, word, double words or quad words. They follow the same rules as
+shifts, but additionally allow third operand to be immediate value, in which
+case the same amount of rotation is specified for all the elements in source.
+
+    vprotb xmm0,[esi],3          ; rotate bytes to the left 
+
+  The MOVBE extension introduces just one new instruction, "movbe", which
+swaps bytes in value from source before storing it in destination, so can
+be used to load and store big endian values. It takes two operands, either 
+the destination or source should be a 16-bit, 32-bit or 64-bit memory (the 
+last one being only allowed in long mode), and the other operand should be 
+a general register of the same size.  
+  The BMI extension, consisting of two subsets - BMI1 and BMI2, introduces 
+new instructions operating on general registers, which use the same encoding
+as AVX instructions and so allow the extended syntax. All these instructions
+use 32-bit operands, and in long mode they also allow the forms with 64-bit
+operands.
+  "andn" calculates the bitwise AND of second source with the inverted bits
+of first source and stores the result in destination. The destination and 
+the first source have to be general registers, the second source can be 
+general register or memory.
+
+    andn edx,eax,[ebx]   ; bit-multiply inverted eax with memory
+
+  "bextr" extracts from the first source the sequence of bits using an index
+and length specified by bit fields in the second source operand and stores
+it into destination. The lowest 8 bits of second source specify the position 
+of bit sequence to extract and the next 8 bits of second source specify the 
+length of sequence. The first source can be a general register or memory,
+the other two operands have to be general registers.
+
+    bextr eax,[esi],ecx  ; extract bit field from memory
+    
+  "blsi" extracts the lowest set bit from the source, setting all the other 
+bits in destination to zero. The destination must be a general register,
+the source can be general register or memory.
+
+    blsi rax,r11         ; isolate the lowest set bit       
+  
+  "blsmsk" sets all the bits in the destination up to the lowest set bit in 
+the source, including this bit. "blsr" copies all the bits from the source to
+destination except for the lowest set bit, which is replaced by zero. These
+instructions follow the same rules for operands as "blsi".
+  "tzcnt" counts the number of trailing zero bits, that is the zero bits up to
+the lowest set bit of source value. This instruction is analogous to "lzcnt"
+and follows the same rules for operands, so it also has a 16-bit version, 
+unlike the other BMI instructions.
+  "bzhi" is BMI2 instruction, which copies the bits from first source to
+destination, zeroing all the bits up from the position specified by second
+source. It follows the same rules for operands as "bextr".
+  "pext" uses a mask in second source operand to select bits from first 
+operands and puts the selected bits as a continuous sequence into destination.
+"pdep" performs the reverse operation - it takes sequence of bits from the
+first source and puts them consecutively at the positions where the bits in 
+second source are set, setting all the other bits in destination to zero.
+These BMI2 instructions follow the same rules for operands as "andn".    
+  "mulx" is a BMI2 instruction which performs an unsigned multiplication of
+value from EDX or RDX register (depending on the size of specified operands)
+by the value from third operand, and stores the low half of result in the
+second operand, and the high half of result in the first operand, and it does
+it without affecting the flags. The third operand can be general register or 
+memory, and both the destination operands have to be general registers.
+
+    mulx edx,eax,ecx     ; multiply edx by ecx into edx:eax   
+
+  "shlx", "shrx" and "sarx" are BMI2 instructions, which perform logical or
+arithmetical shifts of value from first source by the amount specified by
+second source, and store the result in destination without affecting the 
+flags. The have the same rules for operands as "bzhi" instruction.
+  "rorx" is a BMI2 instruction which rotates right the value from source
+operand by the constant amount specified in third operand and stores the
+result in destination without affecting the flags. The destination operand
+has to be general register, the source operand can be general register or
+memory, and the third operand has to be an immediate value.
+
+    rorx eax,edx,7       ; rotate without affecting flags
+                     
+  The TBM is an extension designed by AMD to supplement the BMI set. The 
+"bextr" instruction is extended with a new form, in which second source is
+a 32-bit immediate value. "blsic" is a new instruction which performs the
+same operation as "blsi", but with the bits of result reversed. It uses the
+same rules for operands as "blsi". "blsfill" is a new instruction, which takes
+the value from source, sets all the bits below the lowest set bit and store
+the result in destination, it also uses the same rules for operands as "blsi".
+  "blci", "blcic", "blcs", "blcmsk" and "blcfill" are instructions analogous
+to "blsi", "blsic", "blsr", "blsmsk" and "blsfill" respectively, but they
+perform the bit-inverted versions of the same operations. They follow the
+same rules for operands as the instructions they reflect.
+  "tzmsk" finds the lowest set bit in value from source operand, sets all bits
+below it to 1 and all the rest of bits to zero, then writes the result to 
+destination. "t1mskc" finds the least significant zero bit in the value from 
+source  operand, sets the bits below it to zero and all the other bits to 1, 
+and writes the result to destination. These instructions have the same rules
+for operands as "blsi".
+      
+
+2.1.24  Other extensions of instruction set
 
 There is a number of additional instruction set extensions recognized by flat
 assembler, and the general syntax of the instructions introduced by those
 extensions is provided here. For a detailed information on the operations
-performed by them, check out the manuals from Intel (for the VMX and SVM
-extensions) or AMD (for the SVM extension).
+performed by them, check out the manuals from Intel (for the VMX, SMX, XSAVE, 
+RDRAND, FSGSBASE, INVPCID, HLE and RTM extensions) or AMD (for the SVM 
+extension).
   The Virtual-Machine Extensions (VMX) provide a set of instructions for the
 management of virtual machines. The "vmxon" instruction, which enters the VMX
 operation, requires a single 64-bit memory operand, which should be a physical
 address of memory region, which the logical processor may use to support VMX
 operation. The "vmxoff" instruction, which leaves the VMX operation, has no
 operands. The "vmlaunch" and "vmresume", which launch or resume the virtual
-machines, and "vmcall", which allows guest software to call the VM monitor, use
-no operands either.
+machines, and "vmcall", which allows guest software to call the VM monitor, 
+use no operands either.
   The "vmptrld" loads the physical address of current Virtual Machine Control
 Structure (VMCS) from its memory operand, "vmptrst" stores the pointer to
 current VMCS into address specified by its memory operand, and "vmclear" sets
@@ -2510,10 +3201,10 @@ provides a physical address of the secure loader block (SLB).
   The "vmrun" instruction is used to start a guest virtual machine,
 its only operand should be an accumulator register (AX, EAX or RAX, the
 last one available only in long mode) providing the physical address of the
-virtual machine control block (VMCB). The "vmsave" stores a subset of processor
-state into VMCB specified by its operand, and "vmload" loads the same subset
-of processor state from a specified VMCB. The same operand rules as for the
-"vmrun" apply to those two instructions.
+virtual machine control block (VMCB). The "vmsave" stores a subset of 
+processor state into VMCB specified by its operand, and "vmload" loads the 
+same subset of processor state from a specified VMCB. The same operand rules 
+as for the "vmrun" apply to those two instructions.
   "vmmcall" allows the guest software to call the VMM. This instruction takes
 no operands.
   "stgi" set the global interrupt flag to 1, and "clgi" zeroes it. These
@@ -2521,6 +3212,44 @@ instructions take no operands.
   "invlpga" invalidates the TLB mapping for a virtual page specified by the
 first operand (which has to be accumulator register) and address space
 identifier specified by the second operand (which must be ECX register).
+  The XSAVE set of instructions allows to save and restore processor state
+components. "xsave" and "xsaveopt" store the components of processor state 
+defined by bit mask in EDX and EAX registers into area defined by memory 
+operand. "xrstor" restores from the area specified by memory operand the 
+components of processor state defined by mask in EDX and EAX. The "xsave64",
+"xsaveopt64" and "xrstor64" are 64-bit versions of these instructions, allowed
+only in long mode.
+  "xgetbv" read the contents of 64-bit XCR (extended control register)
+specified in ECX register into EDX and EAX registers. "xsetbv" writes the
+contents of EDX and EAX into the 64-bit XCR specified by ECX register. These
+instructions have no operands.
+  The RDRAND extension introduces one new instruction, "rdrand", which loads
+the hardware-generated random value into general register. It takes one
+operand, which can be 16-bit, 32-bit or 64-bit register (with the last one 
+being allowed only in long mode).
+  The FSGSBASE extension adds long mode instructions that allow to read and 
+write the segment base registers for FS and GS segments. "rdfsbase" and 
+"rdgsbase" read the corresponding segment base registers into operand, while 
+"wrfsbase" and "wrgsbase" write the value of operand into those register.
+All these instructions take one operand, which can be 32-bit or 64-bit general
+register.  
+  The INVPCID extension adds "invpcid" instruction, which invalidates mapping
+in the TLBs and paging caches based on the invalidation type specified in 
+first operand and PCID invalidate descriptor specified in second operand.
+The first operands should be 32-bit general register when not in long mode,
+or 64-bit general register when in long mode. The second operand should be
+128-bit memory location.  
+  The HLE and RTM extensions provide set of instructions for the transactional
+management. The "xacquire" and "xrelease" are new prefixes that can be used
+with some of the instructions to start or end lock elision on the memory
+address specified by prefixed instruction. The "xbegin" instruction starts
+the transactional execution, its operand is the address a fallback routine
+that gets executes in case of transaction abort, specified like the operand
+for near jump instruction. "xend" marks the end of transcational execution
+region, it takes no operands. "xabort" forces the transaction abort, it takes
+an 8-bit immediate value as its only operand, this value is passed in the
+highest bits of EAX to the fallback routine. "xtest" checks whether there is
+transactional execution in progress, this instruction takes no operands.
 
 
 2.2  Control directives
@@ -2584,7 +3313,7 @@ unlike numerical constants, cannot become assembly-time variables.
 
 2.2.2  Conditional assembly
 
-"if" directive causes come block of instructions to be assembled only under
+"if" directive causes some block of instructions to be assembled only under
 certain condition. It should be followed by logical expression specifying the
 condition, instructions in next lines will be assembled only when this
 condition is met, otherwise they will be skipped. The optional "else if"
@@ -2612,6 +3341,11 @@ even if symbol is used only after this check). The "defined" operator can be
 followed by any expression, usually just by a single symbol name; it checks
 whether the given expression contains only symbols that are defined in the
 source and accessible from the current position.
+  With "relativeto" operator it is possible to check whether values of two
+expressions differ only by constant amount. The valid syntax is a numerical
+expression followed by "relativeto" and then another expression (possibly
+register-based). Labels that have no simple numerical value can be tested
+this way to determine what kind of operations may be possible with them.
   The following simple example uses the "count" constant that should be
 defined somewhere in source:
 
@@ -2642,7 +3376,7 @@ which follows the "else if", is evaluated and if it's true, the second block
 of instructions get assembled, otherwise the last block of instructions, which
 follows the line containing only "else", is assembled.
   There are also operators that allow comparison of values being any chains of
-symbols. The "eq" compares two such values whether they are exactly the same.
+symbols. The "eq" compares whether two such values are exactly the same.
 The "in" operator checks whether given value is a member of the list of values
 following this operator, the list should be enclosed between "<" and ">"
 characters, its members should be separated with commas. The symbols are
@@ -2744,7 +3478,7 @@ operator is specified, one byte is loaded (thus value is in range from 0 to
 255). The loaded data cannot exceed current offset.
   The "store" directive can modify the already generated code by replacing
 some of the previously generated data with the value defined by given
-numerical expression, which follow. The expression can be preceded by the
+numerical expression, which follows. The expression can be preceded by the
 optional size operator to specify how large value the expression defines, and
 therefore how much bytes will be stored, if there is no size operator, the
 size of one byte is assumed. Then the "at" operator and the numerical
@@ -2766,7 +3500,7 @@ generated in current addressing space you can use such block of directives:
     end repeat
 
 and each byte of code will be xored with the value defined by "c" constant.
-  "virtual" defines virtual data at specified address. This data won't be
+  "virtual" defines virtual data at specified address. This data will not be
 included in the output file, but labels defined there can be used in other
 parts of source. This directive can be followed by "at" operator and the
 numerical expression specifying the address for virtual data, otherwise is
@@ -2793,7 +3527,7 @@ register, for example:
     end virtual
 
 With such definition instruction "mov ax,[LDT_limit]" will be assembled
-to "mov ax,[bx]".
+to the same instruction as "mov ax,[bx]".
   Declaring defined data values or instructions inside the virtual block would
 also be useful, because the "load" directive can be used to load the values
 from the virtually generated code into a constants. This directive should be
@@ -2860,14 +3594,16 @@ can be used to display values of some constants, for example:
     end repeat
     display 13,10
 
-This block of directives calculates the four hexadecimal digits of 16-bit value
-and converts them into characters for displaying. Note that this won't work if
-the adresses in current addressing space are relocatable (as it might happen
-with PE or object output formats), since only absolute values can be used this
-way. The absolute value may be obtained by calculating the relative address,
-like "$-$$", or "rva $" in case of PE format.
+This block of directives calculates the four hexadecimal digits of 16-bit
+value and converts them into characters for displaying. Note that this will 
+not work if the adresses in current addressing space are relocatable (as it 
+might happen with PE or object output formats), since only absolute values can
+be used this way. The absolute value may be obtained by calculating the 
+relative address, like "$-$$", or "rva $" in case of PE format.
   The "err" directive immediately terminates the assembly process when it is
 encountered by assembler.
+  The "assert" directive tests whether the logical expression that follows it
+is true, and if not, it signalizes the error.
 
 
 2.2.6  Multiple passes
@@ -2970,14 +3706,14 @@ also defined somewhere later.
 analogous cases, however any other kinds of predictions my not be so simple and
 you should never rely on them this way.
   The "err" directive, usually used to stop the assembly when some condition is
-met, stops the assembly immediatelly, regardless of whether the currect pass
+met, stops the assembly immediately, regardless of whether the current pass
 is final or intermediate. So even when the condition that caused this directive
-to be interpreted is temporary, and would eventually disappear in the later
-passes, the assembly is stopped anyway. If it's needed to stop the assembly only
-when the condition is permanent, and not just occuring in the intermediate
-assembly passes, the trick with "rb -1" can be used instead. The "rb" directive
-does not cause an error when it is provided with negative value in the
-intermediate passes.
+to be interpreted is mispredicted and temporary, and would eventually disappear 
+in the later passes, the assembly is stopped anyway.
+  The "assert" directive signalizes the error only if its expression is false
+after all the symbols have been resolved. You can use "assert 0" in place of
+"err" when you do not want to have assembly stopped during the intermediate
+passes.
 
 
 2.3  Preprocessor directives
@@ -3000,11 +3736,14 @@ to the line containing the "include" directive. There are no limits to the
 number of included files as long as they fit in memory.
   The quoted path can contain environment variables enclosed within "%"
 characters, they will be replaced with their values inside the path, both the
-"\" and "/" characters are allowed as a path separators. If no absolute path
-is given, the file is first searched for in the directory containing file
-which included it and when it's not found there, in the directory containing
-the main source file (the one specified in command line). These rules concern
-also paths given with the "file" directive.
+"\" and "/" characters are allowed as a path separators. The file is first 
+searched for in the directory containing file which included it and when it is
+not found there, the search is continued in the directories specified in the 
+environment variable called INCLUDE (the multiple paths separated with 
+semicolons can be defined there, they will be searched in the same order as 
+specified). If file was not found in any of these places, preprocessor looks
+for it in the directory containing the main source file (the one specified in 
+command line). These rules concern also paths given with the "file" directive.
 
 
 2.3.2  Symbolic constants
@@ -3037,7 +3776,7 @@ separated with commas. So "restore d" after the above definitions will give
 "d" constant back the value "edx", the second one will restore it to value
 "dword", and one more will revert "d" to original meaning as if no such
 constant was defined. If there was no constant defined of given name,
-"restore" won't cause an error, it will be just ignored.
+"restore" will not cause an error, it will be just ignored.
   Symbolic constant can be used to adjust the syntax of assembler to personal
 preferences. For example the following set of definitions provides the handy
 shortcuts for all the size operators:
@@ -3050,6 +3789,7 @@ shortcuts for all the size operators:
     q equ qword
     t equ tword
     x equ dqword
+    y equ qqword
 
   Because symbolic constant may also have an empty value, it can be used to
 allow the syntax with "offset" word before any address value:
@@ -3165,10 +3905,13 @@ given, this macroinstruction will become two macroinstructions of the previous
 definition, so "mov es,ds,dx" will be assembled as "push ds", "pop es" and
 "mov ds,dx".
   By placing the "*" after the name of argument you can mark the argument as
-required - preprocessor won't allow it to have an empty value. For example the
-above macroinstruction could be declared as "macro mov op1*,op2*,op3" to make
-sure that first two arguments will always have to be given some non empty
+required - preprocessor will not allow it to have an empty value. For example 
+the above macroinstruction could be declared as "macro mov op1*,op2*,op3" to 
+make sure that first two arguments will always have to be given some non empty
 values.
+  Alternatively, you can provide the default value for argument, by placing
+the "=" followed by value after the name of argument. Then if the argument
+has an empty value provided, the default value will be used instead.
   When it's needed to provide macroinstruction with argument that contains
 some commas, such argument should be enclosed between "<" and ">" characters.
 If it contains more than one "<" character, the same number of ">" should be
@@ -3176,8 +3919,8 @@ used to tell that the value of argument ends.
   "purge" directive allows removing the last definition of specified
 macroinstruction. It should be followed by one or more names of
 macroinstructions, separated with commas. If such macroinstruction has not
-been defined, you won't get any error. For example after having the syntax of
-"mov" extended with the macroinstructions defined above, you can disable
+been defined, you will not get any error. For example after having the syntax
+of "mov" extended with the macroinstructions defined above, you can disable
 syntax with three operands back by using "purge mov" directive. Next
 "purge mov" will disable also syntax for two operands being segment registers,
 and all the next such directives will do nothing.
@@ -3227,7 +3970,7 @@ macroinstruction defines and uses internally. For example:
      }
 
 Each time this macroinstruction is used, "move" will become other unique name
-in its instructions, so you won't get an error you normally get when some
+in its instructions, so you will not get an error you normally get when some
 label is defined more than once.
   "forward", "reverse" and "common" directives divide macroinstruction into
 blocks, each one processed after the processing of previous is finished. They
@@ -3272,8 +4015,8 @@ example:
      }
 
 This macroinstruction can be used for calling the procedures using STDCALL
-convention, arguments are pushed on stack in the reverse order. For example
-"stdcall foo,1,2,3" will be assembled as:
+convention, which has all the arguments pushed on stack in the reverse order. 
+For example "stdcall foo,1,2,3" will be assembled as:
 
     push 3
     push 2
@@ -3428,9 +4171,10 @@ used. This label will be also attached at the beginning of every name starting
 with dot in the contents of macroinstruction. The macroinstruction defined
 using the "struc" directive can have the same name as some other
 macroinstruction defined using the "macro" directive, structure
-macroinstruction won't prevent the standard macroinstruction being processed
-when there is no label before it and vice versa. All the rules and features
-concerning standard macroinstructions apply to structure macroinstructions.
+macroinstruction will not prevent the standard macroinstruction from being 
+processed when there is no label before it and vice versa. All the rules and 
+features concerning standard macroinstructions apply to structure 
+macroinstructions.
   Here is the sample of structure macroinstruction:
 
     struc point x,y
@@ -3470,10 +4214,7 @@ structure macroinstructions, separated with commas.
 
 The "rept" directive is a special kind of macroinstruction, which makes given
 amount of duplicates of the block enclosed with braces. The basic syntax is
-"rept" directive followed by number (it cannot be an expression, since
-preprocessor doesn't do calculations, if you need repetitions based on values
-calculated by assembler, use one of the code repeating directives that are
-processed by assembler, see 2.2.3), and then block of source enclosed between
+"rept" directive followed by number and then block of source enclosed between
 the "{" and "}" characters. The simplest example:
 
     rept 5 { in al,dx }
@@ -3524,6 +4265,16 @@ of counter. For example:
 will generate code which will clear the contents of eight SSE registers.
 You can define multiple counters separated with commas, and each one can have
 different base.
+  The number of repetitions and the base values for counters can be specified
+using the numerical expressions with operator rules identical as in the case
+of assembler. However each value used in such expression must either be a
+directly specified number, or a symbolic constant with value also being an
+expression that can be calculated by preprocessor (in such case the value
+of expression associated with symbolic constant is calculated first, and then
+substituted into the outer expression in place of that constant). If you need
+repetitions based on values that can only be calculated at assembly time, use
+one of the code repeating directives that are processed by assembler, see
+section 2.2.3.
   The "irp" directive iterates the single argument through the given list of
 parameters. The syntax is "irp" followed by the argument name, then the comma
 and then the list of parameters. The parameters are specified in the same
@@ -3577,7 +4328,7 @@ as is. In this example:
     match +,- { include 'second.inc' }
 
 the first file will get included, since "+" after comma matches the "+" in
-pattern, and the second file won't be included, since there is no match.
+pattern, and the second file will not be included, since there is no match.
   To match any other symbol literally, it has to be preceded by "=" character
 in the pattern. Also to match the "=" character itself, or the comma, the
 "==" and "=," constructions have to be used. For example the "=a==" pattern
@@ -3601,8 +4352,8 @@ matched with "b". But in this case:
 
     match a b, 1 { db a }
 
-there will be nothing left for "b" to match, so the block won't get processed
-at all.
+there will be nothing left for "b" to match, so the block will not get 
+processed at all.
   The block of source defined by match is processed in the same way as any
 macroinstruction, so any operators specific to macroinstructions can be used
 also in this case.
@@ -3638,12 +4389,12 @@ that the "fix" directive and prioritized symbolic constants are processed in
 a separate stage, and all other preprocessing is done after on the resulting
 source.
   The standard preprocessing that comes after, on each line begins with
-recognition of the first symbol. It begins with checking for the preprocessor
+recognition of the first symbol. It starts with checking for the preprocessor
 directives, and when none of them is detected, preprocessor checks whether the
 first symbol is macroinstruction. If no macroinstruction is found, it moves
 to the second symbol of line, and again begins with checking for directives,
 which in this case is only the "equ" directive, as this is the only one that
-occurs as the second symbol in line. If there's no directive, the second
+occurs as the second symbol in line. If there is no directive, the second
 symbol is checked for the case of structure macroinstruction and when none
 of those checks gives the positive result, the symbolic constants are replaced
 with their values and such line is passed to the assembler.
@@ -3703,6 +4454,33 @@ then replaced with matched value when generating the new lines defined by the
 block enclosed with braces. So if the "list" had value "1,2", the above line
 would generate the line containing "foo 1,2", which would then go through the
 standard preprocessing.
+  The other special case is in the parameters of "rept" directive. The amount
+of repetitions and the base value for counter can be specified using
+numerical expressions, and if there is a symbolic constant with non-numerical
+name used in such an expression, preprocessor tries to evaluate its value as 
+a numerical expression and if succeeds, it replaces the symbolic constant with 
+the result of that calculation and continues to evaluate the primary 
+expression. If the expression inside that symbolic constants also contains 
+some symbolic constants, preprocessor will try to calculate all the needed 
+values recursively. 
+  This allows to perform some calculations at the time of preprocessing, as
+long as all the values used are the numbers known at the preprocessing stage. 
+A single repetition with "rept" can be used for the sole purpose of 
+calculating some value, like in this example: 
+
+    define a b+4
+    define b 3
+    rept 1 result:a*b+2 { define c result }
+    
+To compute the base value for "result" counter, preprocessor replaces the "b"
+with its value and recursively calculates the value of "a", obtaining 7 as
+the result, then it calculates the main expression with the result being 23.
+The "c" then gets defined with the first value of counter (because the block
+is processed just one time), which is the result of the computation, so the 
+value of "c" is simple "23" symbol. Note that if "b" is later redefined with
+some other numerical value, the next time and expression containing "a" is
+calculated, the value of "a" will reflect the new value of "b", because the
+symbolic constant contains just the text of the expression.
   There is one more special case - when preprocessor goes to checking the
 second symbol in the line and it happens to be the colon character (what is
 then interpreted by assembler as definition of a label), it stops in this
@@ -3749,9 +4527,10 @@ Now when assembler processes it, the condition for the "if" is false, and
 the "a" constant doesn't get defined. However symbolic constant "b" was
 processed normally, even though its definition was put just next to the one
 of "a". So because of the possible confusion you should be very careful
-every time when mixing the features of preprocessor and assembler - always
-try to imagine what your source will become after the preprocessing, and
-thus what the assembler will see and do its multiple passes on.
+every time when mixing the features of preprocessor and assembler - in such
+cases it is important to realize what the source will become after the 
+preprocessing, and thus what the assembler will see and do its multiple passes 
+on.
 
 
 2.4  Formatter directives
@@ -3801,9 +4580,13 @@ needs. Default size of heap is 65535.
 To select the Portable Executable output format, use "format PE" directive, it
 can be followed by additional format settings: first the target subsystem
 setting, which can be "console" or "GUI" for Windows applications, "native"
-for Windows drivers, "EFI", "EFIboot" or "EFIruntime" for the UEFI. "DLL"
-keyword following the subsystem setting marks the output file as a dynamic link
-library. Then can follow the "at" operator and the numerical expression
+for Windows drivers, "EFI", "EFIboot" or "EFIruntime" for the UEFI, it may be
+followed by the minimum version of system that the executable is targeted to
+(specified in form of floating-point value). Optional "DLL" and "WDM" keywords
+mark the output file as a dynamic link library and WDM driver respectively,
+and the "large" keyword marks the executable as able to handle addresses
+larger than 2 GB.
+  After those settings can follow the "at" operator and a numerical expression
 specifying the base of PE image and then optionally "on" operator followed by
 the quoted string containing file name selects custom MZ stub for PE program
 (when specified file is not a MZ executable, it is treated as a flat binary
@@ -3855,16 +4638,18 @@ to be defined there. The same applies to the resource data when the "resource"
 identifier is followed by "from" operator and quoted file name - in such case
 data is  taken from the given resource file.
   The "rva" operator can be used inside the numerical expressions to obtain
-the RVA of the item addressed by the value it is applied to.
+the RVA of the item addressed by the value it is applied to, that is the
+offset relative to the base of PE image.
 
 
 2.4.3  Common Object File Format
 
 To select Common Object File Format, use "format COFF" or "format MS COFF"
-directive whether you want to create classic or Microsoft's COFF file. The
-default code setting for this format is 32-bit. To create the file in
-Microsoft's COFF format for the x86-64 architecture, use "format MS64 COFF"
-setting, in such case long mode code is generated by default.
+directive, depending whether you want to create classic (DJGPP) or Microsoft's 
+variant of COFF file. The default code setting for this format is 32-bit. To 
+create the file in Microsoft's COFF format for the x86-64 architecture, use 
+"format MS64 COFF" setting, in such case long mode code is generated by 
+default.
   "section" directive defines a new section, it should be followed by quoted
 string defining the name of section, then one or more section flags can
 follow. Section flags available for both COFF variants are "code" and "data",
@@ -3924,12 +4709,15 @@ the code like:
     printf = PLT _printf
 
   To create executable file, follow the format choice directive with the
-"executable" keyword. It allows to use "entry" directive followed by the value
-to set as entry point of program. On the other hand it makes "extrn" and
-"public" directives unavailable, and instead of "section" there should be the
-"segment" directive used, followed only by one or more segment permission
-flags. The origin of segment is aligned to page (4096 bytes), and available
-flags for are: "readable", "writeable" and "executable".
-
+"executable" keyword and optionally the number specifying the brand of the
+target operating system (for example value 3 would mark the executable
+for Linux system). With this format selected it is allowed to use "entry"
+directive followed by the value to set as entry point of program. On the other
+hand it makes "extrn" and "public" directives unavailable, and instead of
+"section" there should be the "segment" directive used, followed by one or
+more segment permission flags and optionally a marker of special ELF
+executable segment, which can be "interpreter", "dynamic" or "note". The
+origin of segment is aligned to page (4096 bytes), and available permission
+flags are: "readable", "writeable" and "executable".
 
 EOF
