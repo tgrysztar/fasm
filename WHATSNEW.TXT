@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.70.01 (Apr 30, 2012)
+
+[-] Corrected a recently introduced bug that caused some incorrect
+    address expressions to cause an error prematurely during the
+    parsing stage.
+
+
 version 1.70 (Apr 17, 2012)
 
 [+] Added support for AVX, AVX2, AES, CLMUL, FMA, RDRAND, FSGSBASE, F16C,
