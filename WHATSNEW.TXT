@@ -2,9 +2,17 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.70.02 (May 22, 2012)
+
+[-] Corrected the optimization of segment prefixes when the extended syntax
+    of some string instructions ("cmps", "lods", "movs" and "outs") is
+    used in long mode. Now it is consistent with optimizations done with
+    all the other instructions.
+
+
 version 1.70.01 (Apr 30, 2012)
 
-[-] Corrected a recently introduced bug that caused some incorrect
+[-] Corrected a recently introduced bug that caused some illegal
     address expressions to cause an error prematurely during the
     parsing stage.
 
@@ -19,7 +27,7 @@ version 1.70 (Apr 17, 2012)
 [+] Extended the syntax of "rept" directive to allow numerical expressions
     to be calculated by preprocessor in its arguments.
 
-[+] Added "large" and "NX" settings from PE format.
+[+] Added "large" and "NX" settings for PE format.
 
 [+] Allowed PE fixups to be resolved anywhere in the generated executable.
 

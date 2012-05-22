@@ -3312,10 +3312,8 @@ movs_instruction:
 	je	invalid_address_size
 	call	address_16bit_prefix
       movs_store:
-	cmp	[segment_register],4
-	je	movs_segment_ok
-	call	store_segment_prefix
-      movs_segment_ok:
+	xor	ebx,ebx
+	call	store_segment_prefix_if_necessary
 	mov	al,0A4h
       movs_check_size:
 	mov	bl,[operand_size]
@@ -3359,10 +3357,8 @@ lods_instruction:
 	je	invalid_address_size
 	call	address_16bit_prefix
       lods_store:
-	cmp	[segment_register],4
-	je	lods_segment_ok
-	call	store_segment_prefix
-      lods_segment_ok:
+	xor	ebx,ebx
+	call	store_segment_prefix_if_necessary
 	mov	al,0ACh
 	jmp	movs_check_size
 stos_instruction:
@@ -3452,10 +3448,8 @@ cmps_instruction:
 	je	invalid_address_size
 	call	address_16bit_prefix
       cmps_store:
-	cmp	[segment_register],4
-	je	cmps_segment_ok
-	call	store_segment_prefix
-      cmps_segment_ok:
+	xor	ebx,ebx
+	call	store_segment_prefix_if_necessary
 	mov	al,0A6h
 	jmp	movs_check_size
 ins_instruction:
@@ -3537,10 +3531,8 @@ outs_instruction:
 	je	invalid_address_size
 	call	address_16bit_prefix
       outs_store:
-	cmp	[segment_register],4
-	je	outs_segment_ok
-	call	store_segment_prefix
-      outs_segment_ok:
+	xor	ebx,ebx
+	call	store_segment_prefix_if_necessary
 	mov	al,6Eh
 	jmp	ins_check_size
 xlat_instruction:

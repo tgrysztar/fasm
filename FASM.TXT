@@ -4615,7 +4615,7 @@ from the resource file, it can be achieved by writing the "from" operator and
 quoted file name after the "resource"  identifier. Below are the examples of
 sections containing some special PE data:
 
-    section '.reloc' data discardable fixups
+    section '.reloc' data readable discardable fixups
     section '.rsrc' data readable resource from 'my.res'
 
   "entry" directive sets the entry point for Portable Executable, the value of
