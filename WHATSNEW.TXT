@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.70.03 (Jun 29, 2012)
+
+[-] Allowed to freely upgrade or downgrade the relocatable addresses in
+    object format between the 32-bit or 64-bit size.
+
+
 version 1.70.02 (May 22, 2012)
 
 [-] Corrected the optimization of segment prefixes when the extended syntax

@@ -6872,6 +6872,8 @@ store_instruction:
 	je	address_immediate_sib
 	test	ch,44h
 	jnz	address_immediate_32bit
+	test	ch,88h
+	jnz	address_immediate_32bit
 	test	ch,22h
 	jnz	address_immediate_16bit
 	or	ch,ch

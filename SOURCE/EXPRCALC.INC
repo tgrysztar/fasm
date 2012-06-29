@@ -1563,12 +1563,12 @@ get_address_value:
 	jz	address_size_ok
 	cmp	al,ah
 	je	address_size_ok
+	cmp	ax,0408h
+	je	address_sizes_mixed
 	cmp	ax,0804h
 	jne	address_sizes_do_not_agree
-	cmp	[value_type],2
-	ja	value_type_correction_ok
+      address_sizes_mixed:
 	mov	[value_type],2
-      value_type_correction_ok:
 	mov	eax,[edi]
 	cdq
 	cmp	edx,[edi+4]
@@ -1802,7 +1802,10 @@ calculate_relative_offset:
 	jnz	relative_offset_unallowed
 	cmp	bl,6
 	je	plt_relative_offset
-	cmp	bl,[labels_type]
+	mov	bh,[labels_type]
+	cmp	bl,bh
+	je	set_relative_offset_type
+	cmp	bx,0402h
 	je	set_relative_offset_type
       relative_offset_unallowed:
 	call	recoverable_misuse
