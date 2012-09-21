@@ -55,6 +55,8 @@ symbols:
 	je	dump_done
 	test	byte [edx+8],1
 	jz	next_symbol
+	test	byte [edx+9],4
+	jnz	next_symbol
 	mov	edi,[output_buffer]
 	mov	esi,[edx+24]
 	test	esi,esi

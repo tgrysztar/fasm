@@ -50,10 +50,7 @@ labels_list dd ?
 label_hash dd ?
 label_leaf dd ?
 hash_tree dd ?
-org_origin dq ?
-org_registers dd ?
-org_symbol dd ?
-org_start dd ?
+addressing_space dd ?
 undefined_data_start dd ?
 undefined_data_end dd ?
 counter dd ?
@@ -61,7 +58,7 @@ counter_limit dd ?
 error_info dd ?
 error_line dd ?
 error dd ?
-display_buffer dd ?
+tagged_blocks dd ?
 structures_buffer dd ?
 number_start dd ?
 current_offset dd ?
@@ -131,10 +128,7 @@ compare_type db ?
 logical_value_wrapping db ?
 next_pass_needed db ?
 output_format db ?
-labels_type db ?
 code_type db ?
-virtual_data db ?
-org_origin_sign db ?
 adjustment_sign db ?
 
 macro_status db ?

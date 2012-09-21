@@ -38,7 +38,7 @@ preprocessor:
 	mov	[labels_list],eax
 	xor	eax,eax
 	mov	[source_start],eax
-	mov	[display_buffer],eax
+	mov	[tagged_blocks],eax
 	mov	[hash_tree],eax
 	mov	[error],eax
 	mov	[macro_status],al
@@ -554,6 +554,9 @@ preprocess_line:
 	call	get_preprocessor_symbol
 	jnc	symbolic_constant_in_label
 	lea	esi,[esi+ecx+1]
+	cmp	byte [esi],':'
+	jne	preprocess_instruction
+	inc	esi
 	jmp	preprocess_instruction
       symbolic_constant_in_label:
 	mov	ebx,[edx+8]
@@ -570,6 +573,9 @@ preprocess_line:
 	je	label_constant_ok
 	cmp	byte [ebx],':'
 	jne	label_broken
+	inc	ebx
+	cmp	byte [ebx],':'
+	jne	check_for_broken_label
 	inc	ebx
 	jmp	check_for_broken_label
       label_broken:

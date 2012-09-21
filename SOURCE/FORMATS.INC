@@ -129,14 +129,14 @@ formatter:
 	je	labels_table_ok
 	mov	ecx,[memory_end]
 	sub	ecx,[labels_list]
-	mov	edi,[display_buffer]
+	mov	edi,[tagged_blocks]
 	sub	edi,8
 	mov	[edi],ecx
 	or	dword [edi+4],-1
 	sub	edi,ecx
 	cmp	edi,[current_offset]
 	jbe	out_of_memory
-	mov	[display_buffer],edi
+	mov	[tagged_blocks],edi
 	mov	esi,[memory_end]
       copy_labels:
 	sub	esi,32
@@ -200,8 +200,9 @@ formatter:
 format_directive:
 	cmp	edi,[code_start]
 	jne	unexpected_instruction
-	cmp	[virtual_data],0
-	jne	unexpected_instruction
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jnz	unexpected_instruction
 	cmp	[output_format],0
 	jne	unexpected_instruction
 	lods	byte [esi]
@@ -280,8 +281,9 @@ heap_directive:
 	je	pe_heap
 	jmp	illegal_instruction
 segment_directive:
-	cmp	[virtual_data],0
-	jne	illegal_instruction
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jnz	illegal_instruction
 	mov	al,[output_format]
 	cmp	al,2
 	je	mz_segment
@@ -289,8 +291,9 @@ segment_directive:
 	je	elf_segment
 	jmp	illegal_instruction
 section_directive:
-	cmp	[virtual_data],0
-	jne	illegal_instruction
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jnz	illegal_instruction
 	mov	al,[output_format]
 	cmp	al,3
 	je	pe_section
@@ -418,8 +421,9 @@ extrn_directive:
 mark_relocation:
 	cmp	[value_type],0
 	je	relocation_ok
-	cmp	[virtual_data],0
-	jne	relocation_ok
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jnz	relocation_ok
 	cmp	[output_format],2
 	je	mark_mz_relocation
 	cmp	[output_format],3
@@ -493,13 +497,11 @@ mz_segment:
 	mov	edx,edi
 	xor	eax,eax
 	rep	stos byte [edi]
-	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],eax
-	mov	[org_origin_sign],al
-	mov	[org_registers],eax
-	mov	[org_start],edi
 	mov	eax,edx
 	call	undefined_data
+	push	ebx
+	call	create_addressing_space
+	pop	ebx
 	mov	eax,edi
 	sub	eax,[code_start]
 	shr	eax,4
@@ -724,7 +726,7 @@ make_stub:
 	and	ecx,not 11b
 	add	ecx,(40h-1Ch) shr 2
 	lea	eax,[edi+ecx*4]
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -762,7 +764,7 @@ make_stub:
 	inc	ecx
 	shl	ecx,1
 	lea	eax,[edi+ecx*4]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -826,7 +828,7 @@ make_stub:
 	mov	[esi+16h],ax
 	mov	word [esi+14h],100h
 	mov	byte [esi+18h],40h
-	mov	eax,[display_buffer]
+	mov	eax,[tagged_blocks]
 	sub	eax,ecx
 	cmp	edi,eax
 	jae	out_of_memory
@@ -1053,7 +1055,7 @@ format_pe:
 	shl	ebx,cl
 	sub	ebx,ebp
 	mov	ecx,ebx
-	mov	eax,[display_buffer]
+	mov	eax,[tagged_blocks]
 	sub	eax,ecx
 	cmp	edi,eax
 	jae	out_of_memory
@@ -1117,12 +1119,14 @@ format_pe:
 	jc	pe_labels_type_ok
 	xor	bh,bh
       pe_labels_type_ok:
-	mov	[labels_type],bh
-	mov	dword [org_origin],eax
-	mov	dword [org_origin+4],ecx
-	mov	[org_origin_sign],bl
-	and	[org_registers],0
-	mov	[org_start],edi
+	push	eax ebx
+	call	new_addressing_space
+	mov	ebp,ebx
+	pop	ebx eax
+	mov	[ds:ebp],eax
+	mov	[ds:ebp+4],ecx
+	mov	[ds:ebp+8],bx
+	mov	[ds:ebp+18h],edi
 	bt	[format_flags],8
 	jnc	dll_flag_ok
 	or	byte [edx+16h+1],20h
@@ -1142,6 +1146,10 @@ format_pe:
 	jmp	format_defined
 pe_section:
 	call	close_pe_section
+	push	eax ebx
+	call	create_addressing_space
+	mov	ebp,ebx
+	pop	ebx eax
 	bts	[format_flags],5
 	lea	ecx,[ebx+28h]
 	add	edx,[edx+54h]
@@ -1179,38 +1187,36 @@ pe_section:
 	mov	edx,[code_start]
 	mov	eax,edi
 	xor	ecx,ecx
-	mov	[org_origin_sign],0
 	sub	eax,[ebx+0Ch]
 	sbb	ecx,0
-	sbb	[org_origin_sign],0
-	mov	[labels_type],2
+	sbb	byte [ds:ebp+8],0
+	mov	byte [ds:ebp+9],2
 	mov	[code_type],32
 	test	[format_flags],8
 	jz	pe_section_code_type_ok
-	mov	[labels_type],4
+	mov	byte [ds:ebp+9],4
 	mov	[code_type],64
       pe_section_code_type_ok:
 	test	[format_flags],4
 	jnz	peplus_section_org
 	sub	eax,[edx+34h]
 	sbb	ecx,0
-	sbb	[org_origin_sign],0
+	sbb	byte [ds:ebp+8],0
 	bt	[resolver_flags],0
 	jc	pe_section_org_ok
-	mov	[labels_type],0
+	mov	byte [ds:ebp+9],0
 	jmp	pe_section_org_ok
       peplus_section_org:
 	sub	eax,[edx+30h]
 	sbb	ecx,[edx+34h]
-	sbb	[org_origin_sign],0
+	sbb	byte [ds:ebp+8],0
 	bt	[resolver_flags],0
 	jc	pe_section_org_ok
-	mov	[labels_type],0
+	mov	byte [ds:ebp+9],0
       pe_section_org_ok:
-	mov	dword [org_origin],eax
-	mov	dword [org_origin+4],ecx
-	and	[org_registers],0
-	mov	[org_start],edi
+	mov	[ds:ebp],eax
+	mov	[ds:ebp+4],ecx
+	mov	[ds:ebp+18h],edi
       get_section_flags:
 	lods	byte [esi]
 	cmp	al,1Ah
@@ -1664,7 +1670,7 @@ make_pe_resource:
 	and	[resource_size],0
       reserve_space_for_resource:
 	add	edi,[resource_size]
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	ja	out_of_memory
 	jmp	resource_done
       resource_from_file:
@@ -1750,7 +1756,7 @@ make_pe_resource:
 	mov	[esi],eax
 	mov	[resource_data],edi
 	lea	eax,[edi+16]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	stos	dword [edi]
@@ -1812,7 +1818,7 @@ make_pe_resource:
 	mov	eax,[resource_data]
 	inc	word [eax+12]
 	lea	eax,[edi+8]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,ebx
 	stos	dword [edi]
@@ -1849,7 +1855,7 @@ make_pe_resource:
 	mov	eax,[resource_data]
 	inc	word [eax+14]
 	lea	eax,[edi+8]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,ebx
 	stos	dword [edi]
@@ -1870,7 +1876,7 @@ make_pe_resource:
 	bts	edx,31
 	mov	[esi+4],edx
 	lea	eax,[edi+16]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	stos	dword [edi]
@@ -1949,7 +1955,7 @@ make_pe_resource:
 	mov	eax,[esp]
 	inc	word [eax+12]
 	lea	eax,[edi+8]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,ebx
 	stos	dword [edi]
@@ -1992,7 +1998,7 @@ make_pe_resource:
 	mov	eax,[esp]
 	inc	word [eax+14]
 	lea	eax,[edi+8]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,ebx
 	stos	dword [edi]
@@ -2031,7 +2037,7 @@ make_pe_resource:
 	bts	edx,31
 	mov	[esi+4],edx
 	lea	eax,[edi+16]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	stos	dword [edi]
@@ -2081,7 +2087,7 @@ make_pe_resource:
 	mov	eax,[esp]
 	inc	word [eax+14]
 	lea	eax,[edi+8]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,ebx
 	stos	dword [edi]
@@ -2122,7 +2128,7 @@ make_pe_resource:
 	stos	word [edi]
       copy_string_data:
 	lea	eax,[edi+2]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	ax,[edx]
 	or	ax,ax
@@ -2160,7 +2166,7 @@ make_pe_resource:
 	sub	esi,[resource_data]
 	xchg	esi,[ebx+4]
 	lea	eax,[edi+16]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,esi
 	stos	dword [edi]
@@ -2190,7 +2196,7 @@ make_pe_resource:
 	mov	edx,edi
 	mov	ecx,[esi+4]
 	add	edi,ecx
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	ja	out_of_memory
 	call	read
 	mov	eax,edi
@@ -2319,28 +2325,16 @@ format_coff:
 	mov	[current_section],ebx
 	xor	eax,eax
 	mov	[number_of_sections],eax
-	call	setup_coff_section_org
+	mov	edx,ebx
+	call	new_addressing_space
+	mov	[ebx+14h],edx
+	mov	byte [ebx+9],2
 	mov	[code_type],32
 	test	[format_flags],8
 	jz	format_defined
+	mov	byte [ebx+9],4
 	mov	[code_type],64
 	jmp	format_defined
-      setup_coff_section_org:
-	xor	eax,eax
-	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],eax
-	mov	[org_origin_sign],al
-	mov	[org_registers],eax
-	mov	[org_start],edi
-	mov	[org_symbol],ebx
-	test	[format_flags],8
-	jnz	coff_64bit_labels
-	mov	[labels_type],2
-	ret
-      coff_64bit_labels:
-	mov	[labels_type],4
-	ret
-
 coff_section:
 	call	close_coff_section
 	mov	ebx,[free_additional_memory]
@@ -2355,7 +2349,15 @@ coff_section:
 	mov	[ebx+8],edi
 	mov	[ebx+10h],eax
 	mov	[ebx+14h],eax
-	call	setup_coff_section_org
+	mov	edx,ebx
+	call	create_addressing_space
+	xchg	edx,ebx
+	mov	[edx+14h],ebx
+	mov	byte [edx+9],2
+	test	[format_flags],8
+	jz	coff_labels_type_ok
+	mov	byte [edx+9],4
+      coff_labels_type_ok:
 	lods	word [esi]
 	cmp	ax,'('
 	jne	invalid_argument
@@ -2465,16 +2467,17 @@ mark_coff_relocation:
 	sub	eax,ebx
 	add	eax,4
       relative_ok:
+	mov	ebx,[addressing_space]
 	push	eax
 	mov	al,20
 	test	[format_flags],8
 	jnz	relative_coff_64bit_relocation
-	cmp	[labels_type],2
+	cmp	byte [ebx+9],2
 	jne	invalid_use_of_symbol
 	jmp	coff_relocation
       relative_coff_64bit_relocation:
 	mov	al,4
-	cmp	[labels_type],4
+	cmp	byte [ebx+9],4
 	jne	invalid_use_of_symbol
       coff_relocation:
 	mov	ebx,[free_additional_memory]
@@ -2686,7 +2689,7 @@ coff_formatter:
 	jmp	find_relocations
       add_relocation:
 	lea	eax,[ebx+0Ah]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	ja	out_of_memory
 	mov	eax,[esi+4]
 	mov	[ebx],eax
@@ -2905,7 +2908,7 @@ format_elf:
 	mov	edx,edi
 	mov	ecx,34h shr 2
 	lea	eax,[edi+ecx*4]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -2940,16 +2943,21 @@ format_elf:
 	mov	[ebx+14h],eax
 	mov	al,4
 	mov	[ebx+10h],eax
-	call	setup_coff_section_org
+	mov	edx,ebx
+	call	new_addressing_space
+	xchg	edx,ebx
+	mov	[edx+14h],ebx
+	mov	byte [edx+9],2
 	test	[format_flags],8
 	jz	format_defined
+	mov	byte [edx+9],4
 	mov	byte [ebx+10h],8
 	jmp	format_defined
       format_elf64:
 	mov	edx,edi
 	mov	ecx,40h shr 2
 	lea	eax,[edi+ecx*4]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	jae	out_of_memory
 	xor	eax,eax
 	rep	stos dword [edi]
@@ -2984,7 +2992,15 @@ elf_section:
 	mov	[ebx+10h],eax
 	mov	al,10b
 	mov	[ebx+14h],eax
-	call	setup_coff_section_org
+	mov	edx,ebx
+	call	create_addressing_space
+	xchg	edx,ebx
+	mov	[edx+14h],ebx
+	mov	byte [edx+9],2
+	test	[format_flags],8
+	jz	elf_labels_type_ok
+	mov	byte [edx+9],4
+      elf_labels_type_ok:
 	lods	word [esi]
 	cmp	ax,'('
 	jne	invalid_argument
@@ -3038,11 +3054,13 @@ elf_section:
 	mov	byte [ebx+10h],8
 	jmp	instruction_assembled
 mark_elf_relocation:
+	push	ebx
+	mov	ebx,[addressing_space]
 	cmp	[value_type],3
 	je	elf_relocation_relative
 	cmp	[value_type],7
 	je	elf_relocation_relative
-	push	ebx eax
+	push	eax
 	cmp	[value_type],5
 	je	elf_gotoff_relocation
 	ja	invalid_use_of_symbol
@@ -3059,9 +3077,8 @@ mark_elf_relocation:
 	mov	al,9			; R_386_GOTOFF
 	jmp	coff_relocation
       elf_relocation_relative:
-	cmp	[labels_type],0
+	cmp	byte [ebx+9],0
 	je	invalid_use_of_symbol
-	push	ebx
 	mov	ebx,[current_section]
 	mov	ebx,[ebx+8]
 	sub	ebx,edi
@@ -3690,11 +3707,13 @@ format_elf_exe:
 	add	eax,edi
 	adc	ebp,0
 	adc	cl,0
-	mov	dword [org_origin],eax
-	mov	dword [org_origin+4],edx
-	mov	[org_origin_sign],cl
-	and	[org_registers],0
-	mov	[org_start],edi
+      elf_exe_addressing_setup:
+	push	eax
+	call	create_addressing_space
+	pop	eax
+	mov	[ebx],eax
+	mov	[ebx+4],edx
+	mov	[ebx+8],cl
 	mov	[symbols_stream],edi
 	jmp	format_defined
       format_elf64_exe:
@@ -3768,13 +3787,7 @@ format_elf_exe:
 	add	eax,edi
 	adc	edx,0
 	adc	cl,0
-	mov	dword [org_origin],eax
-	mov	dword [org_origin+4],edx
-	mov	[org_origin_sign],cl
-	and	[org_registers],0
-	mov	[org_start],edi
-	mov	[symbols_stream],edi
-	jmp	format_defined
+	jmp	elf_exe_addressing_setup
 elf_entry:
 	lods	byte [esi]
 	cmp	al,'('
@@ -3804,6 +3817,8 @@ elf_segment:
 	jnz	elf64_segment
 	call	close_elf_segment
 	push	eax
+	call	create_addressing_space
+	mov	ebp,ebx
 	mov	ebx,[number_of_sections]
 	shl	ebx,5
 	add	ebx,[code_start]
@@ -3883,11 +3898,10 @@ elf_segment:
 	add	eax,edi
 	adc	edx,0
 	adc	cl,0
-	mov	dword [org_origin],eax
-	mov	dword [org_origin+4],edx
-	mov	[org_origin_sign],cl
-	and	[org_registers],0
-	mov	[org_start],edi
+      elf_segment_addressing_setup:
+	mov	[ds:ebp],eax
+	mov	[ds:ebp+4],edx
+	mov	[ds:ebp+8],cl
 	inc	[number_of_sections]
 	jmp	instruction_assembled
       close_elf_segment:
@@ -3935,6 +3949,8 @@ elf_segment:
       elf64_segment:
 	call	close_elf64_segment
 	push	eax edx
+	call	create_addressing_space
+	mov	ebp,ebx
 	mov	ebx,[number_of_sections]
 	imul	ebx,38h
 	add	ebx,[code_start]
@@ -4015,13 +4031,7 @@ elf_segment:
 	add	eax,edi
 	adc	edx,0
 	adc	cl,0
-	mov	dword [org_origin],eax
-	mov	dword [org_origin+4],edx
-	mov	[org_origin_sign],cl
-	and	[org_registers],0
-	mov	[org_start],edi
-	inc	[number_of_sections]
-	jmp	instruction_assembled
+	jmp	elf_segment_addressing_setup
       close_elf64_segment:
 	cmp	[number_of_sections],0
 	jne	finish_elf64_segment

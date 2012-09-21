@@ -8,14 +8,14 @@ dump_symbols:
 	call	setup_dump_header
 	mov	esi,[input_file]
 	call	copy_asciiz
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,edi
 	sub	eax,ebx
 	mov	[ebx-40h+0Ch],eax
 	mov	esi,[output_file]
 	call	copy_asciiz
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	mov	edx,[symbols_stream]
 	mov	ebp,[free_additional_memory]
@@ -53,7 +53,7 @@ dump_symbols:
 	rep	movs byte [edi],[esi]
 	mov	byte [edi],0
 	inc	edi
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	jmp	prepare_strings_table
       prepare_section_string:
@@ -76,7 +76,7 @@ dump_symbols:
 	add	esi,[resource_data]
       copy_elf_section_name:
 	lods	byte [esi]
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	stos	byte [edi]
 	test	al,al
@@ -87,11 +87,11 @@ dump_symbols:
 	stos	dword [edi]
 	mov	ax,'t'
 	stos	word [edi]
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	jmp	prepare_strings_table
       strings_table_ready:
-	mov	edx,[display_buffer]
+	mov	edx,[tagged_blocks]
 	mov	ebp,[memory_end]
 	sub	ebp,[labels_list]
 	add	ebp,edx
@@ -117,7 +117,7 @@ dump_symbols:
 	mov	[edx+24],eax
 	movzx	ecx,byte [esi-1]
 	lea	eax,[edi+ecx+1]
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	rep	movsb
 	xor	al,al
@@ -129,6 +129,13 @@ dump_symbols:
 	sub	eax,[memory_start]
 	mov	[edx+28],eax
       label_dump_line_ok:
+	test	byte [edx+9],4
+	jz	convert_base_symbol_for_label
+	xor	eax,eax
+	mov	[edx],eax
+	mov	[edx+4],eax
+	jmp	base_symbol_for_label_ok
+      convert_base_symbol_for_label:
 	mov	eax,[edx+20]
 	test	eax,eax
 	jz	base_symbol_for_label_ok
@@ -172,7 +179,7 @@ dump_symbols:
 	mov	esi,[labels_list]
 	mov	ebp,edi
       make_lines_dump:
-	cmp	esi,[display_buffer]
+	cmp	esi,[tagged_blocks]
 	je	lines_dump_ok
 	mov	eax,[esi-4]
 	mov	ecx,[esi-8]
@@ -185,11 +192,13 @@ dump_symbols:
 	add	dword [ebx-40h+3Ch],8
 	jmp	make_lines_dump
       process_line_dump:
+	push	ebx
+	mov	ebx,[esi+8]
 	mov	eax,[esi+4]
 	sub	eax,[code_start]
 	add	eax,[headers_size]
-	cmp	byte [esi+1Ah],0
-	je	store_offset
+	test	byte [ebx+0Ah],1
+	jz	store_offset
 	xor	eax,eax
       store_offset:
 	stos	dword [edi]
@@ -199,15 +208,15 @@ dump_symbols:
 	mov	eax,[esi+4]
 	xor	edx,edx
 	xor	cl,cl
-	sub	eax,[esi+8]
-	sbb	edx,[esi+8+4]
-	sbb	cl,[esi+1Bh]
+	sub	eax,[ebx]
+	sbb	edx,[ebx+4]
+	sbb	cl,[ebx+8]
 	stos	dword [edi]
 	mov	eax,edx
 	stos	dword [edi]
-	mov	eax,[esi+10h]
+	mov	eax,[ebx+10h]
 	stos	dword [edi]
-	mov	eax,[esi+14h]
+	mov	eax,[ebx+14h]
 	test	eax,eax
 	jz	base_symbol_for_line_ok
 	cmp	eax,[symbols_stream]
@@ -216,11 +225,17 @@ dump_symbols:
 	xor	eax,eax
       base_symbol_for_line_ok:
 	stos	dword [edi]
-	mov	eax,[esi+18h]
-	and	eax,01FFFFh
-	stos	dword [edi]
-	mov	[edi-1],cl
-	cmp	edi,[display_buffer]
+	mov	al,[ebx+9]
+	stos	byte [edi]
+	mov	al,[esi+10h]
+	stos	byte [edi]
+	mov	al,[ebx+0Ah]
+	and	al,1
+	stos	byte [edi]
+	mov	al,cl
+	stos	byte [edi]
+	pop	ebx
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	mov	eax,edi
 	sub	eax,1Ch
@@ -264,7 +279,7 @@ dump_symbols:
 	add	ecx,40h
 	call	write
 	jc	write_failed
-	mov	edx,[display_buffer]
+	mov	edx,[tagged_blocks]
 	mov	ecx,[memory_end]
 	sub	ecx,[labels_list]
 	call	write
@@ -287,7 +302,7 @@ dump_symbols:
 	mov	esi,[labels_list]
 	mov	edi,[memory_start]
       make_references_dump:
-	cmp	esi,[display_buffer]
+	cmp	esi,[tagged_blocks]
 	je	references_dump_ok
 	mov	eax,[esi-4]
 	mov	ecx,[esi-8]
@@ -306,7 +321,7 @@ dump_symbols:
 	stosd
 	mov	eax,edx
 	stosd
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jb	make_references_dump
 	jmp	out_of_memory
       references_dump_ok:

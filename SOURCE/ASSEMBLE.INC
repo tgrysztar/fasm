@@ -12,7 +12,7 @@ assembler:
 	mov	[actual_fixups_size],eax
       assembler_loop:
 	mov	eax,[labels_list]
-	mov	[display_buffer],eax
+	mov	[tagged_blocks],eax
 	mov	eax,[additional_memory]
 	mov	[free_additional_memory],eax
 	mov	eax,[additional_memory_end]
@@ -22,11 +22,7 @@ assembler:
 	xor	eax,eax
 	mov	dword [adjustment],eax
 	mov	dword [adjustment+4],eax
-	mov	dword [org_origin],edi
-	mov	dword [org_origin+4],eax
-	mov	[org_start],edi
-	mov	[org_registers],eax
-	mov	[org_symbol],eax
+	mov	[addressing_space],eax
 	mov	[error_line],eax
 	mov	[counter],eax
 	mov	[format_flags],eax
@@ -35,18 +31,16 @@ assembler:
 	mov	[file_extension],eax
 	mov	[next_pass_needed],al
 	mov	[output_format],al
-	mov	[org_origin_sign],al
 	mov	[adjustment_sign],al
-	mov	[labels_type],al
-	mov	[virtual_data],al
 	mov	[code_type],16
+	call	create_addressing_space
       pass_loop:
 	call	assemble_line
 	jnc	pass_loop
 	mov	eax,[additional_memory_end]
 	cmp	eax,[structures_buffer]
 	je	pass_done
-	sub	eax,20h
+	sub	eax,18h
 	mov	eax,[eax+4]
 	mov	[current_line],eax
 	jmp	missing_end_directive
@@ -141,8 +135,34 @@ assembler:
       assemble_ok:
 	ret
 
+create_addressing_space:
+	mov	ebx,[addressing_space]
+	or	ebx,ebx
+	jz	new_addressing_space
+	mov	eax,edi
+	sub	eax,[ebx+18h]
+	mov	[ebx+1Ch],eax
+      new_addressing_space:
+	mov	ebx,[tagged_blocks]
+	mov	dword [ebx-4],10h
+	mov	dword [ebx-8],20h
+	sub	ebx,8+20h
+	cmp	ebx,edi
+	jbe	out_of_memory
+	mov	[tagged_blocks],ebx
+	mov	[addressing_space],ebx
+	xor	eax,eax
+	mov	[ebx],edi
+	mov	[ebx+4],eax
+	mov	[ebx+8],eax
+	mov	[ebx+10h],eax
+	mov	[ebx+14h],eax
+	mov	[ebx+18h],edi
+	mov	[ebx+1Ch],eax
+	ret
+
 assemble_line:
-	mov	eax,[display_buffer]
+	mov	eax,[tagged_blocks]
 	sub	eax,100h
 	cmp	edi,eax
 	ja	out_of_memory
@@ -153,6 +173,8 @@ assemble_line:
 	cmp	al,3
 	jb	define_label
 	je	define_constant
+	cmp	al,4
+	je	label_addressing_space
 	cmp	al,0Fh
 	je	new_line
 	cmp	al,13h
@@ -173,30 +195,19 @@ assemble_line:
 	je	continue_line
 	cmp	[next_pass_needed],0
 	jne	continue_line
-	mov	ebx,[display_buffer]
+	mov	ebx,[tagged_blocks]
 	mov	dword [ebx-4],1
-	mov	dword [ebx-8],1Ch
-	sub	ebx,8+1Ch
+	mov	dword [ebx-8],14h
+	sub	ebx,8+14h
 	cmp	ebx,edi
 	jbe	out_of_memory
-	mov	[display_buffer],ebx
+	mov	[tagged_blocks],ebx
 	mov	[ebx],eax
 	mov	[ebx+4],edi
-	mov	eax,dword [org_origin]
-	mov	edx,dword [org_origin+4]
-	mov	ecx,[org_registers]
+	mov	eax,[addressing_space]
 	mov	[ebx+8],eax
-	mov	[ebx+8+4],edx
-	mov	[ebx+10h],ecx
-	mov	edx,[org_symbol]
-;        mov     al,[virtual_data]
-;        mov     ah,[org_origin_sign]
-;        shl     eax,16
-;        mov     al,[labels_type]
-;        mov     ah,[code_type]
-	mov	eax,dword [labels_type]
-	mov	[ebx+14h],edx
-	mov	[ebx+18h],eax
+	mov	al,[code_type]
+	mov	[ebx+10h],al
       continue_line:
 	cmp	byte [esi],0Fh
 	je	line_assembled
@@ -215,15 +226,16 @@ assemble_line:
 	mov	eax,edi
 	xor	edx,edx
 	xor	cl,cl
-	sub	eax,dword [org_origin]
-	sbb	edx,dword [org_origin+4]
-	sbb	cl,[org_origin_sign]
+	mov	ebp,[addressing_space]
+	sub	eax,[ds:ebp]
+	sbb	edx,[ds:ebp+4]
+	sbb	cl,[ds:ebp+8]
 	jp	label_value_ok
 	call	recoverable_overflow
       label_value_ok:
 	mov	[address_sign],cl
-	cmp	[virtual_data],0
-	jne	make_virtual_label
+	test	byte [ds:ebp+0Ah],1
+	jnz	make_virtual_label
 	or	byte [ebx+9],1
 	xchg	eax,[ebx]
 	xchg	edx,[ebx+4]
@@ -251,10 +263,11 @@ assemble_line:
 	setne	al
 	or	ah,al
       finish_label:
-	mov	ch,[labels_type]
+	mov	ebp,[addressing_space]
+	mov	ch,[ds:ebp+9]
 	mov	cl,[label_size]
-	mov	ebp,[org_registers]
-	mov	edx,[org_symbol]
+	mov	edx,[ds:ebp+14h]
+	mov	ebp,[ds:ebp+10h]
       finish_label_symbol:
 	mov	al,[address_sign]
 	xor	al,[ebx+9]
@@ -289,6 +302,8 @@ assemble_line:
 	jz	new_label
 	cmp	cx,[ebx+16]
 	je	symbol_already_defined
+	btr	dword [ebx+8],10
+	jc	requalified_label
 	inc	cx
 	sub	cx,[ebx+16]
 	setnz	al
@@ -299,6 +314,7 @@ assemble_line:
 	mov	cx,[current_pass]
 	cmp	cx,[ebx+18]
 	jne	label_made
+      requalified_label:
 	or	[next_pass_needed],-1
       label_made:
 	ret
@@ -385,8 +401,11 @@ assemble_line:
 	test	byte [ebx+8],2
 	jz	symbol_already_defined
 	or	byte [ebx+8],4
+	and	byte [ebx+9],not 4
 	jmp	instruction_assembled
       redeclare_constant:
+	btr	dword [ebx+8],10
+	jc	requalified_constant
 	inc	cx
 	sub	cx,[ebx+16]
 	setnz	al
@@ -399,21 +418,47 @@ assemble_line:
 	mov	cx,[current_pass]
 	cmp	cx,[ebx+18]
 	jne	instruction_assembled
+      requalified_constant:
 	or	[next_pass_needed],-1
 	jmp	instruction_assembled
       new_constant:
 	or	byte [ebx+8],1+2
 	jmp	instruction_assembled
+      label_addressing_space:
+	lods	dword [esi]
+	cmp	eax,0Fh
+	jb	invalid_use_of_symbol
+	je	reserved_word_used_as_symbol
+	mov	cx,[current_pass]
+	test	byte [eax+8],1
+	jz	make_addressing_space_label
+	cmp	cx,[eax+16]
+	je	symbol_already_defined
+	test	byte [eax+9],4
+	jnz	make_addressing_space_label
+	or	[next_pass_needed],-1
+      make_addressing_space_label:
+	mov	dx,[eax+8]
+	and	dx,not (2 or 100h)
+	or	dx,1 or 4 or 400h
+	mov	[eax+8],dx
+	mov	[eax+16],cx
+	mov	edx,[current_line]
+	mov	[eax+28],edx
+	mov	ebx,[addressing_space]
+	mov	[eax],ebx
+	or	byte [ebx+0Ah],2
+	jmp	continue_line
       assemble_instruction:
-;        mov     [operand_size],0
-;        mov     [size_override],0
-;        mov     [operand_prefix],0
-;        mov     [opcode_prefix],0
+;	 mov	 [operand_size],0
+;	 mov	 [size_override],0
+;	 mov	 [operand_prefix],0
+;	 mov	 [opcode_prefix],0
 	and	dword [operand_size],0
-;        mov     [rex_prefix],0
-;        mov     [vex_required],0
-;        mov     [vex_register],0
-;        mov     [immediate_size],0
+;	 mov	 [rex_prefix],0
+;	 mov	 [vex_required],0
+;	 mov	 [vex_register],0
+;	 mov	 [immediate_size],0
 	and	dword [rex_prefix],0
 	call	instruction_handler
       instruction_handler:
@@ -446,22 +491,19 @@ org_directive:
 	mov	cl,[value_type]
 	test	cl,1
 	jnz	invalid_use_of_symbol
-	mov	[labels_type],cl
-	mov	dword [org_origin],edi
-	xor	ecx,ecx
-	mov	dword [org_origin+4],ecx
-	mov	[org_origin_sign],cl
-	mov	[org_registers],ecx
+	push	eax
+	call	create_addressing_space
+	pop	eax
+	mov	[ebx+9],cl
 	mov	cl,[value_sign]
-	sub	dword [org_origin],eax
-	sbb	dword [org_origin+4],edx
-	sbb	[org_origin_sign],cl
+	sub	[ebx],eax
+	sbb	[ebx],edx
+	sbb	byte [ebx+8],0
 	jp	org_value_ok
 	call	recoverable_overflow
       org_value_ok:
-	mov	[org_start],edi
 	mov	edx,[symbol_identifier]
-	mov	[org_symbol],edx
+	mov	[ebx+14h],edx
 	cmp	[output_format],1
 	ja	instruction_assembled
 	cmp	edi,[code_start]
@@ -558,45 +600,102 @@ load_directive:
 	mov	[operand_size],al
 	and	dword [value],0
 	and	dword [value+4],0
-	lods	word [esi]
-	cmp	ax,82h+'(' shl 8
+	lods	byte [esi]
+	cmp	al,82h
 	jne	invalid_argument
-      load_from_code:
-	cmp	byte [esi],'.'
-	je	invalid_value
-	or	[size_override],-1
-	call	get_address_value
-	call	calculate_relative_offset
+	call	get_data_point
+	jc	value_loaded
 	push	esi edi
-	cmp	[next_pass_needed],0
-	jne	load_address_type_ok
-	cmp	[value_type],0
-	jne	invalid_use_of_symbol
-      load_address_type_ok:
-	cmp	edx,-1
-	jne	bad_load_address
-	neg	eax
-	mov	esi,edi
-	sub	esi,eax
-	jc	bad_load_address
-	cmp	esi,[org_start]
-	jb	bad_load_address
+	mov	esi,ebx
 	mov	edi,value
-	movzx	ecx,[operand_size]
-	cmp	ecx,eax
-	ja	bad_load_address
 	rep	movs byte [edi],[esi]
-	jmp	value_loaded
-      bad_load_address:
-	call	recoverable_overflow
-      value_loaded:
 	pop	edi esi
+      value_loaded:
 	mov	[value_sign],0
 	mov	eax,dword [value]
 	mov	edx,dword [value+4]
 	pop	ebx
 	xor	cx,cx
 	jmp	make_constant
+      get_data_point:
+	mov	ebx,[addressing_space]
+	mov	ecx,edi
+	sub	ecx,[ebx+18h]
+	mov	[ebx+1Ch],ecx
+	lods	byte [esi]
+	cmp	al,'('
+	jne	invalid_argument
+	cmp	byte [esi],11h
+	jne	get_data_address
+	cmp	word [esi+1+4],'):'
+	jne	get_data_address
+	inc	esi
+	lods	dword [esi]
+	add	esi,2
+	cmp	byte [esi],'('
+	jne	invalid_argument
+	inc	esi
+	cmp	eax,0Fh
+	jbe	reserved_word_used_as_symbol
+	mov	edx,undefined_symbol
+	test	byte [eax+8],1
+	jz	addressing_space_unavailable
+	mov	edx,symbol_out_of_scope
+	mov	cx,[eax+16]
+	cmp	cx,[current_pass]
+	jne	addressing_space_unavailable
+	test	byte [eax+9],4
+	jz	invalid_use_of_symbol
+	mov	ebx,eax
+	mov	ax,[current_pass]
+	mov	[ebx+18],ax
+	or	byte [ebx+8],8
+	cmp	[symbols_file],0
+	je	get_addressing_space
+	cmp	[next_pass_needed],0
+	jne	get_addressing_space
+	call	store_label_reference
+      get_addressing_space:
+	mov	ebx,[ebx]
+      get_data_address:
+	push	ebx
+	cmp	byte [esi],'.'
+	je	invalid_value
+	or	[size_override],-1
+	call	get_address_value
+	pop	ebp
+	call	calculate_relative_offset
+	cmp	[next_pass_needed],0
+	jne	data_address_type_ok
+	cmp	[value_type],0
+	jne	invalid_use_of_symbol
+      data_address_type_ok:
+	mov	ebx,edi
+	xor	ecx,ecx
+	add	ebx,eax
+	adc	ecx,edx
+	jnz	bad_data_address
+	mov	eax,ebx
+	sub	eax,[ds:ebp+18h]
+	jc	bad_data_address
+	movzx	ecx,[operand_size]
+	add	eax,ecx
+	cmp	eax,[ds:ebp+1Ch]
+	ja	bad_data_address
+	clc
+	ret
+      addressing_space_unavailable:
+	cmp	[error_line],0
+	jne	get_data_address
+	push	[current_line]
+	pop	[error_line]
+	mov	[error],edx
+	mov	[error_info],eax
+	jmp	get_data_address
+      bad_data_address:
+	call	recoverable_overflow
+	stc
+	ret
 store_directive:
 	cmp	byte [esi],11h
 	je	sized_store
@@ -616,34 +715,18 @@ store_directive:
 	jne	invalid_use_of_symbol
 	mov	dword [value],eax
 	mov	dword [value+4],edx
-	lods	word [esi]
-	cmp	ax,80h+'(' shl 8
+	lods	byte [esi]
+	cmp	al,80h
 	jne	invalid_argument
-	cmp	byte [esi],'.'
-	je	invalid_value
-	or	[size_override],-1
-	call	get_address_value
-	call	calculate_relative_offset
+	call	get_data_point
 	push	esi edi
-	cmp	[next_pass_needed],0
-	jne	store_address_type_ok
-	cmp	[value_type],0
-	jne	invalid_use_of_symbol
-      store_address_type_ok:
-	cmp	edx,-1
-	jne	bad_store_address
-	neg	eax
-	sub	edi,eax
-	jc	bad_store_address
-	cmp	edi,[org_start]
-	jb	bad_store_address
 	mov	esi,value
-	movzx	ecx,[operand_size]
-	cmp	ecx,eax
-	ja	bad_store_address
+	mov	edi,ebx
 	rep	movs byte [edi],[esi]
 	mov	eax,edi
 	pop	edi esi
+	cmp	ebp,[addressing_space]
+	jne	instruction_assembled
 	cmp	edi,[undefined_data_end]
 	jne	instruction_assembled
 	cmp	eax,[undefined_data_start]
@@ -665,12 +748,12 @@ display_directive:
 	lods	dword [esi]
 	mov	ecx,eax
 	push	edi
-	mov	edi,[display_buffer]
+	mov	edi,[tagged_blocks]
 	sub	edi,8
 	sub	edi,eax
 	cmp	edi,[esp]
 	jbe	out_of_memory
-	mov	[display_buffer],edi
+	mov	[tagged_blocks],edi
 	rep	movs byte [edi],[esi]
 	stos	dword [edi]
 	xor	eax,eax
@@ -681,9 +764,9 @@ display_directive:
       display_byte:
 	call	get_byte_value
 	push	edi
-	mov	edi,[display_buffer]
+	mov	edi,[tagged_blocks]
 	sub	edi,8+1
-	mov	[display_buffer],edi
+	mov	[tagged_blocks],edi
 	stos	byte [edi]
 	mov	eax,1
 	stos	dword [edi]
@@ -691,7 +774,7 @@ display_directive:
 	stos	dword [edi]
 	pop	edi
       display_next:
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	ja	out_of_memory
 	lods	byte [esi]
 	cmp	al,','
@@ -699,7 +782,7 @@ display_directive:
 	dec	esi
 	jmp	instruction_assembled
 show_display_buffer:
-	mov	eax,[display_buffer]
+	mov	eax,[tagged_blocks]
 	or	eax,eax
 	jz	display_done
 	mov	esi,[labels_list]
@@ -711,12 +794,12 @@ show_display_buffer:
 	mov	ecx,[esi]
 	sub	esi,ecx
 	test	eax,eax
-	jnz	skip_internal_message
+	jnz	skip_block
 	push	esi
 	call	display_block
 	pop	esi
-      skip_internal_message:
-	cmp	esi,[display_buffer]
+      skip_block:
+	cmp	esi,[tagged_blocks]
 	jne	display_messages
       display_done:
 	ret
@@ -779,28 +862,37 @@ virtual_directive:
 	jmp	set_virtual
       virtual_at_current:
 	dec	esi
-	mov	al,[labels_type]
+	mov	ebp,[addressing_space]
+	mov	al,[ds:ebp+9]
 	mov	[value_type],al
-	mov	ebp,[org_symbol]
 	mov	eax,edi
 	xor	edx,edx
 	xor	cl,cl
-	sub	eax,dword [org_origin]
-	sbb	edx,dword [org_origin+4]
-	sbb	cl,[org_origin_sign]
+	sub	eax,[ds:ebp]
+	sbb	edx,[ds:ebp+4]
+	sbb	cl,[ds:ebp+8]
 	mov	[address_sign],cl
-	mov	bx,word [org_registers]
-	mov	cx,word [org_registers+2]
+	mov	bx,[ds:ebp+10h]
+	mov	cx,[ds:ebp+10h+2]
 	xchg	bh,bl
 	xchg	ch,cl
+	mov	ebp,[ds:ebp+14h]
       set_virtual:
-	push	[org_registers]
-	mov	byte [org_registers],bh
-	mov	byte [org_registers+1],bl
-	mov	byte [org_registers+2],ch
-	mov	byte [org_registers+3],cl
+	xchg	bl,bh
+	xchg	cl,ch
+	shl	ecx,16
+	mov	cx,bx
+	push	ecx eax
 	call	allocate_structure_data
 	mov	word [ebx],virtual_directive-instruction_handler
+	mov	ecx,[addressing_space]
+	mov	[ebx+12],ecx
+	mov	[ebx+8],edi
+	mov	ecx,[current_line]
+	mov	[ebx+4],ecx
+	call	create_addressing_space
+	or	byte [ebx+0Ah],1
+	pop	eax
 	mov	cl,[address_sign]
 	not	eax
 	not	edx
@@ -811,37 +903,19 @@ virtual_directive:
 	add	eax,edi
 	adc	edx,0
 	adc	cl,0
-	xchg	dword [org_origin],eax
-	xchg	dword [org_origin+4],edx
-	xchg	[org_origin_sign],cl
-	mov	[ebx+10h],eax
-	mov	[ebx+14h],edx
-	pop	eax
-	mov	[ebx+18h],eax
-	mov	al,[virtual_data]
-	and	al,0Fh
-	shl	cl,4
-	or	al,cl
-	mov	[ebx+2],al
-	mov	al,[labels_type]
-	mov	[ebx+3],al
-	mov	eax,edi
-	xchg	eax,[org_start]
-	mov	[ebx+0Ch],eax
-	xchg	ebp,[org_symbol]
-	mov	[ebx+1Ch],ebp
-	mov	[ebx+8],edi
-	mov	eax,[current_line]
-	mov	[ebx+4],eax
-	or	[virtual_data],-1
+	mov	[ebx],eax
+	mov	[ebx+4],edx
+	mov	[ebx+8],cl
+	pop	dword [ebx+10h]
+	mov	[ebx+14h],ebp
 	mov	al,[value_type]
 	test	al,1
 	jnz	invalid_use_of_symbol
-	mov	[labels_type],al
+	mov	[ebx+9],al
 	jmp	instruction_assembled
       allocate_structure_data:
 	mov	ebx,[structures_buffer]
-	sub	ebx,20h
+	sub	ebx,18h
 	cmp	ebx,[free_additional_memory]
 	jb	out_of_memory
 	mov	[structures_buffer],ebx
@@ -853,7 +927,7 @@ virtual_directive:
 	je	no_such_structure
 	cmp	ax,[ebx]
 	je	structure_data_found
-	add	ebx,20h
+	add	ebx,18h
 	jmp	scan_structures
       structure_data_found:
 	ret
@@ -863,27 +937,50 @@ virtual_directive:
       end_virtual:
 	call	find_structure_data
 	jc	unexpected_instruction
-	mov	al,[ebx+2]
-	mov	ah,al
-	shr	ah,4
-	and	al,1
-	neg	al
-	and	ah,1
-	neg	ah
-	mov	[virtual_data],al
-	mov	[org_origin_sign],ah
-	mov	al,[ebx+3]
-	mov	[labels_type],al
-	mov	eax,[ebx+10h]
-	mov	dword [org_origin],eax
-	mov	eax,[ebx+14h]
-	mov	dword [org_origin+4],eax
-	mov	eax,[ebx+18h]
-	mov	[org_registers],eax
-	mov	eax,[ebx+0Ch]
-	mov	[org_start],eax
-	mov	eax,[ebx+1Ch]
-	mov	[org_symbol],eax
+	mov	edx,[addressing_space]
+	mov	ecx,edi
+	sub	ecx,[edx+18h]
+	mov	[edx+1Ch],ecx
+	test	byte [edx+0Ah],2
+	jz	virtual_space_ok
+	mov	eax,[tagged_blocks]
+	mov	dword [eax-4],11h
+	mov	dword [eax-8],ecx
+	sub	eax,8
+	sub	eax,ecx
+	cmp	eax,[ebx+8]
+	jbe	out_of_memory
+	mov	[tagged_blocks],eax
+	mov	[edx+18h],eax
+	push	esi
+	lea	esi,[edi-1]
+	lea	edi,[eax+ecx-1]
+	mov	eax,edi
+	sub	eax,esi
+	std
+	shr	ecx,1
+	jnc	virtual_byte_ok
+	movs	byte [edi],[esi]
+      virtual_byte_ok:
+	dec	esi
+	dec	edi
+	shr	ecx,1
+	jnc	virtual_word_ok
+	movs	word [edi],[esi]
+      virtual_word_ok:
+	sub	esi,2
+	sub	edi,2
+	rep	movs dword [edi],[esi]
+	cld
+	pop	esi
+	mov	ecx,edx
+	cdq
+	add	[ecx],eax
+	adc	dword [ecx+4],edx
+	adc	byte [ecx+8],dl
+      virtual_space_ok:
+	mov	eax,[ebx+12]
+	mov	[addressing_space],eax
 	mov	edi,[ebx+8]
       remove_structure_data:
 	push	esi edi
@@ -891,11 +988,11 @@ virtual_directive:
 	sub	ecx,[structures_buffer]
 	shr	ecx,2
 	lea	esi,[ebx-4]
-	lea	edi,[esi+20h]
+	lea	edi,[esi+18h]
 	std
 	rep	movs dword [edi],[esi]
 	cld
-	add	[structures_buffer],20h
+	add	[structures_buffer],18h
 	pop	edi esi
 	ret
 repeat_directive:
@@ -1193,7 +1290,7 @@ break_directive:
 	je	break_while
 	cmp	ax,if_directive-instruction_handler
 	je	break_if
-	add	ebx,20h
+	add	ebx,18h
 	jmp	find_breakable_structure
       break_if:
 	push	[current_line]
@@ -1235,14 +1332,15 @@ data_bytes:
 	lods	dword [esi]
 	mov	ecx,eax
 	lea	eax,[edi+ecx]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	ja	out_of_memory
 	rep	movs byte [edi],[esi]
 	inc	esi
 	ret
       undefined_data:
-	cmp	[virtual_data],0
-	je	mark_undefined_data
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jz	mark_undefined_data
 	ret
       mark_undefined_data:
 	cmp	eax,[undefined_data_end]
@@ -1252,7 +1350,7 @@ data_bytes:
 	mov	[undefined_data_end],edi
 	ret
       define_data:
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	cmp	byte [esi],'('
 	jne	simple_data_value
@@ -1273,7 +1371,7 @@ data_bytes:
       duplicate_data:
 	push	eax esi
       duplicated_values:
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	call	near dword [esp+8]
 	lods	byte [esi]
@@ -1287,7 +1385,7 @@ data_bytes:
 	mov	esi,ebx
 	jmp	duplicate_data
       duplicate_single_data_value:
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	push	eax esi
 	call	near dword [esp+8]
@@ -1311,7 +1409,7 @@ data_bytes:
 	call	skip_symbol
 	jmp	data_defined
       simple_data_value:
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	call	near dword [esp]
       data_defined:
@@ -1354,7 +1452,7 @@ data_words:
 	mov	ecx,eax
 	jecxz	word_string_ok
 	lea	eax,[edi+ecx*2]
-	cmp	eax,[display_buffer]
+	cmp	eax,[tagged_blocks]
 	ja	out_of_memory
 	xor	ah,ah
       copy_word_string:
@@ -1624,7 +1722,7 @@ data_file:
 	mov	edx,edi
 	add	edi,ecx
 	jc	out_of_memory
-	cmp	edi,[display_buffer]
+	cmp	edi,[tagged_blocks]
 	ja	out_of_memory
 	call	read
 	jc	error_reading_file
@@ -1704,7 +1802,7 @@ reserve_bytes:
 	mov	edx,ecx
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0
@@ -1739,7 +1837,7 @@ reserve_words:
 	jc	out_of_memory
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0
@@ -1769,7 +1867,7 @@ reserve_dwords:
 	jc	out_of_memory
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0
@@ -1796,7 +1894,7 @@ reserve_pwords:
 	jc	out_of_memory
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0
@@ -1820,7 +1918,7 @@ reserve_qwords:
 	jc	out_of_memory
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0
@@ -1843,7 +1941,7 @@ reserve_twords:
 	jc	out_of_memory
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0
@@ -1866,14 +1964,15 @@ align_directive:
 	cmp	eax,1
 	je	instruction_assembled
 	mov	ecx,edi
-	sub	ecx,dword [org_origin]
-	cmp	[org_registers],0
+	mov	ebp,[addressing_space]
+	sub	ecx,[ds:ebp]
+	cmp	dword [ds:ebp+10h],0
 	jne	section_not_aligned_enough
-	cmp	[labels_type],0
+	cmp	byte [ds:ebp+9],0
 	je	make_alignment
 	cmp	[output_format],3
 	je	pe_alignment
-	mov	ebx,[org_symbol]
+	mov	ebx,[ds:ebp+14h]
 	cmp	byte [ebx],0
 	jne	section_not_aligned_enough
 	cmp	eax,[ebx+10h]
@@ -1892,7 +1991,7 @@ align_directive:
 	mov	edx,ecx
 	add	edx,edi
 	jc	out_of_memory
-	cmp	edx,[display_buffer]
+	cmp	edx,[tagged_blocks]
 	ja	out_of_memory
 	push	edi
 	cmp	[next_pass_needed],0

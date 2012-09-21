@@ -1,4 +1,5 @@
 
+
 ; flat assembler core
 ; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.
@@ -64,12 +65,20 @@ parser:
       simple_label:
 	pop	edi
 	call	identify_label
+	cmp	byte [esi+1],':'
+	je	block_label
 	mov	byte [edi],2
 	inc	edi
 	stos	dword [edi]
 	inc	esi
 	xor	al,al
 	stos	byte [edi]
+	jmp	parse_line
+      block_label:
+	mov	byte [edi],4
+	inc	edi
+	stos	dword [edi]
+	add	esi,2
 	jmp	parse_line
       constant_label:
 	pop	edi
@@ -560,7 +569,7 @@ parse_line_contents:
 	je	ptr_argument
 	stos	byte [edi]
 	cmp	al,80h
-	je	forced_expression
+	je	forced_multipart_expression
 	cmp	al,8Ch
 	je	forced_expression
 	cmp	al,81h
@@ -725,7 +734,7 @@ parse_line_contents:
 	jmp	argument_parsed
       parse_from_operator:
 	cmp	byte [esi],22h
-	jne	forced_expression
+	jne	forced_multipart_expression
 	jmp	argument_parsed
       parse_quoted_extrn:
 	inc	esi
@@ -771,14 +780,10 @@ parse_line_contents:
 	mov	eax,[esi+1]
 	lea	ebx,[esi+5+eax]
 	push	ebx ecx esi edi
-	mov	al,'('
-	stos	byte [edi]
-	call	convert_expression
-	mov	al,')'
-	stos	byte [edi]
+	call	parse_expression
 	pop	eax edx ecx ebx
 	cmp	esi,ebx
-	jne	expression_parsed
+	jne	expression_argument_parsed
 	mov	edi,eax
 	mov	esi,edx
       string_argument:
@@ -799,7 +804,14 @@ parse_line_contents:
 	rep	movs dword [edi],[esi]
 	xor	al,al
 	stos	byte [edi]
-	jmp	expression_parsed
+	jmp	expression_argument_parsed
+      parse_expression:
+	mov	al,'('
+	stos	byte [edi]
+	call	convert_expression
+	mov	al,')'
+	stos	byte [edi]
+	ret
       not_string:
 	cmp	byte [esi],'('
 	jne	expression
@@ -838,24 +850,27 @@ parse_line_contents:
 	mov	al,0F1h
 	jmp	expression_comparator
       expression:
-	mov	al,'('
-	stos	byte [edi]
-	call	convert_expression
-	mov	al,')'
-	stos	byte [edi]
-	jmp	expression_parsed
+	call	parse_expression
+	jmp	expression_argument_parsed
       forced_expression:
 	xor	al,al
 	xchg	al,[formatter_symbols_allowed]
 	push	eax
-	mov	al,'('
-	stos	byte [edi]
-	call	convert_expression
-	mov	al,')'
-	stos	byte [edi]
+	call	parse_expression
+      forced_expression_parsed:
 	pop	eax
 	mov	[formatter_symbols_allowed],al
 	jmp	argument_parsed
+      forced_multipart_expression:
+	xor	al,al
+	xchg	al,[formatter_symbols_allowed]
+	push	eax
+	call	parse_expression
+	cmp	byte [esi],':'
+	jne	forced_expression_parsed
+	movs	byte [edi],[esi]
+	call	parse_expression
+	jmp	forced_expression_parsed
       address_argument:
 	call	parse_address
 	lods	byte [esi]
@@ -925,7 +940,7 @@ parse_line_contents:
 	dec	[parenthesis_stack]
 	add	esp,8
 	jmp	argument_parsed
-      expression_parsed:
+      expression_argument_parsed:
 	cmp	[parenthesis_stack],0
 	je	parse_argument
 	cmp	byte [esi],')'

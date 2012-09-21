@@ -2,6 +2,18 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.00 (Sep 21, 2012)
+
+[+] Added ability to define a special kind of label identifying the
+    addressing space. This label can the be used with "load" or "store"
+    directives to allow operations on bytes in any addressing space,
+    not just the current one. This special label is defined by following
+    its name with double colon, and can only be used with "load" and
+    "store" directive, where address can now be specified in two parts,
+    first the adressing space label, then the colon and then the
+    address inside that addressing space.
+
+
 version 1.70.03 (Jun 29, 2012)
 
 [-] Allowed to freely upgrade or downgrade the relocatable addresses in

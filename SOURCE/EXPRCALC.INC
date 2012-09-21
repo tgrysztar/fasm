@@ -169,6 +169,8 @@ calculate_expression:
 	stos	dword [edi]
 	mov	[edi-8+13],cl
       got_label:
+	test	byte [ebx+9],4
+	jnz	invalid_use_of_symbol
 	cmp	[symbols_file],0
 	je	label_reference_ok
 	cmp	[next_pass_needed],0
@@ -214,25 +216,27 @@ calculate_expression:
       make_current_offset_label:
 	xor	edx,edx
 	xor	ch,ch
-	sub	eax,dword [org_origin]
-	sbb	edx,dword [org_origin+4]
-	sbb	ch,[org_origin_sign]
+	mov	ebp,[addressing_space]
+	sub	eax,[ds:ebp]
+	sbb	edx,[ds:ebp+4]
+	sbb	ch,[ds:ebp+8]
 	jp	current_offset_label_ok
 	call	recoverable_overflow
       current_offset_label_ok:
 	stos	dword [edi]
 	mov	eax,edx
 	stos	dword [edi]
-	mov	eax,[org_registers]
+	mov	eax,[ds:ebp+10h]
 	stos	dword [edi]
-	mov	cl,[labels_type]
+	mov	cl,[ds:ebp+9]
 	mov	[edi-12+12],cx
-	mov	eax,[org_symbol]
+	mov	eax,[ds:ebp+14h]
 	mov	[edi-12+16],eax
 	add	edi,8
 	jmp	calculation_loop
       org_origin_label:
-	mov	eax,[org_start]
+	mov	eax,[addressing_space]
+	mov	eax,[eax+18h]
 	jmp	make_current_offset_label
       counter_label:
 	mov	eax,[counter]
@@ -1105,13 +1109,13 @@ calculate_expression:
 	mov	[esi+13],bl
 	ret
       store_label_reference:
-	mov	eax,[display_buffer]
+	mov	eax,[tagged_blocks]
 	mov	dword [eax-4],2
 	mov	dword [eax-8],4
 	sub	eax,8+4
 	cmp	eax,edi
 	jbe	out_of_memory
-	mov	[display_buffer],eax
+	mov	[tagged_blocks],eax
 	mov	[eax],ebx
 	ret
       convert_fp:
@@ -1778,19 +1782,19 @@ calculate_relative_offset:
 	jne	relative_offset_ok
 	test	bh,bh
 	setne	ch
-	cmp	bx,word [org_registers]
+	cmp	bx,[ds:ebp+10h]
 	je	origin_registers_ok
 	xchg	bh,bl
 	xchg	ch,cl
-	cmp	bx,word [org_registers]
+	cmp	bx,[ds:ebp+10h]
 	jne	invalid_value
       origin_registers_ok:
-	cmp	cx,word [org_registers+2]
+	cmp	cx,[ds:ebp+10h+2]
 	jne	invalid_value
 	mov	bl,[address_sign]
-	add	eax,dword [org_origin]
-	adc	edx,dword [org_origin+4]
-	adc	bl,[org_origin_sign]
+	add	eax,[ds:ebp]
+	adc	edx,[ds:ebp+4]
+	adc	bl,[ds:ebp+8]
 	sub	eax,edi
 	sbb	edx,0
 	sbb	bl,0
@@ -1802,7 +1806,7 @@ calculate_relative_offset:
 	jnz	relative_offset_unallowed
 	cmp	bl,6
 	je	plt_relative_offset
-	mov	bh,[labels_type]
+	mov	bh,[ds:ebp+9]
 	cmp	bl,bh
 	je	set_relative_offset_type
 	cmp	bx,0402h
@@ -1813,16 +1817,16 @@ calculate_relative_offset:
 	cmp	[value_type],0
 	je	relative_offset_ok
 	mov	[value_type],0
-	cmp	ecx,[org_symbol]
+	cmp	ecx,[ds:ebp+14h]
 	je	relative_offset_ok
 	mov	[value_type],3
       relative_offset_ok:
 	ret
       plt_relative_offset:
 	mov	[value_type],7
-	cmp	[labels_type],2
+	cmp	byte [ds:ebp+9],2
 	je	relative_offset_ok
-	cmp	[labels_type],4
+	cmp	byte [ds:ebp+9],4
 	jne	recoverable_misuse
 	ret
 
@@ -2173,6 +2177,8 @@ skip_symbol:
 	je	skip_label
 	cmp	al,3
 	je	skip_label
+	cmp	al,4
+	je	skip_special_label
 	cmp	al,20h
 	jb	skip_assembler_symbol
 	cmp	al,'('
@@ -2188,6 +2194,9 @@ skip_symbol:
 	add	esi,2
       skip_assembler_symbol:
 	inc	esi
+	jmp	skip_done
+      skip_special_label:
+	add	esi,4
 	jmp	skip_done
       skip_address:
 	mov	al,[esi]

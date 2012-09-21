@@ -2989,6 +2989,7 @@ jmp_instruction:
 	jmp	instruction_assembled
       calculate_jump_offset:
 	add	edi,2
+	mov	ebp,[addressing_space]
 	call	calculate_relative_offset
 	sub	edi,2
 	ret
@@ -6251,6 +6252,7 @@ xbegin_instruction:
       xbegin_16bit:
 	call	get_address_word_value
 	add	edi,4
+	mov	ebp,[addressing_space]
 	call	calculate_relative_offset
 	sub	edi,4
 	shl	eax,16
@@ -6264,6 +6266,7 @@ xbegin_instruction:
 	call	get_address_qword_value
       xbegin_address_ok:
 	add	edi,5
+	mov	ebp,[addressing_space]
 	call	calculate_relative_offset
 	sub	edi,5
 	mov	edx,eax
@@ -6422,6 +6425,7 @@ get_address:
 	mov	edx,[address_symbol]
 	mov	[symbol_identifier],edx
 	mov	edx,[address_high]
+	mov	ebp,[addressing_space]
 	call	calculate_relative_offset
 	mov	[address_high],edx
 	cdq
