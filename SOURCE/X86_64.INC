@@ -5983,6 +5983,27 @@ movbe_instruction:
 	mov	al,[operand_size]
 	call	operand_autodetect
 	jmp	instruction_ready
+adx_instruction:
+	mov	[base_code],0Fh
+	mov	[extended_code],38h
+	mov	[supplemental_code],0F6h
+	mov	[operand_prefix],al
+	call	get_reg_mem
+	jc	adx_reg_reg
+	mov	al,[operand_size]
+	cmp	al,4
+	je	instruction_ready
+	cmp	al,8
+	jne	invalid_operand_size
+	call	operand_64bit
+	jmp	instruction_ready
+      adx_reg_reg:
+	cmp	ah,4
+	je	nomem_instruction_ready
+	cmp	ah,8
+	jne	invalid_operand_size
+	call	operand_64bit
+	jmp	nomem_instruction_ready
 
 simple_vmx_instruction:
 	mov	ah,al

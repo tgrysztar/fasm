@@ -281,9 +281,6 @@ heap_directive:
 	je	pe_heap
 	jmp	illegal_instruction
 segment_directive:
-	mov	ebp,[addressing_space]
-	test	byte [ds:ebp+0Ah],1
-	jnz	illegal_instruction
 	mov	al,[output_format]
 	cmp	al,2
 	je	mz_segment
@@ -291,9 +288,6 @@ segment_directive:
 	je	elf_segment
 	jmp	illegal_instruction
 section_directive:
-	mov	ebp,[addressing_space]
-	test	byte [ds:ebp+0Ah],1
-	jnz	illegal_instruction
 	mov	al,[output_format]
 	cmp	al,3
 	je	pe_section
@@ -1120,7 +1114,7 @@ format_pe:
 	xor	bh,bh
       pe_labels_type_ok:
 	push	eax ebx
-	call	new_addressing_space
+	call	init_addressing_space
 	mov	ebp,ebx
 	pop	ebx eax
 	mov	[ds:ebp],eax
@@ -2326,7 +2320,7 @@ format_coff:
 	xor	eax,eax
 	mov	[number_of_sections],eax
 	mov	edx,ebx
-	call	new_addressing_space
+	call	init_addressing_space
 	mov	[ebx+14h],edx
 	mov	byte [ebx+9],2
 	mov	[code_type],32
@@ -2944,7 +2938,7 @@ format_elf:
 	mov	al,4
 	mov	[ebx+10h],eax
 	mov	edx,ebx
-	call	new_addressing_space
+	call	init_addressing_space
 	xchg	edx,ebx
 	mov	[edx+14h],ebx
 	mov	byte [edx+9],2
@@ -3709,7 +3703,7 @@ format_elf_exe:
 	adc	cl,0
       elf_exe_addressing_setup:
 	push	eax
-	call	create_addressing_space
+	call	init_addressing_space
 	pop	eax
 	mov	[ebx],eax
 	mov	[ebx+4],edx

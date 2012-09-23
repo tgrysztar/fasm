@@ -563,6 +563,10 @@ instructions_3:
  db 'xor',30h
  dw basic_instruction-instruction_handler
 instructions_4:
+ db 'adcx',66h
+ dw adx_instruction-instruction_handler
+ db 'adox',0F3h
+ dw adx_instruction-instruction_handler
  db 'andn',0F2h
  dw andn_instruction-instruction_handler
  db 'arpl',0
@@ -581,6 +585,8 @@ instructions_4:
  dw call_instruction-instruction_handler
  db 'cdqe',98h
  dw simple_instruction_64bit-instruction_handler
+ db 'clac',0CAh
+ dw simple_vmx_instruction-instruction_handler
  db 'clgi',0DDh
  dw simple_vmx_instruction-instruction_handler
  db 'clts',6
@@ -783,6 +789,8 @@ instructions_4:
  dw pm_store_word_instruction-instruction_handler
  db 'smsw',14h
  dw pm_store_word_instruction-instruction_handler
+ db 'stac',0CBh
+ dw simple_vmx_instruction-instruction_handler
  db 'stgi',0DCh
  dw simple_vmx_instruction-instruction_handler
  db 'stos',0AAh
@@ -1550,6 +1558,8 @@ instructions_6:
  db 'rdmsrq',32h
  dw simple_extended_instruction_64bit-instruction_handler
  db 'rdrand',110b
+ dw rdrand_instruction-instruction_handler
+ db 'rdseed',111b
  dw rdrand_instruction-instruction_handler
  db 'rdtscp',1
  dw rdtscp_instruction-instruction_handler

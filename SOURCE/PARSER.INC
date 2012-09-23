@@ -1,5 +1,4 @@
 
-
 ; flat assembler core
 ; Copyright (c) 1999-2012, Tomasz Grysztar.
 ; All rights reserved.

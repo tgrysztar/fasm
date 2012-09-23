@@ -33,7 +33,7 @@ assembler:
 	mov	[output_format],al
 	mov	[adjustment_sign],al
 	mov	[code_type],16
-	call	create_addressing_space
+	call	init_addressing_space
       pass_loop:
 	call	assemble_line
 	jnc	pass_loop
@@ -137,12 +137,14 @@ assembler:
 
 create_addressing_space:
 	mov	ebx,[addressing_space]
-	or	ebx,ebx
-	jz	new_addressing_space
+	test	ebx,ebx
+	jz	init_addressing_space
+	test	byte [ebx+0Ah],1
+	jnz	illegal_instruction
 	mov	eax,edi
 	sub	eax,[ebx+18h]
 	mov	[ebx+1Ch],eax
-      new_addressing_space:
+      init_addressing_space:
 	mov	ebx,[tagged_blocks]
 	mov	dword [ebx-4],10h
 	mov	dword [ebx-8],20h
@@ -450,15 +452,15 @@ assemble_line:
 	or	byte [ebx+0Ah],2
 	jmp	continue_line
       assemble_instruction:
-;	 mov	 [operand_size],0
-;	 mov	 [size_override],0
-;	 mov	 [operand_prefix],0
-;	 mov	 [opcode_prefix],0
+;        mov     [operand_size],0
+;        mov     [size_override],0
+;        mov     [operand_prefix],0
+;        mov     [opcode_prefix],0
 	and	dword [operand_size],0
-;	 mov	 [rex_prefix],0
-;	 mov	 [vex_required],0
-;	 mov	 [vex_register],0
-;	 mov	 [immediate_size],0
+;        mov     [rex_prefix],0
+;        mov     [vex_required],0
+;        mov     [vex_register],0
+;        mov     [immediate_size],0
 	and	dword [rex_prefix],0
 	call	instruction_handler
       instruction_handler:
@@ -492,7 +494,19 @@ org_directive:
 	test	cl,1
 	jnz	invalid_use_of_symbol
 	push	eax
-	call	create_addressing_space
+	mov	ebx,[addressing_space]
+	mov	eax,edi
+	sub	eax,[ebx+18h]
+	mov	[ebx+1Ch],eax
+	test	byte [ebx+0Ah],1
+	jnz	in_virtual
+	call	init_addressing_space
+	jmp	org_space_ok
+      in_virtual:
+	call	close_virtual_addressing_space
+	call	init_addressing_space
+	or	byte [ebx+0Ah],1
+      org_space_ok:
 	pop	eax
 	mov	[ebx+9],cl
 	mov	cl,[value_sign]
@@ -719,6 +733,7 @@ store_directive:
 	cmp	al,80h
 	jne	invalid_argument
 	call	get_data_point
+	jc	instruction_assembled
 	push	esi edi
 	mov	esi,value
 	mov	edi,ebx
@@ -732,10 +747,6 @@ store_directive:
 	cmp	eax,[undefined_data_start]
 	jbe	instruction_assembled
 	mov	[undefined_data_start],eax
-	jmp	instruction_assembled
-      bad_store_address:
-	pop	edi esi
-	call	recoverable_overflow
 	jmp	instruction_assembled
 
 display_directive:
@@ -890,7 +901,11 @@ virtual_directive:
 	mov	[ebx+8],edi
 	mov	ecx,[current_line]
 	mov	[ebx+4],ecx
-	call	create_addressing_space
+	mov	ebx,[addressing_space]
+	mov	eax,edi
+	sub	eax,[ebx+18h]
+	mov	[ebx+1Ch],eax
+	call	init_addressing_space
 	or	byte [ebx+0Ah],1
 	pop	eax
 	mov	cl,[address_sign]
@@ -937,12 +952,34 @@ virtual_directive:
       end_virtual:
 	call	find_structure_data
 	jc	unexpected_instruction
-	mov	edx,[addressing_space]
-	mov	ecx,edi
-	sub	ecx,[edx+18h]
-	mov	[edx+1Ch],ecx
-	test	byte [edx+0Ah],2
-	jz	virtual_space_ok
+	push	ebx
+	call	close_virtual_addressing_space
+	pop	ebx
+	mov	eax,[ebx+12]
+	mov	[addressing_space],eax
+	mov	edi,[ebx+8]
+      remove_structure_data:
+	push	esi edi
+	mov	ecx,ebx
+	sub	ecx,[structures_buffer]
+	shr	ecx,2
+	lea	esi,[ebx-4]
+	lea	edi,[esi+18h]
+	std
+	rep	movs dword [edi],[esi]
+	cld
+	add	[structures_buffer],18h
+	pop	edi esi
+	ret
+      close_virtual_addressing_space:
+	mov	ebx,[addressing_space]
+	mov	eax,edi
+	sub	eax,[ebx+18h]
+	mov	[ebx+1Ch],eax
+	test	byte [ebx+0Ah],2
+	jz	addressing_space_closed
+	push	esi edi ecx edx
+	mov	ecx,eax
 	mov	eax,[tagged_blocks]
 	mov	dword [eax-4],11h
 	mov	dword [eax-8],ecx
@@ -951,10 +988,9 @@ virtual_directive:
 	cmp	eax,[ebx+8]
 	jbe	out_of_memory
 	mov	[tagged_blocks],eax
-	mov	[edx+18h],eax
-	push	esi
-	lea	esi,[edi-1]
 	lea	edi,[eax+ecx-1]
+	xchg	eax,[ebx+18h]
+	lea	esi,[eax+ecx-1]
 	mov	eax,edi
 	sub	eax,esi
 	std
@@ -972,28 +1008,12 @@ virtual_directive:
 	sub	edi,2
 	rep	movs dword [edi],[esi]
 	cld
-	pop	esi
-	mov	ecx,edx
 	cdq
-	add	[ecx],eax
-	adc	dword [ecx+4],edx
-	adc	byte [ecx+8],dl
-      virtual_space_ok:
-	mov	eax,[ebx+12]
-	mov	[addressing_space],eax
-	mov	edi,[ebx+8]
-      remove_structure_data:
-	push	esi edi
-	mov	ecx,ebx
-	sub	ecx,[structures_buffer]
-	shr	ecx,2
-	lea	esi,[ebx-4]
-	lea	edi,[esi+18h]
-	std
-	rep	movs dword [edi],[esi]
-	cld
-	add	[structures_buffer],18h
-	pop	edi esi
+	add	[ebx],eax
+	adc	dword [ebx+4],edx
+	adc	byte [ebx+8],dl
+	pop	edx ecx edi esi
+      addressing_space_closed:
 	ret
 repeat_directive:
 	cmp	[prefixed_instruction],0

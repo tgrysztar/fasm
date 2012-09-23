@@ -2,6 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.01 (Sep 23, 2012)
+
+[+] Added support for ADX, RDSEED and SMAP instruction sets.
+
+[-] Fixed the bugs related to creating a new addressing space inside the
+    virtual block with "org" directive.
+
+
 version 1.71.00 (Sep 21, 2012)
 
 [+] Added ability to define a special kind of label identifying the
