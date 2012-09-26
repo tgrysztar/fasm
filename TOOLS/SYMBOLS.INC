@@ -114,15 +114,25 @@ symbols:
 	mov	bl,[edx+13]
 	mov	bh,[edx+15]
 	call	write_address_register
-	cmp	byte [edx+11],0
+	mov	bl,[edx+11]
+	cmp	bl,0
 	je	symbol_type_ok
+	jl	negated_symbol
 	mov	ax,', '
 	stosw
-	cmp	byte [edx+11],1
+	jmp	write_symbol_type
+     negated_symbol:
+	mov	ax,', '
+	stosw
+	mov	esi,_negated
+	call	write_string
+	neg	bl
+     write_symbol_type:
+	cmp	bl,1
 	je	segment_type
-	cmp	byte [edx+11],5
+	cmp	bl,5
 	je	rva_type
-	cmp	byte [edx+11],6
+	cmp	bl,6
 	je	plt_type
 	test	byte [edx+20+3],80h
 	jnz	external
@@ -250,9 +260,14 @@ write_dec_number:
 	pop	edx ebx
 	ret
 write_address_register:
-	test	bh,bh
-	jz	register_ok
+	cmp	bh,0
+	je	register_ok
+	jl	negative_register
 	mov	al,'+'
+	jmp	register_sign_ok
+      negative_register:
+	mov	al,'-'
+      register_sign_ok:
 	stosb
 	push	esi
 	mov	esi,address_registers
@@ -390,6 +405,7 @@ address_registers db 23h,2,'bx'
 		  db 0F8h,3,'rip'
 		  db 0,1,'?'
 
+_negated db 'negated ',0
 _relocatable_segment db 'relocatable segment',0
 _relocatable db 'relocatable',0
 _in_section db ' in section ',0

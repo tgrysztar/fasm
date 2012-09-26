@@ -256,10 +256,12 @@ get_params:
 	stosb
 	pop	ds
 	cmp	[input_file],0
-	je	bad_params
+	je	no_input_file
 	clc
 	ret
     bad_params:
+	pop	ds
+    no_input_file:
 	stc
 	ret
 

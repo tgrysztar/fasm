@@ -1454,7 +1454,7 @@ computes the sine of that value, "fcos" computes the cosine of that value,
 value, "frndint" rounds it to the nearest integral value, depending on the
 current rounding mode. "f2xm1" computes the exponential value of 2 to the
 power of ST0 and substracts the 1.0 from it, the value of ST0 must lie in the
-range -1.0 to +1.0. All these instruction store the result in ST0 and have no
+range -1.0 to +1.0. All these instructions store the result in ST0 and have no
 operands.
   "fsincos" computes both the sine and the cosine of the value in ST0
 register, stores the sine in ST0 and pushes the cosine on the top of FPU
@@ -1471,7 +1471,7 @@ remainder in the way specified by IEEE Standard 754. "fscale" truncates the
 value in ST1 and increases the exponent of ST0 by this value. "fxtract"
 separates the value in ST0 into its exponent and significand, stores the
 exponent in ST0 and pushes the significand onto the register stack. "fnop"
-performs no operation. These instruction have no operands.
+performs no operation. These instructions have no operands.
   "fxch" exchanges the contents of ST0 an another FPU register. The operand
 should be an FPU register, if no operand is specified, the contents of ST0 and
 ST1 are exchanged.
@@ -1504,7 +1504,7 @@ another FPU register and set the ZF, PF and CF flags according to the results.
 "fcomip" and "fucomip" additionaly pop the register stack after performing the
 comparison. The instructions obtained by attaching the FPU condition mnemonic
 (see table 2.2) to the "fcmov" mnemonic transfer the specified FPU register
-into ST0 register if the fiven test condition is true. These instruction
+into ST0 register if the given test condition is true. These instructions
 allow two different syntaxes, one with single operand specifying the source
 FPU register, and one with two operands, in that case destination operand
 should be ST0 register and the second operand specifies the source FPU
@@ -1533,7 +1533,7 @@ and sets the flags in FPU status word to indicate the class of value in the
 register. These instructions have no operands.
   "fstsw" and "fnstsw" store the current value of the FPU status word in the
 destination location. The destination operand can be either a 16-bit memory or
-the AX register. "fstsw" checks for pending umasked FPU exceptions before
+the AX register. "fstsw" checks for pending unmasked FPU exceptions before
 storing the status word, "fnstsw" does not.
   "fstcw" and "fnstcw" store the current value of the FPU control word at the
 specified destination in memory. "fstcw" checks for pending umasked FPU
@@ -1549,7 +1549,7 @@ FPU state (operating environment and register stack) at the specified
 destination in memory and reinitializes the FPU. "fsave" check for pending
 unmasked FPU exceptions before proceeding, "fnsave" does not. "frstor"
 loads the FPU state from the specified memory location. All these instructions
-need an operand being a memory location. For each of these instruction
+need an operand being a memory location. For each of these instructions
 exist two additional mnemonics that allow to precisely select the type of the
 operation. The "fstenvw", "fnstenvw", "fldenvw", "fsavew", "fnsavew" and
 "frstorw" mnemonics force the instruction to perform operation as in the 16-bit
@@ -1561,12 +1561,12 @@ state. "finit" checks for pending unmasked FPU exception before proceeding,
 FPU status word. "fclex" checks for pending unmasked FPU exception before
 proceeding, "fnclex" does not. "wait" and "fwait" are synonyms for the same
 instruction, which causes the processor to check for pending unmasked FPU
-exceptions and handle them before proceeding. These instruction have no
+exceptions and handle them before proceeding. These instructions have no
 operands.
   "ffree" sets the tag associated with specified FPU register to empty. The
 operand should be an FPU register.
   "fincstp" and "fdecstp" rotate the FPU stack by one by adding or
-substracting one to the pointer of the top of stack. These instruction have no
+substracting one to the pointer of the top of stack. These instructions have no
 operands.
 
 
@@ -1948,7 +1948,7 @@ operand. "cvtpd2dq" and "cvttpd2dq" convert packed double precision floating
 point values to packed two double word integers, storing the result in the low
 quad word of the destination operand. "cvtdq2ps" converts packed four
 double word integers to packed single precision floating point values.
-For all these instruction destination operand must be a SSE register, the
+For all these instructions destination operand must be a SSE register, the
 source operand can be a 128-bit memory location or SSE register.
 "cvtdq2pd" converts packed two double word integers from the source operand to
 packed double precision floating point values, the source can be a 64-bit 
@@ -2050,7 +2050,7 @@ source operand into high quad word of destination operand. "haddpd" performs
 the addition of two double precision values within each operand, and stores
 the result from destination operand into low quad word of destination operand,
 and the result from source operand into high quad word of destination operand.
-All these instruction need the destination operand to be SSE register, source
+All these instructions need the destination operand to be SSE register, source
 operand can be SSE register or 128-bit memory location.
   "monitor" sets up an address range for monitoring of write-back stores. It
 need its three operands to be EAX, ECX and EDX register in that order. "mwait"
@@ -2300,7 +2300,7 @@ packed quad words into the destination register. "pminsb" and "pmaxsb"
 return the minimum or maximum values of packed signed bytes, "pminuw" and
 "pmaxuw" return the minimum and maximum values of packed unsigned words,
 "pminud", "pmaxud", "pminsd" and "pmaxsd" return minimum or maximum values
-of packed unsigned or signed words. These instruction complement the
+of packed unsigned or signed words. These instructions complement the
 instructions computing packed minimum or maximum introduced by SSE.
   "ptest" sets the ZF flag to one when the result of bitwise AND of the
 both operands is zero, and zeroes the ZF otherwise. It also sets CF flag
@@ -2842,7 +2842,7 @@ AVX. They introduce new vector instructions (and sometimes also their SSE
 equivalents that use classic instruction encoding), and even some new
 instructions operating on general registers that use the AVX-like encoding
 allowing the extended syntax with separate destination and source operands.
-The CPU support for each of these instruction sets needs to be determined
+The CPU support for each of these instructions sets needs to be determined
 separately.    
   The AES extension provides a specialized set of instructions for the 
 purpose of cryptographic computations defined by Advanced Encryption Standard.
@@ -2964,7 +2964,7 @@ unsigned quad words. The respective values from the first and second source
 are compared and the corresponding data element in destination is set to
 either all ones or all zeros depending on the result of comparison. The fourth
 operand has to specify one of the eight comparison types (table 2.5). All
-these instruction have also variants with only three operands and the type 
+these instructions have also variants with only three operands and the type
 of comparison encoded within the instruction name by inserting the comparison 
 mnemonic after "vpcom".
 
@@ -3021,7 +3021,7 @@ from the first and second source and then add the products to the parallel
 values from the third source, then "vpmacsww" takes the lowest 16 bits of the 
 result and "vpmacssww" saturates the result down to 16-bit value, and they 
 store the final 16-bit results in the destination. "vpmacsdd" and "vpmacssdd" 
-perform the analogous operation on 32-bit values. "vpmacswd" and "vpmacswd" do 
+perform the analogous operation on 32-bit values. "vpmacswd" and "vpmacsswd" do
 the same calculation only on the low 16-bit values from each 32-bit block and 
 form the 32-bit results. "vpmacsdql" and "vpmacssdql" perform such operation 
 on the low 32-bit values from each 64-bit block and form the 64-bit results, 
@@ -3703,7 +3703,7 @@ while it will itself define "alpha" when it's not already defined earlier, thus
 potentially causing the error because of double definition if the "alpha" is
 also defined somewhere later.
   The "used" operator may be expected to behave in a similar manner in
-analogous cases, however any other kinds of predictions my not be so simple and
+analogous cases, however any other kinds of predictions may not be so simple and
 you should never rely on them this way.
   The "err" directive, usually used to stop the assembly when some condition is
 met, stops the assembly immediately, regardless of whether the current pass

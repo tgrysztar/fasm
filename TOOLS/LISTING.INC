@@ -343,9 +343,14 @@ listing:
       address_ok:
 	ret
       address_register:
-	test	dh,dh
-	jz	register_ok
+	cmp	dh,0
+	je	register_ok
+	jl	negative_register
 	mov	al,'+'
+	jmp	register_sign_ok
+      negative_register:
+	mov	al,'-'
+      register_sign_ok:
 	stosb
 	push	esi
 	mov	esi,address_registers

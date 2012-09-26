@@ -1,5 +1,5 @@
 
-flat assembler  version 1.70
+flat assembler  version 1.71
 Copyright (c) 1999-2012, Tomasz Grysztar.
 All rights reserved.
 

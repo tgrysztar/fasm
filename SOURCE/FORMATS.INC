@@ -2438,8 +2438,10 @@ mark_coff_relocation:
 	test	[format_flags],8
 	jnz	coff_64bit_relocation
 	mov	al,6
+	cmp	[value_type],2
+	je	coff_relocation
 	cmp	[value_type],5
-	jne	coff_relocation
+	jne	invalid_use_of_symbol
 	inc	al
 	jmp	coff_relocation
       coff_64bit_relocation:
@@ -2447,8 +2449,10 @@ mark_coff_relocation:
 	cmp	[value_type],4
 	je	coff_relocation
 	mov	al,2
+	cmp	[value_type],2
+	je	coff_relocation
 	cmp	[value_type],5
-	jne	coff_relocation
+	jne	invalid_use_of_symbol
 	inc	al
 	jmp	coff_relocation
       coff_relocation_relative:

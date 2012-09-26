@@ -290,17 +290,27 @@ calculate_expression:
 	mov	[error_info],ebx
 	jmp	calculation_loop
       calculate_add:
-	mov	ecx,[ebx+16]
-	cmp	byte [edi+12],0
-	je	add_values
-	mov	ecx,[edi+16]
-	cmp	byte [ebx+12],0
-	je	add_values
-	call	recoverable_misuse
-      add_values:
+	xor	ah,ah
+	mov	ah,[ebx+12]
 	mov	al,[edi+12]
-	or	[ebx+12],al
+	or	al,al
+	jz	add_values
+	or	ah,ah
+	jz	add_relocatable
+	add	ah,al
+	jnz	invalid_add
+	mov	ecx,[edi+16]
+	cmp	ecx,[ebx+16]
+	je	add_values
+      invalid_add:
+	call	recoverable_misuse
+	jmp	add_values
+      add_relocatable:
+	mov	ah,al
+	mov	ecx,[edi+16]
 	mov	[ebx+16],ecx
+      add_values:
+	mov	[ebx+12],ah
 	mov	eax,[edi]
 	add	[ebx],eax
 	mov	eax,[edi+4]
@@ -314,31 +324,29 @@ calculate_expression:
 	jz	calculation_loop
 	push	esi
 	mov	esi,ebx
-	lea	ebx,[edi+10]
-	mov	cl,[edi+8]
+	mov	cl,[edi+10]
+	mov	al,[edi+8]
 	call	add_register
-	lea	ebx,[edi+11]
-	mov	cl,[edi+9]
+	mov	cl,[edi+11]
+	mov	al,[edi+9]
 	call	add_register
 	pop	esi
 	jmp	calculation_loop
       add_register:
-	or	cl,cl
+	or	al,al
 	jz	add_register_done
       add_register_start:
-	cmp	[esi+8],cl
+	cmp	[esi+8],al
 	jne	add_in_second_slot
-	mov	al,[ebx]
-	add	[esi+10],al
+	add	[esi+10],cl
 	jo	value_out_of_range
 	jnz	add_register_done
 	mov	byte [esi+8],0
 	ret
       add_in_second_slot:
-	cmp	[esi+9],cl
+	cmp	[esi+9],al
 	jne	create_in_first_slot
-	mov	al,[ebx]
-	add	[esi+11],al
+	add	[esi+11],cl
 	jo	value_out_of_range
 	jnz	add_register_done
 	mov	byte [esi+9],0
@@ -346,16 +354,14 @@ calculate_expression:
       create_in_first_slot:
 	cmp	byte [esi+8],0
 	jne	create_in_second_slot
-	mov	[esi+8],cl
-	mov	al,[ebx]
-	mov	[esi+10],al
+	mov	[esi+8],al
+	mov	[esi+10],cl
 	ret
       create_in_second_slot:
 	cmp	byte [esi+9],0
 	jne	invalid_expression
-	mov	[esi+9],cl
-	mov	al,[ebx]
-	mov	[esi+11],al
+	mov	[esi+9],al
+	mov	[esi+11],cl
       add_register_done:
 	ret
       out_of_range:
@@ -366,6 +372,8 @@ calculate_expression:
 	mov	al,[edi+12]
 	or	al,al
 	jz	sub_values
+	or	ah,ah
+	jz	negate_relocatable
 	cmp	al,ah
 	jne	invalid_sub
 	xor	ah,ah
@@ -374,6 +382,12 @@ calculate_expression:
 	je	sub_values
       invalid_sub:
 	call	recoverable_misuse
+	jmp	sub_values
+      negate_relocatable:
+	neg	al
+	mov	ah,al
+	mov	ecx,[edi+16]
+	mov	[ebx+16],ecx
       sub_values:
 	mov	[ebx+12],ah
 	mov	eax,[edi]
@@ -391,18 +405,18 @@ calculate_expression:
 	jz	calculation_loop
 	push	esi
 	mov	esi,ebx
-	lea	ebx,[edi+10]
-	mov	cl,[edi+8]
+	mov	cl,[edi+10]
+	mov	al,[edi+8]
 	call	sub_register
-	lea	ebx,[edi+11]
-	mov	cl,[edi+9]
+	mov	cl,[edi+11]
+	mov	al,[edi+9]
 	call	sub_register
 	pop	esi
 	jmp	calculation_loop
       sub_register:
-	or	cl,cl
+	or	al,al
 	jz	add_register_done
-	neg	byte [ebx]
+	neg	cl
 	jo	value_out_of_range
 	jmp	add_register_start
       calculate_mul:
@@ -424,6 +438,7 @@ calculate_expression:
 	xor	bl,bl
 	cmp	byte [esi+13],0
 	je	mul_first_sign_ok
+	xor	bl,-1
 	mov	eax,[esi]
 	mov	edx,[esi+4]
 	not	eax
@@ -434,10 +449,20 @@ calculate_expression:
 	mov	[esi+4],edx
 	or	eax,edx
 	jz	mul_overflow
-	xor	bl,-1
       mul_first_sign_ok:
 	cmp	byte [edi+13],0
 	je	mul_second_sign_ok
+	xor	bl,-1
+	cmp	byte [esi+8],0
+	je	mul_first_register_sign_ok
+	neg	byte [esi+10]
+	jo	invalid_expression
+      mul_first_register_sign_ok:
+	cmp	byte [esi+9],0
+	je	mul_second_register_sign_ok
+	neg	byte [esi+11]
+	jo	invalid_expression
+      mul_second_register_sign_ok:
 	mov	eax,[edi]
 	mov	edx,[edi+4]
 	not	eax
@@ -448,7 +473,6 @@ calculate_expression:
 	mov	[edi+4],edx
 	or	eax,edx
 	jz	mul_overflow
-	xor	bl,-1
       mul_second_sign_ok:
 	cmp	dword [esi+4],0
 	jz	mul_numbers
@@ -879,12 +903,17 @@ calculate_expression:
 	not	dword [edi]
 	jmp	finish_not
       calculate_neg:
-	cmp	word [edi+8],0
-	jne	invalid_expression
-	cmp	byte [edi+12],0
-	je	neg_ok
-	call	recoverable_misuse
-      neg_ok:
+	cmp	byte [edi+8],0
+	je	neg_first_register_ok
+	neg	byte [edi+10]
+	jo	invalid_expression
+      neg_first_register_ok:
+	cmp	byte [edi+9],0
+	je	neg_second_register_ok
+	neg	byte [edi+11]
+	jo	invalid_expression
+      neg_second_register_ok:
+	neg	byte [edi+12]
 	xor	eax,eax
 	xor	edx,edx
 	xor	cl,cl

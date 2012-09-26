@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.02 (Sep 26, 2012)
+
+[-] Expression calculator now allows to calculate the difference of
+    relocatable addresses in a reverse order (first substracting/negating
+    and then adding the other one).
+
+
 version 1.71.01 (Sep 23, 2012)
 
 [+] Added support for ADX, RDSEED and SMAP instruction sets.
