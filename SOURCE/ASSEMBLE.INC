@@ -511,7 +511,7 @@ org_directive:
 	mov	[ebx+9],cl
 	mov	cl,[value_sign]
 	sub	[ebx],eax
-	sbb	[ebx],edx
+	sbb	[ebx+4],edx
 	sbb	byte [ebx+8],0
 	jp	org_value_ok
 	call	recoverable_overflow

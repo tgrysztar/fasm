@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.03 (Sep 27, 2012)
+
+[-] Fixed a bug in "org" directive introduced by recent changes, which
+    was manifesting with bases larger than 31-bit.
+
+
 version 1.71.02 (Sep 26, 2012)
 
 [-] Expression calculator now allows to calculate the difference of

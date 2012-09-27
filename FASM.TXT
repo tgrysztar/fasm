@@ -438,12 +438,15 @@ the least significant byte of number.
   The numerical expression used as an address value can also contain any of
 general registers used for addressing, they can be added and multiplied by
 appropriate values, as it is allowed for the x86 architecture instructions.
+The numerical calculations inside address definition by default operate with
+target size assumed to be the same as the current bitness of code, even if
+generated instruction encoding will use a different address size.
   There are also some special symbols that can be used inside the numerical
 expression. First is "$", which is always equal to the value of current
 offset, while "$$" is equal to base address of current addressing space. The
 other one is "%", which is the number of current repeat in parts of code that
-are repeated using some special directives (see 2.2). There's also "%t"
-symbol, which is always equal to the current time stamp.
+are repeated using some special directives (see 2.2) and zero anywhere else.
+There's also "%t" symbol, which is always equal to the current time stamp.
   Any numerical expression can also consist of single floating point value
 (flat assembler does not allow any floating point operations at compilation
 time) in the scientific notation, they can end with the "f" letter to be
@@ -475,7 +478,7 @@ while simple "1" defines an integer value.
 
 The operand of any jump or call instruction can be preceded not only by the
 size operator, but also by one of the operators specifying type of the jump:
-"short", "near" of "far". For example, when assembler is in 16-bit mode,
+"short", "near" or "far". For example, when assembler is in 16-bit mode,
 instruction "jmp dword [0]" will become the far jump and when assembler is
 in 32-bit mode, it will become the near jump. To force this instruction to be
 treated differently, use the "jmp near dword [0]" or "jmp far dword [0]" form.
