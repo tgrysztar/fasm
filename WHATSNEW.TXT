@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.04 (Oct 10, 2012)
+
+[-] Fixed another bug in "org" directive, which was causing it to deal
+    incorrectly with negative addresses.
+
+
 version 1.71.03 (Sep 27, 2012)
 
 [-] Fixed a bug in "org" directive introduced by recent changes, which
