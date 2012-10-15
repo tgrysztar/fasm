@@ -687,12 +687,12 @@ load_directive:
 	mov	ebx,edi
 	xor	ecx,ecx
 	add	ebx,eax
-	adc	ecx,edx
-	jnz	bad_data_address
+	adc	edx,ecx
 	mov	eax,ebx
 	sub	eax,[ds:ebp+18h]
-	jc	bad_data_address
-	movzx	ecx,[operand_size]
+	sbb	edx,ecx
+	jnz	bad_data_address
+	mov	cl,[operand_size]
 	add	eax,ecx
 	cmp	eax,[ds:ebp+1Ch]
 	ja	bad_data_address
@@ -1008,7 +1008,7 @@ virtual_directive:
 	sub	edi,2
 	rep	movs dword [edi],[esi]
 	cld
-	cdq
+	xor	edx,edx
 	add	[ebx],eax
 	adc	dword [ebx+4],edx
 	adc	byte [ebx+8],dl

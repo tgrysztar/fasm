@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.05 (Oct 15, 2012)
+
+[-] Fixed a bug which caused "load" and "store" directives to sometimes
+    fail when assembler had preallocated very large amount of memory.
+
+
 version 1.71.04 (Oct 10, 2012)
 
 [-] Fixed another bug in "org" directive, which was causing it to deal
