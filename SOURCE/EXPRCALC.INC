@@ -1575,17 +1575,22 @@ get_address_value:
 	mov	[address_sign],al
 	mov	al,[edi+12]
 	mov	[value_type],al
+	cmp	al,0
+	je	address_size_ok
+	jg	get_address_symbol_size
+	neg	al
+      get_address_symbol_size:
 	cmp	al,6
 	je	special_address_type_32bit
 	cmp	al,5
 	je	special_address_type_32bit
-	ja	invalid_use_of_symbol
+	ja	invalid_address_type
 	test	al,1
-	jnz	invalid_use_of_symbol
-	or	al,al
-	jz	address_size_ok
+	jnz	invalid_address_type
 	shl	al,5
 	jmp	address_symbol_ok
+      invalid_address_type:
+	call	recoverable_misuse
       special_address_type_32bit:
 	mov	al,40h
       address_symbol_ok:

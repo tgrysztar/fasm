@@ -452,15 +452,15 @@ assemble_line:
 	or	byte [ebx+0Ah],2
 	jmp	continue_line
       assemble_instruction:
-;        mov     [operand_size],0
-;        mov     [size_override],0
-;        mov     [operand_prefix],0
-;        mov     [opcode_prefix],0
+;	 mov	 [operand_size],0
+;	 mov	 [size_override],0
+;	 mov	 [operand_prefix],0
+;	 mov	 [opcode_prefix],0
 	and	dword [operand_size],0
-;        mov     [rex_prefix],0
-;        mov     [vex_required],0
-;        mov     [vex_register],0
-;        mov     [immediate_size],0
+;	 mov	 [rex_prefix],0
+;	 mov	 [vex_required],0
+;	 mov	 [vex_register],0
+;	 mov	 [immediate_size],0
 	and	dword [rex_prefix],0
 	call	instruction_handler
       instruction_handler:
@@ -574,12 +574,8 @@ label_directive:
 	pop	ecx ebx
 	pop	dword [ebx+8]
 	mov	ch,[value_type]
-	or	ch,ch
-	jz	make_free_label
-	cmp	ch,4
-	je	make_free_label
-	cmp	ch,2
-	jne	invalid_use_of_symbol
+	test	ch,1
+	jnz	invalid_use_of_symbol
       make_free_label:
 	and	byte [ebx+9],not 1
 	cmp	eax,[ebx]
