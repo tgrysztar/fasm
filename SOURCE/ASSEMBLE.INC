@@ -338,7 +338,7 @@ assemble_line:
 	mov	cx,[current_pass]
 	cmp	cx,[eax+16]
 	je	get_constant_value
-	and	dl,not 1
+	or	dl,4
 	mov	[eax+8],dl
       get_constant_value:
 	push	eax
@@ -349,10 +349,11 @@ assemble_line:
 	pop	ebx
 	mov	ch,bl
 	pop	ebx
-	pop	dword [ebx+8]
-	cmp	ebx,0Fh
-	jb	invalid_use_of_symbol
-	je	reserved_word_used_as_symbol
+	pop	ecx
+	test	cl,4
+	jnz	constant_referencing_mode_ok
+	and	byte [ebx+8],not 4
+      constant_referencing_mode_ok:
 	xor	cl,cl
 	mov	ch,[value_type]
 	cmp	ch,3
@@ -452,15 +453,15 @@ assemble_line:
 	or	byte [ebx+0Ah],2
 	jmp	continue_line
       assemble_instruction:
-;	 mov	 [operand_size],0
-;	 mov	 [size_override],0
-;	 mov	 [operand_prefix],0
-;	 mov	 [opcode_prefix],0
+;        mov     [operand_size],0
+;        mov     [size_override],0
+;        mov     [operand_prefix],0
+;        mov     [opcode_prefix],0
 	and	dword [operand_size],0
-;	 mov	 [rex_prefix],0
-;	 mov	 [vex_required],0
-;	 mov	 [vex_register],0
-;	 mov	 [immediate_size],0
+;        mov     [rex_prefix],0
+;        mov     [vex_required],0
+;        mov     [vex_register],0
+;        mov     [immediate_size],0
 	and	dword [rex_prefix],0
 	call	instruction_handler
       instruction_handler:
@@ -558,9 +559,8 @@ label_directive:
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
-	push	dword [ebx+8]
 	push	ebx ecx
-	and	byte [ebx+8],not 1
+	or	byte [ebx+8],4
 	cmp	byte [esi],'.'
 	je	invalid_value
 	call	get_address_value
@@ -572,7 +572,7 @@ label_directive:
 	xchg	bl,bh
 	mov	bp,bx
 	pop	ecx ebx
-	pop	dword [ebx+8]
+	and	byte [ebx+8],not 4
 	mov	ch,[value_type]
 	test	ch,1
 	jnz	invalid_use_of_symbol
@@ -981,8 +981,6 @@ virtual_directive:
 	mov	dword [eax-8],ecx
 	sub	eax,8
 	sub	eax,ecx
-	cmp	eax,[ebx+8]
-	jbe	out_of_memory
 	mov	[tagged_blocks],eax
 	lea	edi,[eax+ecx-1]
 	xchg	eax,[ebx+18h]

@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.07 (Dec 23, 2012)
+
+[-] Fixed a bug that was causing "used" operator to give incorrect results
+    in some very specific cases.
+
+
 version 1.71.06 (Nov 22, 2012)
 
 [-] Fixed a few bugs caused by unnecesarily strong restrictions on allowed
