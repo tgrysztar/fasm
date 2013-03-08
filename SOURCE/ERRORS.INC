@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2012, Tomasz Grysztar.
+; Copyright (c) 1999-2013, Tomasz Grysztar.
 ; All rights reserved.
 
 out_of_memory:

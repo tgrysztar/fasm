@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2012, Tomasz Grysztar.
+; Copyright (c) 1999-2013, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -1691,6 +1691,7 @@ do_irp:
 	or	[default_argument_value],-1
 	call	skip_macro_argument_value
 	inc	esi
+	jmp	irp_parameters_start
       irps_name_ok:
 	cmp	al,','
 	jne	invalid_macro_arguments

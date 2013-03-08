@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.08 (Mar 08, 2013)
+
+[-] Fixed a bug that caused "irp" to skip processing a list with one empty
+    element when default value for iterating variable was specified.
+
+
 version 1.71.07 (Dec 23, 2012)
 
 [-] Fixed a bug that was causing "used" operator to give incorrect results
