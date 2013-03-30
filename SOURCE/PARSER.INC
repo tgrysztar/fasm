@@ -135,8 +135,6 @@ parser:
 	cmp	al,':'
 	je	invalid_name
 	dec	esi
-	cmp	al,3Bh
-	je	skip_rest_of_line
 	mov	[parenthesis_stack],0
 	call	parse_argument
 	jmp	parse_next_line
@@ -538,6 +536,8 @@ parse_line_contents:
 	je	unallowed_character
 	cmp	al,'`'
 	je	unallowed_character
+	cmp	al,3Bh
+	je	foreign_argument
 	dec	esi
 	cmp	al,1Ah
 	jne	expression_argument
@@ -558,6 +558,10 @@ parse_line_contents:
 	pop	edi
 	movs	byte [edi],[esi]
 	jmp	argument_parsed
+      foreign_argument:
+	dec	esi
+	call	skip_foreign_line
+	jmp	contents_parsed
       symbol_argument:
 	pop	edi
 	stos	word [edi]

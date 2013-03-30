@@ -54,8 +54,16 @@ init_memory:
 	push	buffer
 	call	[GlobalMemoryStatus]
 	mov	eax,dword [buffer+20]
+	mov	edx,dword [buffer+12]
+	cmp	eax,0
+	jl	large_memory
+	cmp	edx,0
+	jl	large_memory
 	shr	eax,2
-	add	eax,dword [buffer+12]
+	add	eax,edx
+	jmp	allocate_memory
+    large_memory:
+	mov	eax,80000000h
     allocate_memory:
 	mov	edx,eax
 	shr	edx,2

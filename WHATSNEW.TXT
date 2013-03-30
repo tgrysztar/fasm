@@ -2,6 +2,17 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.09 (Mar 30, 2013)
+
+[-] "use16","use32" and "use64" no longer allow to put another instruction in
+    the same line.
+
+[-] Fixed a bug in parser that caused it to hang while processing some 
+    specific ill-structured preprocessed lines.
+
+[-] Modified memory allocation algorithm on Windows machines with large RAM.
+
+
 version 1.71.08 (Mar 08, 2013)
 
 [-] Fixed a bug that caused "irp" to skip processing a list with one empty

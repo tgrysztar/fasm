@@ -188,7 +188,7 @@ assemble_line:
       code_type_setting:
 	lods	byte [esi]
 	mov	[code_type],al
-	jmp	line_assembled
+	jmp	instruction_assembled
       new_line:
 	lods	dword [esi]
 	mov	[current_line],eax
