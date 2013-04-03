@@ -1541,7 +1541,7 @@ pe_heap:
 	cmp	edx,[ecx+74h]
 	ja	value_out_of_range
 	jb	instruction_assembled
-	cmp	eax,[edx+70h]
+	cmp	eax,[ecx+70h]
 	ja	value_out_of_range
 	jmp	instruction_assembled
 mark_pe_relocation:

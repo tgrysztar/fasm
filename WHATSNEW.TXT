@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.10 (Apr 03, 2013)
+
+[-] Fixed a crashing "heap" directive in 64-bit PE format.
+
+
 version 1.71.09 (Mar 30, 2013)
 
 [-] "use16","use32" and "use64" no longer allow to put another instruction in
