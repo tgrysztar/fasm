@@ -135,6 +135,8 @@ macro_status db ?
 default_argument_value db ?
 prefixed_instruction db ?
 formatter_symbols_allowed db ?
+free_address_range db ?
+
 
 characters rb 100h
 converted rb 100h

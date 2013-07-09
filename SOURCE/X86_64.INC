@@ -6407,6 +6407,7 @@ get_jump_operator:
 get_address:
 	mov	[segment_register],0
 	mov	[address_size],0
+	mov	[free_address_range],0
 	mov	al,[code_type]
 	shr	al,3
 	mov	[value_size],al

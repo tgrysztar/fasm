@@ -195,13 +195,13 @@ convert_line:
 	lods	byte [esi]
 	stos	byte [edi]
 	cmp	al,0Ah
-	je	missing_end_quote
+	je	no_end_quote
 	cmp	al,0Dh
-	je	missing_end_quote
+	je	no_end_quote
 	or	al,al
-	jz	missing_end_quote
+	jz	no_end_quote
 	cmp	al,1Ah
-	je	missing_end_quote
+	je	no_end_quote
 	cmp	al,ah
 	jne	copy_string
 	lods	byte [esi]
@@ -243,6 +243,9 @@ convert_line:
 	stos	byte [edi]
 	inc	byte [ecx]
 	jmp	group_backslashes
+      no_end_quote:
+	mov	byte [ebx-5],0
+	jmp	missing_end_quote
       backslashed_symbol:
 	cmp	al,1Ah
 	je	unexpected_end_of_file

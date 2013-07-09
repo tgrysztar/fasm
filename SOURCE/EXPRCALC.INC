@@ -1553,18 +1553,22 @@ get_value:
 get_address_word_value:
 	mov	[address_size],2
 	mov	[value_size],2
+	mov	[free_address_range],0
 	jmp	calculate_address
 get_address_dword_value:
 	mov	[address_size],4
 	mov	[value_size],4
+	mov	[free_address_range],0
 	jmp	calculate_address
 get_address_qword_value:
 	mov	[address_size],8
 	mov	[value_size],8
+	mov	[free_address_range],0
 	jmp	calculate_address
 get_address_value:
 	mov	[address_size],0
 	mov	[value_size],8
+	or	[free_address_range],-1
       calculate_address:
 	cmp	byte [esi],'.'
 	je	invalid_address
@@ -1659,11 +1663,11 @@ get_address_value:
 	je	sib_allowed
 	cmp	al,0Fh
 	je	check_ip_relative_address
-	or	cl,cl
-	jz	check_word_value
 	cmp	cl,1
-	je	check_word_value
-	jmp	invalid_address
+	ja	invalid_address
+	cmp	[free_address_range],0
+	jne	check_qword_value
+	jmp	check_word_value
       address_sizes_do_not_match:
 	cmp	al,0Fh
 	jne	invalid_address
@@ -1674,10 +1678,14 @@ get_address_value:
       check_ip_relative_address:
 	or	bl,bl
 	jnz	invalid_address
-	cmp	bh,0F4h
-	je	check_dword_value
 	cmp	bh,0F8h
+	je	check_rip_relative_address
+	cmp	bh,0F4h
 	jne	invalid_address
+	cmp	[free_address_range],0
+	jne	check_qword_value
+	jmp	check_dword_value
+      check_rip_relative_address:
 	mov	eax,[edi]
 	cdq
 	cmp	edx,[edi+4]
@@ -1732,6 +1740,8 @@ get_address_value:
 	mov	bh,bl
 	dec	cl
       check_immediate_address:
+	cmp	[free_address_range],0
+	jne	check_qword_value
 	mov	al,[address_size]
 	and	al,0Fh
 	cmp	al,2

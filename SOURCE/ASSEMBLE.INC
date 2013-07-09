@@ -736,8 +736,6 @@ store_directive:
 	rep	movs byte [edi],[esi]
 	mov	eax,edi
 	pop	edi esi
-	cmp	ebp,[addressing_space]
-	jne	instruction_assembled
 	cmp	edi,[undefined_data_end]
 	jne	instruction_assembled
 	cmp	eax,[undefined_data_start]
