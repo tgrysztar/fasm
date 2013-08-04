@@ -2,10 +2,20 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.12 (Aug 04, 2013)
+
+[-] Expressions in square brackets were incorrectly treated as valid numerical
+    values when used in some logical expressions.
+
+[-] A previous fix to "store" directive did not apply to all the cases when it
+    was incorrectly leaving the data marked as uninitialized. The new fix
+    addresses this issue.
+
+
 version 1.71.11 (Jul 09, 2013)
 
 [-] Modifying a value in uninitialized data block with "store" directive will now
-    correctly mark this data as initialized when it is in a different addressing 
+    correctly mark this data as initialized when it is in a different addressing
     space.
 
 [-] Missing quote will no longer cause the symbols generator to hang or crash.
@@ -24,7 +34,7 @@ version 1.71.09 (Mar 30, 2013)
 [-] "use16","use32" and "use64" no longer allow to put another instruction in
     the same line.
 
-[-] Fixed a bug in parser that caused it to hang while processing some 
+[-] Fixed a bug in parser that caused it to hang while processing some
     specific ill-structured preprocessed lines.
 
 [-] Modified memory allocation algorithm on Windows machines with large RAM.

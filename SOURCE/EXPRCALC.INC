@@ -1,4 +1,5 @@
 
+
 ; flat assembler core
 ; Copyright (c) 1999-2013, Tomasz Grysztar.
 ; All rights reserved.
@@ -1954,6 +1955,8 @@ calculate_logical_expression:
 	je	given_false
 	cmp	al,'1'
 	je	given_true
+	cmp	al,'('
+	jne	invalid_value
 	call	get_value_for_comparison
 	mov	bh,[value_sign]
 	push	eax edx [symbol_identifier] ebx ecx
@@ -1970,6 +1973,8 @@ calculate_logical_expression:
 	je	logical_number
 	inc	esi
 	mov	[compare_type],al
+	cmp	byte [esi],'('
+	jne	invalid_value
 	call	get_value_for_comparison
 	cmp	bl,[esp+4]
 	jne	values_not_relative

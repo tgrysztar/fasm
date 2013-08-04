@@ -736,8 +736,8 @@ store_directive:
 	rep	movs byte [edi],[esi]
 	mov	eax,edi
 	pop	edi esi
-	cmp	edi,[undefined_data_end]
-	jne	instruction_assembled
+	cmp	ebx,[undefined_data_end]
+	jae	instruction_assembled
 	cmp	eax,[undefined_data_start]
 	jbe	instruction_assembled
 	mov	[undefined_data_start],eax
