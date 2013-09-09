@@ -407,6 +407,7 @@ extrn_directive:
 	xor	eax,eax
 	xor	edx,edx
 	xor	ebp,ebp
+	mov	[address_sign],0
 	mov	ch,2
 	test	[format_flags],8
 	jz	make_free_label
@@ -511,9 +512,10 @@ mz_segment:
 	mov	[code_type],al
 	mov	eax,edx
 	mov	ch,1
-	mov	[label_size],0
+	mov	[address_sign],0
 	xor	edx,edx
 	xor	ebp,ebp
+	mov	[label_size],0
 	mov	[address_symbol],edx
 	jmp	make_free_label
 mz_entry:
