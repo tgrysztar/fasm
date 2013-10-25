@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.14 (Oct 25, 2013)
+
+[+] Added "postpone" directive to preprocessor.
+
+
 version 1.71.13 (Sep 09, 2013)
 
 [-] Fixed a bug that caused the expressions containing external symbols

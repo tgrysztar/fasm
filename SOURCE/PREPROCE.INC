@@ -48,12 +48,45 @@ preprocessor:
 	jc	main_file_not_found
 	mov	edi,[memory_start]
 	call	preprocess_file
+	cmp	[macro_status],0
+	je	process_postponed
 	mov	eax,[error_line]
 	mov	[current_line],eax
-	cmp	[macro_status],0
-	jne	incomplete_macro
+	jmp	incomplete_macro
+      process_postponed:
+	mov	edx,hash_tree
+	mov	ecx,32
+      find_postponed_list:
+	mov	edx,[edx]
+	or	edx,edx
+	loopnz	find_postponed_list
+	jz	preprocessing_finished
+      process_postponed_list:
+	mov	eax,[edx]
+	or	eax,eax
+	jz	preprocessing_finished
+	push	edx
+	mov	ebx,edx
+      find_earliest_postponed:
+	mov	eax,[edx]
+	or	eax,eax
+	jz	earliest_postponed_found
+	mov	ebx,edx
+	mov	edx,eax
+	jmp	find_earliest_postponed
+      earliest_postponed_found:
+	mov	[ebx],eax
+	call	use_postponed_macro
+	pop	edx
+	jmp	process_postponed_list
+      preprocessing_finished:
 	mov	[source_start],edi
 	ret
+      use_postponed_macro:
+	lea	esi,[edi-1]
+	push	ecx esi
+	mov	[struc_name],0
+	jmp	use_macro
 
 preprocess_file:
 	push	[memory_end]
@@ -691,6 +724,9 @@ get_preprocessor_symbol:
 	ret
 add_preprocessor_symbol:
 	push	edi esi
+	xor	eax,eax
+	or	cl,cl
+	jz	reshape_hash
 	cmp	ch,11b
 	je	preprocessor_symbol_name_ok
 	push	ecx
@@ -701,6 +737,7 @@ add_preprocessor_symbol:
 	pop	ecx
       preprocessor_symbol_name_ok:
 	call	calculate_hash
+      reshape_hash:
 	mov	ebp,eax
 	and	ebp,3FFh
 	shr	eax,10
@@ -1013,6 +1050,27 @@ define_macro:
 	lods	dword [esi]
 	add	esi,eax
 	jmp	skip_macro_block
+postpone_directive:
+	push	esi
+	mov	esi,edx
+	xor	ecx,ecx
+	call	add_preprocessor_symbol
+	mov	eax,[current_line]
+	mov	[edx+12],eax
+	pop	esi
+	mov	[edx+8],esi
+	mov	al,[macro_status]
+	and	al,0F0h
+	or	al,1
+	mov	[macro_status],al
+	mov	eax,[current_line]
+	mov	[error_line],eax
+	lods	byte [esi]
+	or	al,al
+	jz	line_preprocessed
+	cmp	al,'{'
+	jne	unexpected_characters
+	jmp	found_macro_block
 rept_directive:
 	mov	[base_code],0
 	jmp	define_instant_macro
@@ -1422,6 +1480,7 @@ process_macro_operators:
 	jmp	after_macro_operators
       do_string_concatenation:
 	inc	esi
+	lods	dword [esi]
 	lods	dword [esi]
 	mov	ecx,eax
 	add	[ebx],eax
@@ -1978,6 +2037,12 @@ process_macro:
 	mov	eax,[esp+4]
 	or	eax,eax
 	jz	instant_macro_line_header
+	cmp	eax,-1
+	jne	macro_name_ok
+;        mov     eax,[esp]
+	add	eax,16
+	call	find_defining_directive
+      macro_name_ok:
 	stos	dword [edi]
 	mov	eax,ecx
 	stos	dword [edi]
@@ -1986,9 +2051,24 @@ process_macro:
 	mov	eax,[macro_line]
 	stos	dword [edi]
 	jmp	macro_line_header_ok
+      find_defining_directive:
+	inc	eax
+	cmp	byte [eax-1],3Bh
+	je	defining_directive_ok
+	cmp	byte [eax-1],1Ah
+	jne	find_defining_directive
+	push	eax
+	movzx	eax,byte [eax]
+	inc	eax
+	add	[esp],eax
+	pop	eax
+	jmp	find_defining_directive
+      defining_directive_ok:
+	ret
       instant_macro_line_header:
-	mov	eax,[macro_line]
-	add	eax,16+1
+	mov	eax,[esp]
+	add	eax,16
+	call	find_defining_directive
 	stos	dword [edi]
 	mov	eax,ecx
 	stos	dword [edi]

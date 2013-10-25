@@ -21,6 +21,8 @@ preprocessor_directives:
  dw define_macro-directive_handler
  db 5,'match'
  dw match_directive-directive_handler
+ db 8,'postpone'
+ dw postpone_directive-directive_handler
  db 5,'purge'
  dw purge_macro-directive_handler
  db 4,'rept'
