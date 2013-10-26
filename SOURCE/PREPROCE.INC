@@ -1481,7 +1481,6 @@ process_macro_operators:
       do_string_concatenation:
 	inc	esi
 	lods	dword [esi]
-	lods	dword [esi]
 	mov	ecx,eax
 	add	[ebx],eax
 	rep	movs byte [edi],[esi]
@@ -2037,12 +2036,6 @@ process_macro:
 	mov	eax,[esp+4]
 	or	eax,eax
 	jz	instant_macro_line_header
-	cmp	eax,-1
-	jne	macro_name_ok
-;        mov     eax,[esp]
-	add	eax,16
-	call	find_defining_directive
-      macro_name_ok:
 	stos	dword [edi]
 	mov	eax,ecx
 	stos	dword [edi]
@@ -2051,6 +2044,9 @@ process_macro:
 	mov	eax,[macro_line]
 	stos	dword [edi]
 	jmp	macro_line_header_ok
+      instant_macro_line_header:
+	mov	eax,[esp]
+	add	eax,16
       find_defining_directive:
 	inc	eax
 	cmp	byte [eax-1],3Bh
@@ -2064,11 +2060,6 @@ process_macro:
 	pop	eax
 	jmp	find_defining_directive
       defining_directive_ok:
-	ret
-      instant_macro_line_header:
-	mov	eax,[esp]
-	add	eax,16
-	call	find_defining_directive
 	stos	dword [edi]
 	mov	eax,ecx
 	stos	dword [edi]

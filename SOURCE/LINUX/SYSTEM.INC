@@ -342,6 +342,7 @@ assembler_error:
 	call	lseek
 	mov	edx,[esi+8]
 	sub	eax,edx
+	jz	line_data_displayed
 	push	eax
 	xor	al,al
 	call	lseek
@@ -371,6 +372,7 @@ assembler_error:
 	mov	esi,[additional_memory]
 	sub	ecx,esi
 	call	display_block
+      line_data_displayed:
 	mov	esi,lf
 	call	display_string
 	pop	ebx

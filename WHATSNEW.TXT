@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.15 (Oct 26, 2013)
+
+[-] Fixed some bugs inadverently introduced in the previous release.
+
+
 version 1.71.14 (Oct 25, 2013)
 
 [+] Added "postpone" directive to preprocessor.
@@ -25,7 +30,7 @@ version 1.71.12 (Aug 04, 2013)
 
 version 1.71.11 (Jul 09, 2013)
 
-[-] Modifying a value in uninitialized data block with "store" directive will 
+[-] Modifying a value in uninitialized data block with "store" directive will
     now correctly mark this data as initialized when it is in a different
     addressing space.
 
