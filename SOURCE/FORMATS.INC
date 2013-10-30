@@ -3707,6 +3707,7 @@ format_elf_exe:
 	add	eax,edi
 	adc	ebp,0
 	adc	cl,0
+	mov	edx,ebp
       elf_exe_addressing_setup:
 	push	eax
 	call	init_addressing_space
@@ -3938,6 +3939,7 @@ elf_segment:
 	add	eax,edi
 	sub	eax,edx
 	mov	[ebx+10h],eax
+	and	[undefined_data_end],0
 	mov	eax,[ebx+8]
 	cmp	byte [ebx],1
 	jne	elf_segment_position_ok
@@ -4067,6 +4069,7 @@ elf_segment:
 	add	eax,edi
 	sub	eax,edx
 	mov	[ebx+20h],eax
+	and	[undefined_data_end],0
 	mov	eax,[ebx+10h]
 	mov	edx,[ebx+10h+4]
 	cmp	byte [ebx],1

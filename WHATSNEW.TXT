@@ -2,9 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.16 (Oct 30, 2013)
+
+[-] Fixed some bugs in the ELF executable formatter.
+
+
 version 1.71.15 (Oct 26, 2013)
 
-[-] Fixed some bugs inadverently introduced in the previous release.
+[-] Fixed some bugs inadvertently introduced in the previous release.
 
 
 version 1.71.14 (Oct 25, 2013)
