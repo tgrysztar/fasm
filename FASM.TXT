@@ -5,7 +5,7 @@
                            €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €  €  €
                            €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €  €  €
 
-                              flat assembler 1.70
+                              flat assembler 1.71
                               Programmer's Manual
 
 
@@ -3488,11 +3488,12 @@ size of one byte is assumed. Then the "at" operator and the numerical
 expression defining the valid address in current addressing code space, at
 which the given value have to be stored should follow. This is a directive for
 advanced appliances and should be used carefully.
-  Both "load" and "store" directives are limited to operate on places in
-current addressing space. The "$$" symbol is always equal to the base address
-of current addressing space, and the "$" symbol is the address of current
-position in that addressing space, therefore these two values define limits
-of the area, where "load" and "store" can operate.
+  Both "load" and "store" directives in their basic variant (defined above)
+are limited to operate on places in current addressing space. The "$$" symbol
+is always equal to the base address of current addressing space, and the "$"
+symbol is the address of current position in that addressing space, therefore
+these two values define limits of the area, where "load" and "store" can
+operate.
   Combining the "load" and "store" directives allows to do things like encoding
 some of the already generated code. For example to encode the whole code
 generated in current addressing space you can use such block of directives:
@@ -3531,11 +3532,12 @@ register, for example:
 
 With such definition instruction "mov ax,[LDT_limit]" will be assembled
 to the same instruction as "mov ax,[bx]".
-  Declaring defined data values or instructions inside the virtual block would
-also be useful, because the "load" directive can be used to load the values
-from the virtually generated code into a constants. This directive should be
-used after the code it loads but before the virtual block ends, because it can
-only load the values from the same addressing space. For example:
+  Declaring defined data values or instructions inside the virtual block could
+also be useful, because the "load" directive may be used to load the values
+from the virtually generated code into a constants. This directive in its basic
+version should be used after the code it loads but before the virtual block
+ends, because it can only load the values from the same addressing space. For
+example:
 
     virtual at 0
         xor eax,eax
@@ -3557,6 +3559,30 @@ loads the single byte from offset 10h in file "a.txt" into the "char"
 constant.
   Any of the "section" directives described in 2.4 also begins a new
 addressing space.
+  It is possible to declare a special kind of label that marks the current
+addressing space, by appending a double colon instead of a single one after a
+label name. This symbol cannot then be used in numerical expressions, the only
+place where it is allowed to use it is the extended syntax of "load" and
+"store" directives. It is possible to make these directives operate on a
+different addressing space than the current one, by specifying address with
+the two components: first the name of a special label that marks the
+addressing space, followed by the colon character and a numerical expression
+defining a valid address inside that addressing space. In the following
+example this extended syntax is used to load the value from a block after it
+has been closed:
+
+    virtual at 0
+        hex_digits::
+        db '0123456789ABCDEF'
+    end virtual
+    load a byte from hex_digits:10
+
+  This way it is possible to operate on values inside any code block,
+including all the ones defined with "virtual". However it is not allowed to
+specify addressing space that has not been assembled yet, just as it is not
+allowed to specify an address in the current addressing space that exceeds
+the current offset. The addresses in any other addressing space are also
+limited by the boundaries of the block.
 
 
 2.2.5  Other directives
@@ -4163,6 +4189,17 @@ of such definition, but there is one more feature which helps in such cases.
 Namely it is possible to put any directive, instruction or  macroinstruction
 just after the "}" character that ends the macroinstruction and it will be
 processed in the same way as if it was put in the next line.
+  The "postpone" directive can be used to define a special type of
+macroinstruction that has no name or arguments and will get automatically
+called when the preprocessor reaches the end of source:
+
+    postpone
+     {
+      code_size = $
+     }
+
+It is a very simplified kind of macroinstruction and it simply delegates a
+block of instructions to be put at the end.
 
 
 2.3.4  Structures

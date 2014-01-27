@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2013, Tomasz Grysztar.
+; Copyright (c) 1999-2014, Tomasz Grysztar.
 ; All rights reserved.
 
 segment modes use16
