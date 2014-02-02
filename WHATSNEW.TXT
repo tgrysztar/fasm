@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.18 (Feb 02, 2014)
+
+[+] Added "irpv" directive.
+
+
 version 1.71.17 (Jan 27, 2014)
 
 [-] Minor corrections.

@@ -17,6 +17,8 @@ preprocessor_directives:
  dw irp_directive-directive_handler
  db 4,'irps'
  dw irps_directive-directive_handler
+ db 4,'irpv'
+ dw irpv_directive-directive_handler
  db 5,'macro'
  dw define_macro-directive_handler
  db 5,'match'

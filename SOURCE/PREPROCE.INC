@@ -1080,6 +1080,9 @@ irp_directive:
 irps_directive:
 	mov	[base_code],2
 	jmp	define_instant_macro
+irpv_directive:
+	mov	[base_code],3
+	jmp	define_instant_macro
 match_directive:
 	mov	[base_code],10h
 define_instant_macro:
@@ -1769,9 +1772,11 @@ do_irp:
 	push	[counter_limit]
 	mov	[counter_limit],eax
 	mov	[struc_name],eax
+	cmp	[base_code],3
+	je	get_irpv_parameter
 	mov	ebx,esi
-	cmp	[base_code],1
-	ja	get_irps_parameter
+	cmp	[base_code],2
+	je	get_irps_parameter
 	mov	edx,[parameters_end]
 	mov	al,[edx]
 	push	eax
@@ -1822,6 +1827,70 @@ do_irp:
       irps_parameters_end:
 	mov	esi,ebx
 	jmp	instant_macro_parameters_ok
+      get_irpv_parameter:
+	lods	byte [esi]
+	cmp	al,1Ah
+	jne	invalid_macro_arguments
+	lods	byte [esi]
+	mov	ebp,esi
+	mov	cl,al
+	mov	ch,10b
+	call	get_preprocessor_symbol
+	jc	instant_macro_finish
+	push	edx
+      mark_variable_value:
+	inc	[counter_limit]
+	mov	[edx+4],ebp
+      next_variable_value:
+	mov	edx,[edx]
+	or	edx,edx
+	jz	variable_values_marked
+	mov	eax,[edx+4]
+	cmp	eax,1
+	jbe	next_variable_value
+	mov	esi,ebp
+	movzx	ecx,byte [esi-1]
+	xchg	edi,eax
+	repe	cmps byte [esi],[edi]
+	xchg	edi,eax
+	je	mark_variable_value
+	jmp	next_variable_value
+      variable_values_marked:
+	pop	edx
+	push	[counter_limit]
+      add_irpv_value:
+	push	edx
+	mov	esi,[instant_macro_start]
+	inc	esi
+	lods	byte [esi]
+	movzx	ecx,al
+	mov	eax,[esp+4]
+	call	add_macro_symbol
+	mov	ebx,edx
+	pop	edx
+	mov	ecx,[edx+12]
+	mov	eax,[edx+8]
+	mov	[ebx+12],eax
+	mov	[ebx+8],ecx
+      collect_next_variable_value:
+	mov	edx,[edx]
+	or	edx,edx
+	jz	variable_values_collected
+	cmp	ebp,[edx+4]
+	jne	collect_next_variable_value
+	dec	dword [esp]
+	jnz	add_irpv_value
+      variable_values_collected:
+	pop	eax
+	mov	esi,ebp
+	movzx	ecx,byte [esi-1]
+	add	esi,ecx
+	cmp	byte [esi],0
+	je	instant_macro_parameters_ok
+	cmp	byte [esi],'{'
+	jne	invalid_macro_arguments
+	jmp	instant_macro_parameters_ok
+
 do_match:
 	mov	ebx,esi
 	call	skip_pattern
