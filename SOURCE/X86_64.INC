@@ -2942,7 +2942,7 @@ jmp_instruction:
 	sub	edx,3
 	jno	jmp_imm_32bit_ok
 	cmp	[code_type],64
-	je	relative_jump_out_of_range
+	je	jump_out_of_range
       jmp_imm_32bit_ok:
 	mov	al,[base_code]
 	stos	byte [edi]
@@ -2958,7 +2958,7 @@ jmp_instruction:
 	mov	ecx,edx
 	cdq
 	cmp	edx,ecx
-	jne	relative_jump_out_of_range
+	jne	jump_out_of_range
 	call	check_for_short_jump
 	jnc	jmp_imm_32bit_store
       jmp_short:
@@ -3122,7 +3122,7 @@ conditional_jump:
 	sub	edx,4
 	jno	conditional_jump_32bit_range_ok
 	cmp	[code_type],64
-	je	relative_jump_out_of_range
+	je	jump_out_of_range
       conditional_jump_32bit_range_ok:
 	mov	ah,[base_code]
 	add	ah,10h
@@ -3140,7 +3140,7 @@ conditional_jump:
 	mov	ecx,edx
 	cdq
 	cmp	edx,ecx
-	jne	relative_jump_out_of_range
+	jne	jump_out_of_range
 	call	check_for_short_jump
 	jnc	conditional_jump_32bit_store
       conditional_jump_short:
@@ -3245,7 +3245,7 @@ loop_instruction:
 	mov	ecx,edx
 	cdq
 	cmp	edx,ecx
-	jne	relative_jump_out_of_range
+	jne	jump_out_of_range
 	jmp	make_loop_jump
       loop_jump_16bit:
 	call	get_address_word_value
@@ -6305,7 +6305,7 @@ xbegin_instruction:
 	sub	edx,1
 	jno	xbegin_rel32_ok
 	cmp	[code_type],64
-	je	relative_jump_out_of_range
+	je	jump_out_of_range
       xbegin_rel32_ok:
 	mov	ax,0F8C7h
 	stos	word [edi]

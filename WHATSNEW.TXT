@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.19 (Feb 09, 2014)
+
+[-] Corrected some of the range errors in intermediate passes to be correctly
+    resolvable.
+
+
 version 1.71.18 (Feb 02, 2014)
 
 [+] Added "irpv" directive.

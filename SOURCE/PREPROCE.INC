@@ -1759,6 +1759,8 @@ do_irp:
       irps_name_ok:
 	cmp	al,','
 	jne	invalid_macro_arguments
+	cmp	[base_code],3
+	je	irp_parameters_start
 	mov	al,[esi]
 	or	al,al
 	jz	instant_macro_done
@@ -2520,6 +2522,8 @@ reverse_block:
 	mov	[macro_block_line_number],ecx
 	jmp	process_macro_line
 close_macro_block:
+	cmp	esi,[macro_block]
+	je	block_closed
 	cmp	[counter],0
 	je	block_closed
 	jl	reverse_counter
