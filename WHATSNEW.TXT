@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.20 (Feb 27, 2014)
+
+[-] Fixed a bug in the backward patching of PE fixups.
+
+
 version 1.71.19 (Feb 09, 2014)
 
 [-] Corrected some of the range errors in intermediate passes to be correctly

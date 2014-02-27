@@ -87,6 +87,7 @@ actual_fixups_size dd ?
 reserved_fixups dd ?
 reserved_fixups_size dd ?
 last_fixup_base dd ?
+last_fixup_header dd ?
 parenthesis_stack dd ?
 blocks_stack dd ?
 parsed_lines dd ?

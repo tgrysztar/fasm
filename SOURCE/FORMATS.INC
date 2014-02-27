@@ -1611,6 +1611,7 @@ make_pe_fixups:
 	sub	esi,eax
 	mov	[free_additional_memory],esi
 	mov	edx,[last_fixup_base]
+	mov	ebx,[last_fixup_header]
 	mov	ebp,edi
 	jecxz	fixups_done
       make_fixup:
@@ -1645,6 +1646,7 @@ make_pe_fixups:
 	loop	make_fixup
       fixups_done:
 	mov	[last_fixup_base],edx
+	mov	[last_fixup_header],ebx
 	pop	esi
 	mov	eax,edi
 	sub	eax,ebp
