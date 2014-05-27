@@ -1193,7 +1193,7 @@ calculate_expression:
 	cmp	cx,52
 	ja	value_out_of_range
 	cmp	cx,32
-	jbe	fp_qword_small_shift
+	jb	fp_qword_small_shift
 	sub	cx,32
 	mov	eax,edx
 	xor	edx,edx

@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.21 (May 27, 2014)
+
+[-] Fixed a bug in the 64-bit floating points value converter.
+
+
 version 1.71.20 (Feb 27, 2014)
 
 [-] Fixed a bug in the backward patching of PE fixups.
