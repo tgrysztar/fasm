@@ -454,7 +454,8 @@ format_mz:
 	jmp	format_defined
 mark_mz_relocation:
 	push	eax ebx
-	inc	[number_of_relocations]
+	inc	word [number_of_relocations]
+	jz	format_limitations_exceeded
 	mov	ebx,[free_additional_memory]
 	mov	eax,edi
 	sub	eax,[code_start]

@@ -4348,9 +4348,27 @@ will generate lines:
    xor bx,bx
    xor ecx,ecx
 
-The blocks defined by the "irp" and "irps" directives are also processed in
-the same way as any macroinstructions, so operators and directives specific
-to macroinstructions may be freely used also in this case.
+The "irpv" directive iterates through all of the values that were assigned to
+the given symbolic variable. It should be followed by the argument name and
+the name of symbolic variable, separated with comma. When the symbolic
+variable is treated with "restore" directive to remove its latest value, that
+value is removed from the list of values accessed by "irpv". But any
+modifications made to that list during the iterations performed by "irpv" (by
+either defining a new value for symbolic variable, or destroying the value
+with "restore" directive) do not affect the operation performed by this
+directive - the list that gets iterated reflects the state of symbolic
+variable at the time when "irpv" directive was encountered. For example this
+snippet restores a symbolic variable called "d" to its initial state, before
+any values were assigned to it:
+
+   irpv value, d
+    { restore d }
+
+It simply generates as many copies of "restore" directive, as many values
+there are to remove.
+  The blocks defined by the "irp", "irps" and "irpv" directives are also
+processed in the same way as any macroinstructions, so operators and
+directives specific to macroinstructions may be freely used also in this case.
 
 
 2.3.6  Conditional preprocessing
