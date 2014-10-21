@@ -64,9 +64,11 @@ operators:
 single_operand_operators:
  db 1,'+',82h
  db 1,'-',83h
+ db 3,'bsf',0E0h
+ db 3,'bsr',0E1h
  db 3,'not',0D0h
- db 3,'plt',0E1h
- db 3,'rva',0E0h
+ db 3,'plt',0F1h
+ db 3,'rva',0F0h
  db 0
 
 directive_operators:

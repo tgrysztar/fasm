@@ -35,12 +35,16 @@ calculate_expression:
 	sub	edi,14h
 	mov	ebx,edi
 	sub	ebx,14h
-	cmp	al,0E0h
+	cmp	al,0F0h
 	je	calculate_rva
-	cmp	al,0E1h
+	cmp	al,0F1h
 	je	calculate_plt
 	cmp	al,0D0h
 	je	calculate_not
+	cmp	al,0E0h
+	je	calculate_bsf
+	cmp	al,0E1h
+	je	calculate_bsr
 	cmp	al,083h
 	je	calculate_neg
 	mov	dx,[ebx+8]
@@ -902,6 +906,85 @@ calculate_expression:
 	not	word [edi+4]
 	not	dword [edi]
 	jmp	finish_not
+      calculate_bsf:
+	cmp	word [edi+8],0
+	jne	invalid_expression
+	cmp	byte [edi+12],0
+	je	bsf_ok
+	call	recoverable_misuse
+      bsf_ok:
+	xor	ecx,ecx
+	bsf	eax,[edi]
+	jnz	finish_bs
+	mov	ecx,32
+	bsf	eax,[edi+4]
+	jnz	finish_bs
+	cmp	byte [edi+13],0
+	jne	finish_bs
+      bs_overflow:
+	call	recoverable_overflow
+	add	edi,14h
+	jmp	calculation_loop
+      calculate_bsr:
+	cmp	word [edi+8],0
+	jne	invalid_expression
+	cmp	byte [edi+12],0
+	je	bsr_ok
+	call	recoverable_misuse
+      bsr_ok:
+	cmp	byte [edi+13],0
+	je	bsr_positive
+	shl	dword [edi],1
+	rcl	dword [edi+4],1
+	setc	al
+	mov	[edi+13],al
+	mov	al,[value_size]
+	cmp	al,1
+	je	bsr_neg_byte
+	cmp	al,2
+	je	bsr_neg_word
+	cmp	al,4
+	je	bsr_neg_dword
+	cmp	al,6
+	je	bsr_neg_pword
+	cmp	al,8
+	je	bsr_neg_qword
+	jmp	bs_overflow
+      bsr_positive:
+	mov	ecx,32
+	bsr	eax,[edi+4]
+	jnz	finish_bs
+	xor	ecx,ecx
+	bsr	eax,[edi]
+	jz	bs_overflow
+      finish_bs:
+	add	eax,ecx
+	xor	edx,edx
+	mov	[edi],eax
+	mov	[edi+4],edx
+	mov	[edi+13],dl
+	add	edi,14h
+	jmp	calculation_loop
+      bsr_neg_byte:
+	xor	byte [edi+1],-1
+	jnz	bs_overflow
+      bsr_neg_word:
+	xor	word [edi+2],-1
+	jnz	bs_overflow
+      bsr_neg_dword:
+	xor	word [edi+4],-1
+	jnz	bs_overflow
+      bsr_neg_pword:
+	xor	word [edi+6],-1
+	jnz	bs_overflow
+      bsr_neg_qword:
+	cmp	byte [edi+13],0
+	je	bs_overflow
+	movzx	eax,al
+	shl	eax,3
+	dec	eax
+	xor	ecx,ecx
+	jmp	finish_bs
       calculate_neg:
 	cmp	byte [edi+8],0
 	je	neg_first_register_ok

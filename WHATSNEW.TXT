@@ -2,6 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.23 (Oct 21, 2014)
+
+[+] Added "bsf" and "bsr" operators to numerical expressions.
+
+[-] Removed the restriction that disallowed numerical constant to
+    forward-reference its own value.
+
+
 version 1.71.22 (Sep 28, 2014)
 
 [-] Format MZ no longer allows the table of relocations to overflow.

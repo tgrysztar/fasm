@@ -4642,8 +4642,9 @@ for Windows drivers, "EFI", "EFIboot" or "EFIruntime" for the UEFI, it may be
 followed by the minimum version of system that the executable is targeted to
 (specified in form of floating-point value). Optional "DLL" and "WDM" keywords
 mark the output file as a dynamic link library and WDM driver respectively,
-and the "large" keyword marks the executable as able to handle addresses
-larger than 2 GB.
+the "large" keyword marks the executable as able to handle addresses larger
+than 2 GB and the "NX" keyword signalizes that the executable conforms to the
+restriction of not executing code residing in non-executable sections.
   After those settings can follow the "at" operator and a numerical expression
 specifying the base of PE image and then optionally "on" operator followed by
 the quoted string containing file name selects custom MZ stub for PE program

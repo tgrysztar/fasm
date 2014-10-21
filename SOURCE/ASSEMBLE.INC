@@ -329,31 +329,10 @@ assemble_line:
 	cmp	eax,0Fh
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
-	mov	edx,[eax+8]
-	push	edx
-	cmp	[current_pass],0
-	je	get_constant_value
-	test	dl,4
-	jnz	get_constant_value
-	mov	cx,[current_pass]
-	cmp	cx,[eax+16]
-	je	get_constant_value
-	or	dl,4
-	mov	[eax+8],dl
-      get_constant_value:
-	push	eax
-	mov	al,byte [esi-1]
 	push	eax
 	or	[size_override],-1
 	call	get_value
 	pop	ebx
-	mov	ch,bl
-	pop	ebx
-	pop	ecx
-	test	cl,4
-	jnz	constant_referencing_mode_ok
-	and	byte [ebx+8],not 4
-      constant_referencing_mode_ok:
 	xor	cl,cl
 	mov	ch,[value_type]
 	cmp	ch,3
@@ -453,15 +432,15 @@ assemble_line:
 	or	byte [ebx+0Ah],2
 	jmp	continue_line
       assemble_instruction:
-;        mov     [operand_size],0
-;        mov     [size_override],0
-;        mov     [operand_prefix],0
-;        mov     [opcode_prefix],0
+;	 mov	 [operand_size],0
+;	 mov	 [size_override],0
+;	 mov	 [operand_prefix],0
+;	 mov	 [opcode_prefix],0
 	and	dword [operand_size],0
-;        mov     [rex_prefix],0
-;        mov     [vex_required],0
-;        mov     [vex_register],0
-;        mov     [immediate_size],0
+;	 mov	 [rex_prefix],0
+;	 mov	 [vex_required],0
+;	 mov	 [vex_register],0
+;	 mov	 [immediate_size],0
 	and	dword [rex_prefix],0
 	call	instruction_handler
       instruction_handler:
