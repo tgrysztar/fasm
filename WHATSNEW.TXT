@@ -2,6 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.24 (Oct 27, 2014)
+
+[+] In the definition of macroinstruction the last argument can now be followed by
+    "&" character to indicate that this argument can be filled with all the remaining
+    contents of line that called the macro. This feature cannot be combined with a
+    multi-value arguments.
+
+
 version 1.71.23 (Oct 21, 2014)
 
 [+] Added "bsf" and "bsr" operators to numerical expressions.

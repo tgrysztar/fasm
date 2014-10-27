@@ -904,10 +904,13 @@ define_macro:
       macro_argument_end:
 	cmp	al,','
 	je	skip_macro_arguments
+	cmp	al,'&'
+	je	macro_arguments_finisher
 	cmp	al,']'
 	jne	end_macro_arguments
-	lods	byte [esi]
 	not	ebp
+      macro_arguments_finisher:
+	lods	byte [esi]
       end_macro_arguments:
 	or	ebp,ebp
 	jnz	invalid_macro_arguments
@@ -917,7 +920,7 @@ define_macro:
 	je	found_macro_block
 	jmp	invalid_macro_arguments
       macro_argument_with_default_value:
-	or	[default_argument_value],-1
+	or	[skip_default_argument_value],-1
 	call	skip_macro_argument_value
 	inc	esi
 	jmp	macro_argument_end
@@ -956,9 +959,11 @@ define_macro:
 	jz	argument_value_end
 	cmp	al,','
 	je	argument_value_end
-	cmp	[default_argument_value],0
+	cmp	[skip_default_argument_value],0
 	je	invalid_macro_arguments
 	cmp	al,'{'
+	je	argument_value_end
+	cmp	al,'&'
 	je	argument_value_end
 	or	ebp,ebp
 	jz	invalid_macro_arguments
@@ -975,9 +980,11 @@ define_macro:
 	je	argument_string
 	cmp	al,1Ah
 	je	argument_symbol
-	cmp	[default_argument_value],0
+	cmp	[skip_default_argument_value],0
 	je	simple_argument
 	cmp	al,'{'
+	je	argument_value_end
+	cmp	al,'&'
 	je	argument_value_end
 	or	ebp,ebp
 	jz	simple_argument
@@ -1558,6 +1565,8 @@ use_macro:
 	je	next_argument
 	cmp	al,']'
 	je	next_arguments_group
+	cmp	al,'&'
+	je	arguments_end
 	dec	esi
 	jmp	arguments_end
       next_argument:
@@ -1578,19 +1587,43 @@ use_macro:
 	mov	eax,[counter_limit]
 	call	add_macro_symbol
 	add	esi,ecx
+	xor	eax,eax
+	mov	[default_argument_value],eax
+	cmp	byte [esi],'*'
+	je	required_value
+	cmp	byte [esi],'='
+	jne	default_value_ok
+	inc	esi
+	mov	[default_argument_value],esi
+	or	[skip_default_argument_value],-1
+	call	skip_macro_argument_value
+	jmp	default_value_ok
+      required_value:
+	inc	esi
+	or	[default_argument_value],-1
+      default_value_ok:
 	xchg	esi,ebx
 	mov	[edx+12],esi
-	mov	[default_argument_value],0
+	mov	[skip_default_argument_value],0
+	cmp	byte [ebx],'&'
+	je	greedy_macro_argument
 	call	skip_macro_argument_value
+	jmp	got_macro_argument
+      greedy_macro_argument:
+	call	skip_foreign_line
+	dec	esi
+      got_macro_argument:
 	call	finish_macro_argument
 	xchg	esi,ebx
-	cmp	byte [esi],'='
-	je	argument_with_default_value
-	cmp	byte [esi],'*'
-	jne	macro_argument_ok
 	cmp	dword [edx+8],0
+	jne	macro_argument_ok
+	mov	eax,[default_argument_value]
+	or	eax,eax
+	jz	macro_argument_ok
+	cmp	eax,-1
 	je	invalid_macro_arguments
-	inc	esi
+	mov	[edx+12],eax
+	call	finish_macro_argument
       macro_argument_ok:
 	ret
       finish_macro_argument:
@@ -1605,17 +1638,6 @@ use_macro:
       argument_value_length_ok:
 	mov	[edx+8],ecx
 	ret
-      argument_with_default_value:
-	inc	esi
-	push	esi
-	or	[default_argument_value],-1
-	call	skip_macro_argument_value
-	pop	eax
-	cmp	dword [edx+8],0
-	jne	macro_argument_ok
-	mov	[edx+12],eax
-	call	finish_macro_argument
-	jmp	macro_argument_ok
       arguments_end:
 	cmp	byte [ebx],0
 	jne	invalid_macro_arguments
@@ -1752,7 +1774,7 @@ do_irp:
 	jmp	irp_parameters_start
       irp_with_default_value:
 	xor	ebp,ebp
-	or	[default_argument_value],-1
+	or	[skip_default_argument_value],-1
 	call	skip_macro_argument_value
 	inc	esi
 	jmp	irp_parameters_start

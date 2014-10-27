@@ -42,6 +42,7 @@ struc_name dd ?
 struc_label dd ?
 instant_macro_start dd ?
 parameters_end dd ?
+default_argument_value dd ?
 locals_counter rb 8
 current_locals_prefix dd ?
 anonymous_reverse dd ?
@@ -133,7 +134,7 @@ code_type db ?
 adjustment_sign db ?
 
 macro_status db ?
-default_argument_value db ?
+skip_default_argument_value db ?
 prefixed_instruction db ?
 formatter_symbols_allowed db ?
 free_address_range db ?
