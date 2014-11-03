@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.25 (Nov 03, 2014)
+
+[-] Fixed a bug that cause valued of argument starting with "<" character to be
+    incorrectly processed when the parameter in question was marked with "&"
+    character.
+
+
 version 1.71.24 (Oct 27, 2014)
 
 [+] In the definition of macroinstruction the last argument can now be followed by

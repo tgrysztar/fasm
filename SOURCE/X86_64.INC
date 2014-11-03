@@ -6432,6 +6432,7 @@ get_address:
 	mov	[address_size],al
 	mov	[value_size],al
       address_size_prefix_ok:
+	or	[free_address_range],-1
 	call	calculate_address
 	cmp	byte [esi-1],']'
 	jne	invalid_address

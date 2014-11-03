@@ -1608,12 +1608,16 @@ use_macro:
 	cmp	byte [ebx],'&'
 	je	greedy_macro_argument
 	call	skip_macro_argument_value
+	call	finish_macro_argument
 	jmp	got_macro_argument
       greedy_macro_argument:
 	call	skip_foreign_line
 	dec	esi
+	mov	eax,[edx+12]
+	mov	ecx,esi
+	sub	ecx,eax
+	mov	[edx+8],ecx
       got_macro_argument:
-	call	finish_macro_argument
 	xchg	esi,ebx
 	cmp	dword [edx+8],0
 	jne	macro_argument_ok

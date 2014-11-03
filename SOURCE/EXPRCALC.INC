@@ -1766,8 +1766,10 @@ get_address_value:
 	cmp	bh,0F4h
 	jne	invalid_address
 	cmp	[free_address_range],0
-	jne	check_qword_value
-	jmp	check_dword_value
+	je	check_dword_value
+	mov	eax,[edi]
+	mov	edx,[edi+4]
+	ret
       check_rip_relative_address:
 	mov	eax,[edi]
 	cdq
