@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.26 (Nov 12, 2014)
+
+[-] Fixed a bug introduced by previous version that allowed address values to 
+    bypass range checks.
+
+
 version 1.71.25 (Nov 03, 2014)
 
 [-] Fixed a bug that cause valued of argument starting with "<" character to be
