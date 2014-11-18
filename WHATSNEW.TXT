@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.27 (Nov 18, 2014)
+
+[-] Corrected initial predictions of immediate size for "mov" and "test" instructions 
+    (this may sometimes help to generate smaller code).
+
+
 version 1.71.26 (Nov 12, 2014)
 
 [-] Fixed a bug introduced by previous version that allowed address values to 

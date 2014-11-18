@@ -556,6 +556,8 @@ mov_instruction:
 	cmp	[value_type],4
 	jae	long_immediate_not_encodable
 	jmp	mov_mem_imm_32bit_store
+      mov_mem_imm_nosize:
+	call	recoverable_unknown_size
       mov_mem_imm_8bit:
 	call	get_byte_value
 	mov	byte [value],al
@@ -573,8 +575,6 @@ mov_instruction:
 	pop	ecx ebx edx
 	call	store_instruction_with_imm16
 	jmp	instruction_assembled
-      mov_mem_imm_nosize:
-	call	recoverable_unknown_size
       mov_mem_imm_32bit:
 	call	operand_32bit
 	call	get_dword_value
@@ -966,6 +966,8 @@ test_instruction:
 	cmp	[value_type],4
 	jae	long_immediate_not_encodable
 	jmp	test_mem_imm_32bit_store
+      test_mem_imm_nosize:
+	call	recoverable_unknown_size
       test_mem_imm_8bit:
 	call	get_byte_value
 	mov	byte [value],al
@@ -983,8 +985,6 @@ test_instruction:
 	pop	ecx ebx edx
 	call	store_instruction_with_imm16
 	jmp	instruction_assembled
-      test_mem_imm_nosize:
-	call	recoverable_unknown_size
       test_mem_imm_32bit:
 	call	operand_32bit
 	call	get_dword_value
