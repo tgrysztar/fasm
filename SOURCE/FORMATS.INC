@@ -3493,8 +3493,19 @@ elf_formatter:
 	mov	eax,[eax]
 	shr	eax,8
 	stos	dword [edi]
-	xor	eax,eax
+	mov	eax,[esi+4]
+	add	eax,[image_base]
+	mov	eax,[eax]
 	stos	dword [edi]
+	cmp	byte [esi],1
+	je	addend_64bit
+	sar	eax,31
+	stos	dword [edi]
+	jmp	relocation_entry_ok
+      addend_64bit:
+	mov	eax,[esi+4]
+	add	eax,[image_base]
+	mov	eax,[eax+4]
 	stos	dword [edi]
       relocation_entry_ok:
 	add	esi,0Ch

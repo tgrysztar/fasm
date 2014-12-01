@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.28 (Dec 01, 2014)
+
+[-] The addend field of relocation structure for 64-bit ELF format is now filled with
+    correct information.
+
+
 version 1.71.27 (Nov 18, 2014)
 
 [-] Corrected initial predictions of immediate size for "mov" and "test" instructions 
