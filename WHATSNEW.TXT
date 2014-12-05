@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.29 (Dec 05, 2014)
+
+[-] Supressed error message when parsing some malformed expressions that do not
+    get evaluated.
+
+
 version 1.71.28 (Dec 01, 2014)
 
 [-] The addend field of relocation structure for 64-bit ELF format is now filled with
@@ -10,13 +16,13 @@ version 1.71.28 (Dec 01, 2014)
 
 version 1.71.27 (Nov 18, 2014)
 
-[-] Corrected initial predictions of immediate size for "mov" and "test" instructions 
+[-] Corrected initial predictions of immediate size for "mov" and "test" instructions
     (this may sometimes help to generate smaller code).
 
 
 version 1.71.26 (Nov 12, 2014)
 
-[-] Fixed a bug introduced by previous version that allowed address values to 
+[-] Fixed a bug introduced by previous version that allowed address values to
     bypass range checks.
 
 
