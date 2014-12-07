@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.30 (Dec 07, 2014)
+
+[-] Clearing the instruction data field when filling the addend for 64-bit ELF
+    relocaiton.
+
+
 version 1.71.29 (Dec 05, 2014)
 
 [-] Supressed error message when parsing some malformed expressions that do not
