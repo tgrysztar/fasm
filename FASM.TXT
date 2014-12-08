@@ -414,20 +414,16 @@ with their priority values are listed in table 1.4. The operations with higher
 priority value will be calculated first, you can of course change this
 behavior by putting some parts of expression into parenthesis. The "+", "-",
 "*" and "/" are standard arithmetical operations, "mod" calculates the
-remainder from division. The "and", "or", "xor", "shl", "shr" and "not"
-perform the same logical operations as assembly instructions of those names.
-The "rva" and "plt" are special unary operators that perform conversions
-between different kinds of addresses, they can be used only with few of the
-output formats and their meaning may vary (see 2.4).
-  The arithmetical and logical calculations are usually processed as if they
+remainder from division. The "and", "or", "xor", "shl", "shr", "bsf", "bsr"
+and "not" perform the same bit-logical operations as assembly instructions of 
+those names. The "rva" and "plt" are special unary operators that perform 
+conversions between different kinds of addresses, they can be used only with 
+few of the output formats and their meaning may vary (see 2.4).
+  The arithmetical and bit-logical calculations are processed as if they
 operated on infinite precision 2-adic numbers, and assembler signalizes an
 overflow error if because of its limitations it is not table to perform the
 required calculation, or if the result is too large number to fit in either
-signed or unsigned range for the destination unit size. However "not", "xor"
-and "shr" operators are exceptions from this rule - if the value specified
-by numerical expression has to fit in a unit of specified size, and the
-arguments for operation fit into that size, the operation will be performed
-with precision limited to that size.
+signed or unsigned range for the destination unit size.
   The numbers in the expression are by default treated as a decimal, binary
 numbers should have the "b" letter attached at the end, octal number should
 end with "o" letter, hexadecimal numbers should begin with "0x" characters
@@ -454,7 +450,7 @@ recognized, otherwise they should contain at least one of the "." or "E"
 characters. So "1.0", "1E0" and "1f" define the same floating point value,
 while simple "1" defines an integer value.
 
-   Table 1.4  Arithmetical and logical operators by priority
+   Table 1.4  Arithmetical and bit-logical operators by priority
   ÚÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
   ³ Priority ³ Operators    ³
   ÆÍÍÍÍÍÍÍÍÍÍØÍÍÍÍÍÍÍÍÍÍÍÍÍÍµ
@@ -470,7 +466,9 @@ while simple "1" defines an integer value.
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
   ³ 5        ³ not          ³
   ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
-  ³ 6        ³ rva  plt     ³
+  ³ 6        ³ bsf  bsr     ³
+  ÃÄÄÄÄÄÄÄÄÄÄÅÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´
+  ³ 7        ³ rva  plt     ³
   ÀÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
 
 
@@ -3945,6 +3943,9 @@ has an empty value provided, the default value will be used instead.
 some commas, such argument should be enclosed between "<" and ">" characters.
 If it contains more than one "<" character, the same number of ">" should be
 used to tell that the value of argument ends.
+  When the name of the last argument of macroinstruction is followed by "&"
+character, this argument consumes everything up to the end of line, including
+commas.
   "purge" directive allows removing the last definition of specified
 macroinstruction. It should be followed by one or more names of
 macroinstructions, separated with commas. If such macroinstruction has not

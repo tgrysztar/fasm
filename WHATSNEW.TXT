@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.31 (Dec 08, 2014)
+
+[-] Removed dependence on size context for expression operators like NOT and XOR.
+
+[-] Relaxed range checking to allow extended negative range for all sizes.
+
+
 version 1.71.30 (Dec 07, 2014)
 
 [-] Clearing the instruction data field when filling the addend for 64-bit ELF
