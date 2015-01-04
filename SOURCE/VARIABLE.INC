@@ -1,6 +1,6 @@
 
 ; flat assembler core variables
-; Copyright (c) 1999-2014, Tomasz Grysztar.
+; Copyright (c) 1999-2015, Tomasz Grysztar.
 ; All rights reserved.
 
 ; Variables which have to be set up by interface:
@@ -13,6 +13,7 @@ additional_memory_end dd ?
 
 stack_limit dd ?
 
+initial_definitions dd ?
 input_file dd ?
 output_file dd ?
 symbols_file dd ?

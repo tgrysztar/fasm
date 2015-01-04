@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2014, Tomasz Grysztar.
+; Copyright (c) 1999-2015, Tomasz Grysztar.
 ; All rights reserved.
 
 out_of_memory:
@@ -24,6 +24,9 @@ code_cannot_be_generated:
 	jmp	general_error
 format_limitations_exceeded:
 	push	_format_limitations_exceeded
+	jmp	general_error
+invalid_definition:
+	push	_invalid_definition
     general_error:
 	cmp	[symbols_file],0
 	je	fatal_error

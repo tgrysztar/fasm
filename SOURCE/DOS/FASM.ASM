@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2014, Tomasz Grysztar.
+; Copyright (c) 1999-2015, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	MZ
@@ -114,6 +114,7 @@ get_params:
 	mov	[symbols_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
+	mov	[definitions_pointer],predefinitions
 	push	ds
 	mov	ds,[psp_segment]
 	mov	esi,81h
@@ -169,6 +170,10 @@ get_params:
 	je	passes_option
 	cmp	al,'P'
 	je	passes_option
+	cmp	al,'d'
+	je	definition_option
+	cmp	al,'D'
+	je	definition_option
 	cmp	al,'s'
 	je	symbols_option
 	cmp	al,'S'
@@ -238,6 +243,22 @@ get_params:
 	ja	invalid_option
 	mov	[es:passes_limit],dx
 	jmp	find_param
+    definition_option:
+	lodsb
+	cmp	al,20h
+	je	definition_option
+	cmp	al,0Dh
+	je	bad_params
+	or	al,al
+	jz	bad_params
+	dec	esi
+	push	edi
+	mov	edi,[es:definitions_pointer]
+	call	convert_definition_option
+	mov	[es:definitions_pointer],edi
+	pop	edi
+	jc	invalid_option
+	jmp	find_param
     symbols_option:
 	mov	[es:symbols_file],edi
       find_symbols_file_name:
@@ -257,6 +278,9 @@ get_params:
 	pop	ds
 	cmp	[input_file],0
 	je	no_input_file
+	mov	eax,[definitions_pointer]
+	mov	byte [eax],0
+	mov	[initial_definitions],predefinitions
 	clc
 	ret
     bad_params:
@@ -264,18 +288,61 @@ get_params:
     no_input_file:
 	stc
 	ret
+    convert_definition_option:
+	mov	ecx,edi
+	xor	al,al
+	stosb
+      copy_definition_name:
+	lodsb
+	cmp	al,'='
+	je	copy_definition_value
+	cmp	al,20h
+	je	bad_definition_option
+	cmp	al,0Dh
+	je	bad_definition_option
+	or	al,al
+	jz	bad_definition_option
+	stosb
+	inc	byte [es:ecx]
+	jnz	copy_definition_name
+      bad_definition_option:
+	stc
+	ret
+      copy_definition_value:
+	lodsb
+	cmp	al,20h
+	je	definition_value_end
+	cmp	al,0Dh
+	je	definition_value_end
+	or	al,al
+	jz	definition_value_end
+	cmp	al,'\'
+	jne	definition_value_character
+	cmp	byte [esi],20h
+	jne	definition_value_character
+	lodsb
+      definition_value_character:
+	stosb
+	jmp	copy_definition_value
+      definition_value_end:
+	dec	esi
+	xor	al,al
+	stosb
+	clc
+	ret
 
 include '..\version.inc'
 
 _logo db 'flat assembler  version ',VERSION_STRING,24h
-_copyright db 'Copyright (c) 1999-2014, Tomasz Grysztar',0Dh,0Ah,0
+_copyright db 'Copyright (c) 1999-2015, Tomasz Grysztar',0Dh,0Ah,0
 
 _usage db 0Dh,0Ah
        db 'usage: fasm <source> [output]',0Dh,0Ah
        db 'optional settings:',0Dh,0Ah
-       db ' -m <limit>    set the limit in kilobytes for the available memory',0Dh,0Ah
-       db ' -p <limit>    set the maximum allowed number of passes',0Dh,0Ah
-       db ' -s <file>     dump symbolic information for debugging',0Dh,0Ah
+       db ' -m <limit>         set the limit in kilobytes for the available memory',0Dh,0Ah
+       db ' -p <limit>         set the maximum allowed number of passes',0Dh,0Ah
+       db ' -d <name>=<value>  define symbolic variable',0Dh,0Ah
+       db ' -s <file>          dump symbolic information for debugging',0Dh,0Ah
        db 0
 _memory_prefix db '  (',0
 _memory_suffix db ' kilobytes memory)',0Dh,0Ah,0
@@ -346,7 +413,9 @@ include '..\variable.inc'
 
 memory_setting dd ?
 start_time dd ?
+definitions_pointer dd ?
 params rb 100h
+predefinitions rb 100h
 
 mode dw ?
 real_mode_segment dw ?

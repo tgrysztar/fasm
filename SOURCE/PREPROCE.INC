@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2014, Tomasz Grysztar.
+; Copyright (c) 1999-2015, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -42,6 +42,149 @@ preprocessor:
 	mov	[hash_tree],eax
 	mov	[error],eax
 	mov	[macro_status],al
+	mov	esi,[initial_definitions]
+	test	esi,esi
+	jz	predefinitions_ok
+      process_predefinitions:
+	movzx	ecx,byte [esi]
+	test	ecx,ecx
+	jz	predefinitions_ok
+	inc	esi
+	lea	eax,[esi+ecx]
+	push	eax
+	mov	ch,10b
+	call	add_preprocessor_symbol
+	pop	esi
+	mov	edi,[memory_start]
+	mov	[edx+8],edi
+      convert_predefinition:
+	cmp	edi,[memory_end]
+	jae	out_of_memory
+	lods	byte [esi]
+	or	al,al
+	jz	predefinition_converted
+	cmp	al,20h
+	je	convert_predefinition
+	mov	ah,al
+	mov	ebx,characters
+	xlat	byte [ebx]
+	or	al,al
+	jz	predefinition_separator
+	cmp	ah,27h
+	je	predefinition_string
+	cmp	ah,22h
+	je	predefinition_string
+	mov	byte [edi],1Ah
+	scas	word [edi]
+	xchg	al,ah
+	stos	byte [edi]
+	mov	ebx,characters
+	xor	ecx,ecx
+      predefinition_symbol:
+	lods	byte [esi]
+	stos	byte [edi]
+	xlat	byte [ebx]
+	or	al,al
+	loopnzd predefinition_symbol
+	neg	ecx
+	cmp	ecx,255
+	ja	invalid_definition
+	mov	ebx,edi
+	sub	ebx,ecx
+	mov	byte [ebx-2],cl
+      found_predefinition_separator:
+	dec	edi
+	mov	ah,[esi-1]
+      predefinition_separator:
+	xchg	al,ah
+	or	al,al
+	jz	predefinition_converted
+	cmp	al,20h
+	je	convert_line_data
+	cmp	al,3Bh
+	je	invalid_definition
+	cmp	al,5Ch
+	je	predefinition_backslash
+	stos	byte [edi]
+	jmp	convert_predefinition
+      predefinition_string:
+	mov	al,22h
+	stos	byte [edi]
+	scas	dword [edi]
+	mov	ebx,edi
+      copy_predefinition_string:
+	lods	byte [esi]
+	stos	byte [edi]
+	or	al,al
+	jz	invalid_definition
+	cmp	al,ah
+	jne	copy_predefinition_string
+	lods	byte [esi]
+	cmp	al,ah
+	je	copy_predefinition_string
+	dec	esi
+	dec	edi
+	mov	eax,edi
+	sub	eax,ebx
+	mov	[ebx-4],eax
+	jmp	convert_predefinition
+      predefinition_backslash:
+	mov	byte [edi],0
+	lods	byte [esi]
+	or	al,al
+	jz	invalid_definition
+	cmp	al,20h
+	je	invalid_definition
+	cmp	al,3Bh
+	je	invalid_definition
+	mov	al,1Ah
+	stos	byte [edi]
+	mov	ecx,edi
+	mov	ax,5C01h
+	stos	word [edi]
+	dec	esi
+      group_predefinition_backslashes:
+	lods	byte [esi]
+	cmp	al,5Ch
+	jne	predefinition_backslashed_symbol
+	stos	byte [edi]
+	inc	byte [ecx]
+	jmp	group_predefinition_backslashes
+      predefinition_backslashed_symbol:
+	cmp	al,20h
+	je	invalid_definition
+	cmp	al,22h
+	je	invalid_definition
+	cmp	al,27h
+	je	invalid_definition
+	cmp	al,3Bh
+	je	invalid_definition
+	mov	ah,al
+	mov	ebx,characters
+	xlat	byte [ebx]
+	or	al,al
+	jz	predefinition_backslashed_symbol_character
+	mov	al,ah
+      convert_predefinition_backslashed_symbol:
+	stos	byte [edi]
+	xlat	byte [ebx]
+	or	al,al
+	jz	found_predefinition_separator
+	inc	byte [ecx]
+	jz	invalid_definition
+	lods	byte [esi]
+	jmp	convert_predefinition_backslashed_symbol
+      predefinition_backslashed_symbol_character:
+	mov	al,ah
+	stos	byte [edi]
+	inc	byte [ecx]
+	jmp	convert_predefinition
+      predefinition_converted:
+	mov	[memory_start],edi
+	sub	edi,[edx+8]
+	mov	[edx+12],edi
+	jmp	process_predefinitions
+      predefinitions_ok:
 	mov	esi,[input_file]
 	mov	edx,esi
 	call	open

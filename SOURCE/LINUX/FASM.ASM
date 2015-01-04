@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux
-; Copyright (c) 1999-2014, Tomasz Grysztar.
+; Copyright (c) 1999-2015, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF executable 3
@@ -115,6 +115,7 @@ get_params:
 	add	ebx,8
 	dec	ecx
 	jz	bad_params
+	mov	[definitions_pointer],predefinitions
       get_param:
 	mov	esi,[ebx]
 	mov	al,[esi]
@@ -140,6 +141,10 @@ get_params:
 	je	passes_option
 	cmp	al,'P'
 	je	passes_option
+	cmp	al,'d'
+	je	definition_option
+	cmp	al,'D'
+	je	definition_option
 	cmp	al,'s'
 	je	symbols_option
 	cmp	al,'S'
@@ -182,8 +187,26 @@ get_params:
 	jnz	get_param
 	cmp	[input_file],0
 	je	bad_params
+	mov	eax,[definitions_pointer]
+	mov	byte [eax],0
+	mov	[initial_definitions],predefinitions
 	clc
 	ret
+      definition_option:
+	cmp	byte [esi],0
+	jne	get_definition
+	dec	ecx
+	jz	bad_params
+	add	ebx,4
+	mov	esi,[ebx]
+      get_definition:
+	push	edi
+	mov	edi,[definitions_pointer]
+	call	convert_definition_option
+	mov	[definitions_pointer],edi
+	pop	edi
+	jc	bad_params
+	jmp	next_param
       symbols_option:
 	cmp	byte [esi],0
 	jne	get_symbols_setting
@@ -219,20 +242,53 @@ get_params:
       invalid_option_value:
 	stc
 	ret
+      convert_definition_option:
+	mov	edx,edi
+	xor	al,al
+	stosb
+      copy_definition_name:
+	lodsb
+	cmp	al,'='
+	je	copy_definition_value
+	cmp	al,20h
+	je	bad_definition_option
+	or	al,al
+	jz	bad_definition_option
+	stosb
+	inc	byte [edx]
+	jnz	copy_definition_name
+      bad_definition_option:
+	stc
+	ret
+      copy_definition_value:
+	lodsb
+	cmp	al,20h
+	je	definition_value_end
+	or	al,al
+	jz	definition_value_end
+	stosb
+	jmp	copy_definition_value
+      definition_value_end:
+	dec	esi
+	xor	al,al
+	stosb
+	clc
+	ret
 
 include 'system.inc'
 
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2014, Tomasz Grysztar',0xA,0
+_copyright db 'Copyright (c) 1999-2015, Tomasz Grysztar',0xA,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0
 _usage db 0xA
        db 'usage: fasm <source> [output]',0xA
        db 'optional settings:',0xA
-       db ' -m <limit>    set the limit in kilobytes for the available memory',0Dh,0Ah
-       db ' -p <limit>    set the maximum allowed number of passes',0Dh,0Ah
-       db ' -s <file>     dump symbolic information for debugging',0Dh,0Ah
+       db ' -m <limit>         set the limit in kilobytes for the available memory',0Dh,0Ah
+       db ' -p <limit>         set the maximum allowed number of passes',0Dh,0Ah
+       db ' -d <name>=<value>  define symbolic variable',0Dh,0Ah
+       db ' -s <file>          dump symbolic information for debugging',0Dh,0Ah
        db 0
 _memory_prefix db '  (',0
 _memory_suffix db ' kilobytes memory)',0xA,0
@@ -262,6 +318,7 @@ include '..\variable.inc'
 
 command_line dd ?
 memory_setting dd ?
+definitions_pointer dd ?
 environment dd ?
 timestamp dq ?
 start_time dd ?
@@ -270,4 +327,5 @@ displayed_count dd ?
 last_displayed db ?
 character db ?
 
+predefinitions rb 1000h
 buffer rb 1000h

@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.32 (Jan 04, 2015)
+
+[+] Brought back the "-d" switch for command line.
+
+
 version 1.71.31 (Dec 08, 2014)
 
 [-] Removed dependence on size context for expression operators like NOT and XOR.
