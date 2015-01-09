@@ -1039,6 +1039,8 @@ define_macro:
 	inc	esi
 	add	esi,eax
 	lods	byte [esi]
+	cmp	al,':'
+	je	macro_argument_with_default_value
 	cmp	al,'='
 	je	macro_argument_with_default_value
 	cmp	al,'*'
@@ -1734,8 +1736,11 @@ use_macro:
 	mov	[default_argument_value],eax
 	cmp	byte [esi],'*'
 	je	required_value
+	cmp	byte [esi],':'
+	je	get_default_value
 	cmp	byte [esi],'='
 	jne	default_value_ok
+      get_default_value:
 	inc	esi
 	mov	[default_argument_value],esi
 	or	[skip_default_argument_value],-1
@@ -1910,6 +1915,8 @@ do_irp:
 	lods	byte [esi]
 	cmp	[base_code],1
 	ja	irps_name_ok
+	cmp	al,':'
+	je	irp_with_default_value
 	cmp	al,'='
 	je	irp_with_default_value
 	cmp	al,'*'

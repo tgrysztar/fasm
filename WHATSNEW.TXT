@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.33 (Jan 09, 2015)
+
+[+] Default value for macroinstruction parameter can now be defined with ":"
+    character as an alternative to "=".
+
+
 version 1.71.32 (Jan 04, 2015)
 
 [+] Brought back the "-d" switch for command line.
