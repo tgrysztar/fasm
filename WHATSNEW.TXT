@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.34 (Feb 17, 2015)
+
+[-] Fixed a recently introduced bug that caused assembler to hang when a
+    missing closing parenthesis error was encountered.
+
+
 version 1.71.33 (Jan 09, 2015)
 
 [+] Default value for macroinstruction parameter can now be defined with ":"

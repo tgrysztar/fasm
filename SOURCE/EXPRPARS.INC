@@ -130,6 +130,7 @@ convert_number:
 	lods	byte [esi]
 	cmp	al,')'
 	je	subexpression_closed
+	dec	esi
 	mov	al,'!'
 	stosb
       subexpression_closed:
