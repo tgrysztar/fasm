@@ -221,7 +221,11 @@ preprocessor:
 	mov	[ebx],eax
 	call	use_postponed_macro
 	pop	edx
-	jmp	process_postponed_list
+	cmp	[macro_status],0
+	je	process_postponed_list
+	mov	eax,[error_line]
+	mov	[current_line],eax
+	jmp	incomplete_macro
       preprocessing_finished:
 	mov	[source_start],edi
 	ret
@@ -1208,6 +1212,7 @@ postpone_directive:
 	xor	ecx,ecx
 	call	add_preprocessor_symbol
 	mov	eax,[current_line]
+	mov	[error_line],eax
 	mov	[edx+12],eax
 	pop	esi
 	mov	[edx+8],esi
@@ -1215,8 +1220,6 @@ postpone_directive:
 	and	al,0F0h
 	or	al,1
 	mov	[macro_status],al
-	mov	eax,[current_line]
-	mov	[error_line],eax
 	lods	byte [esi]
 	or	al,al
 	jz	line_preprocessed
