@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.36 (Feb 25, 2015)
+
+[-] Fixed a small bug with "irp" directive.
+
+
 version 1.71.35 (Feb 25, 2015)
 
 [-] Corrected a flaw that caused a crash when processing incomplete macro

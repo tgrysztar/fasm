@@ -1933,6 +1933,8 @@ do_irp:
 	xor	ebp,ebp
 	or	[skip_default_argument_value],-1
 	call	skip_macro_argument_value
+	cmp	byte [esi],','
+	jne	invalid_macro_arguments
 	inc	esi
 	jmp	irp_parameters_start
       irps_name_ok:
