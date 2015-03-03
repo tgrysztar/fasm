@@ -42,6 +42,7 @@ preprocessor:
 	mov	[hash_tree],eax
 	mov	[error],eax
 	mov	[macro_status],al
+	mov	[current_line],eax
 	mov	esi,[initial_definitions]
 	test	esi,esi
 	jz	predefinitions_ok

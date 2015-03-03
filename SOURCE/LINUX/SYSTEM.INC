@@ -285,8 +285,10 @@ fatal_error:
 assembler_error:
 	mov	[con_handle],2
 	call	display_user_messages
-	push	dword 0
 	mov	ebx,[current_line]
+	test	ebx,ebx
+	jz	display_error_message
+	push	dword 0
       get_error_lines:
 	mov	eax,[ebx]
 	cmp	byte [eax],0
@@ -378,6 +380,7 @@ assembler_error:
 	pop	ebx
 	or	ebx,ebx
 	jnz	display_error_line
+      display_error_message:
 	mov	esi,error_prefix
 	call	display_string
 	pop	esi
