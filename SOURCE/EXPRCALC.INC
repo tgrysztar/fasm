@@ -11,6 +11,10 @@ calculate_expression:
 	cmp	byte [esi],'.'
 	je	convert_fp
       calculation_loop:
+	mov	eax,[tagged_blocks]
+	sub	eax,0Ch
+	cmp	eax,edi
+	jbe	out_of_memory
 	lods	byte [esi]
 	cmp	al,1
 	je	get_byte_number

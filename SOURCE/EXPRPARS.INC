@@ -77,7 +77,7 @@ convert_expression:
 	ret
 
 convert_number:
-	lea	eax,[edi-10h]
+	lea	eax,[edi+20h]
 	mov	edx,[memory_end]
 	cmp	[source_start],0
 	je	check_memory_for_number

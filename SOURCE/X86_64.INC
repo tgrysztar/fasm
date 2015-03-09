@@ -4611,6 +4611,8 @@ movq_instruction:
 	call	get_size_operator
 	cmp	al,10h
 	je	movq_mmreg_reg
+	cmp	al,'['
+	jne	invalid_operand
 	call	get_address
 	test	[operand_size],not 8
 	jnz	invalid_operand_size
