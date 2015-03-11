@@ -128,6 +128,8 @@ get_params:
 	mov	[symbols_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
+
+
 	mov	ecx,[argc]
 	mov	ebx,[argv]
 	add	ebx,4

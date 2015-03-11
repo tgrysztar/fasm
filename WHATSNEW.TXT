@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.39 (Mar 11, 2015)
+
+[-] Minor bug fix.
+
+
 version 1.71.38 (Mar 09, 2015)
 
 [-] Minor bug fixes.
@@ -9,7 +14,7 @@ version 1.71.38 (Mar 09, 2015)
 
 version 1.71.37 (Mar 03, 2015)
 
-[-] Fixed a crash caused by incorrect handling of any error in definition 
+[-] Fixed a crash caused by incorrect handling of any error in definition
     provided through "-d" switch.
 
 

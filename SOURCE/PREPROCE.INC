@@ -423,6 +423,7 @@ convert_line:
 	jne	backslashed_symbol
 	stos	byte [edi]
 	inc	byte [ecx]
+	jz	name_too_long
 	jmp	group_backslashes
       no_end_quote:
 	mov	byte [ebx-5],0
