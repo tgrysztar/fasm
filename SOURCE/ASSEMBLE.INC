@@ -32,6 +32,7 @@ assembler:
 	mov	[next_pass_needed],al
 	mov	[output_format],al
 	mov	[adjustment_sign],al
+	mov	[evex_mode],al
 	mov	[code_type],16
 	call	init_addressing_space
       pass_loop:
@@ -330,7 +331,7 @@ assemble_line:
 	jb	invalid_use_of_symbol
 	je	reserved_word_used_as_symbol
 	push	eax
-	or	[size_override],-1
+	or	[operand_flags],1
 	call	get_value
 	pop	ebx
 	xor	cl,cl
@@ -433,15 +434,15 @@ assemble_line:
 	jmp	continue_line
       assemble_instruction:
 ;	 mov	 [operand_size],0
-;	 mov	 [size_override],0
+;	 mov	 [operand_flags],0
 ;	 mov	 [operand_prefix],0
-;	 mov	 [opcode_prefix],0
-	and	dword [operand_size],0
 ;	 mov	 [rex_prefix],0
+	and	dword [operand_size],0
+;	 mov	 [opcode_prefix],0
 ;	 mov	 [vex_required],0
 ;	 mov	 [vex_register],0
 ;	 mov	 [immediate_size],0
-	and	dword [rex_prefix],0
+	and	dword [opcode_prefix],0
 	call	instruction_handler
       instruction_handler:
 	movzx	ebx,word [esi]
@@ -650,7 +651,7 @@ load_directive:
 	push	ebx
 	cmp	byte [esi],'.'
 	je	invalid_value
-	or	[size_override],-1
+	or	[operand_flags],1
 	call	get_address_value
 	pop	ebp
 	call	calculate_relative_offset
@@ -697,7 +698,7 @@ store_directive:
 	mov	[operand_size],1
 	jmp	store_value_ok
       sized_store:
-	or	[size_override],-1
+	or	[operand_flags],1
 	call	get_value
       store_value_ok:
 	cmp	[value_type],0
@@ -1356,7 +1357,7 @@ data_bytes:
 	inc	esi
 	or	eax,eax
 	jz	duplicate_zero_times
-	cmp	byte [esi],'{'
+	cmp	byte [esi],91h
 	jne	duplicate_single_data_value
 	inc	esi
       duplicate_data:
@@ -1368,7 +1369,7 @@ data_bytes:
 	lods	byte [esi]
 	cmp	al,','
 	je	duplicated_values
-	cmp	al,'}'
+	cmp	al,92h
 	jne	invalid_argument
 	pop	ebx eax
 	dec	eax
@@ -1386,13 +1387,13 @@ data_bytes:
 	mov	esi,ebx
 	jmp	duplicate_single_data_value
       duplicate_zero_times:
-	cmp	byte [esi],'{'
+	cmp	byte [esi],91h
 	jne	skip_single_data_value
 	inc	esi
       skip_data_value:
 	call	skip_symbol
 	jc	invalid_argument
-	cmp	byte [esi],'}'
+	cmp	byte [esi],92h
 	jne	skip_data_value
 	inc	esi
 	jmp	data_defined

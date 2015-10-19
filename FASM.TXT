@@ -54,7 +54,8 @@ Chapter 2  Instruction set
         2.1.21  AVX instructions
         2.1.22  AVX2 instructions
         2.1.23  Auxiliary sets of computational instructions
-        2.1.24  Other extensions of instruction set
+        2.1.24  AVX-512 instructions
+        2.1.25  Other extensions of instruction set
 
         2.2  Control directives
         2.2.1  Numerical constants
@@ -3154,7 +3155,12 @@ and writes the result to destination. These instructions have the same rules
 for operands as "blsi".
       
 
-2.1.24  Other extensions of instruction set
+2.1.24  AVX-512 instructions
+
+[This section has not been written yet.]
+
+
+2.1.25  Other extensions of instruction set
 
 There is a number of additional instruction set extensions recognized by flat
 assembler, and the general syntax of the instructions introduced by those
@@ -3954,13 +3960,13 @@ of "mov" extended with the macroinstructions defined above, you can disable
 syntax with three operands back by using "purge mov" directive. Next
 "purge mov" will disable also syntax for two operands being segment registers,
 and all the next such directives will do nothing.
-  If after the "macro" directive you enclose some group of arguments' names in
-square brackets, it will allow giving more values for this group of arguments
-when using that macroinstruction. Any more argument given after the last
-argument of such group will begin the new group and will become the first
-argument of it. That's why after closing the square bracket no more argument
-names can follow. The contents of macroinstruction will be processed for each
-such group of arguments separately. The simplest example is to enclose one
+  If after the "macro" directive you enclose a group of argument declarations
+in square brackets, it will allow giving more values for this group of arguments
+when using that macroinstruction. Any additional argument following the last
+argument of such group will start the new group and will become the first
+argument of it. For this reason after the closing square bracket no more
+argument names can follow. The contents of macroinstruction will be processed for
+each such group of arguments separately. The simplest example is to enclose one
 argument name in square brackets:
 
     macro stoschar [char]

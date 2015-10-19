@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.40 (Oct 19, 2015)
+
+[+] Added support for Intel AVX-512, SHA, CLFLUSHOPT, CLWB and 
+    PCOMMIT instruction sets.
+
+
 version 1.71.39 (Mar 11, 2015)
 
 [-] Minor bug fix.

@@ -34,6 +34,7 @@ parser:
 	add	esi,16
       parse_line:
 	mov	[formatter_symbols_allowed],0
+	mov	[decorator_symbols_allowed],0
 	cmp	byte [esi],1Ah
 	jne	empty_instruction
 	push	edi
@@ -529,15 +530,20 @@ parse_line_contents:
 	cmp	al,']'
 	je	separator
 	cmp	al,'{'
-	je	unallowed_character
+	je	open_decorator
 	cmp	al,'}'
-	je	unallowed_character
+	je	close_decorator
 	cmp	al,'#'
 	je	unallowed_character
 	cmp	al,'`'
 	je	unallowed_character
 	cmp	al,3Bh
 	je	foreign_argument
+	cmp	[decorator_symbols_allowed],0
+	je	not_a_separator
+	cmp	al,'-'
+	je	separator
+      not_a_separator:
 	dec	esi
 	cmp	al,1Ah
 	jne	expression_argument
@@ -825,7 +831,7 @@ parse_line_contents:
 	jb	stack_overflow
 	push	esi edi
 	inc	esi
-	mov	al,'{'
+	mov	al,91h
 	stos	byte [edi]
 	inc	[parenthesis_stack]
 	jmp	parse_argument
@@ -908,8 +914,9 @@ parse_line_contents:
 	jne	unknown_segment_prefix
 	mov	al,ah
 	and	ah,11110000b
-	cmp	ah,60h
+	cmp	ah,30h
 	jne	unknown_segment_prefix
+	add	al,30h
 	stos	byte [edi]
 	jmp	convert_address
       unknown_segment_prefix:
@@ -928,13 +935,19 @@ parse_line_contents:
 	cmp	byte [esi],'('
 	jne	argument_parsed
 	inc	esi
-	mov	al,'{'
+	mov	al,91h
 	jmp	separator
       unallowed_character:
 	mov	al,0FFh
 	jmp	separator
+      open_decorator:
+	inc	[decorator_symbols_allowed]
+	jmp	separator
+      close_decorator:
+	dec	[decorator_symbols_allowed]
+	jmp	separator
       close_parenthesis:
-	mov	al,'}'
+	mov	al,92h
       separator:
 	stos	byte [edi]
       argument_parsed:
@@ -1049,7 +1062,7 @@ get_symbol:
 	mov	ecx,ebp
 	cmp	cl,11
 	ja	no_symbol
-	sub	cl,2
+	sub	cl,1
 	jc	no_symbol
 	movzx	ebx,word [symbols+ecx*4]
 	add	ebx,symbols
@@ -1070,6 +1083,8 @@ get_symbol:
 	mov	ax,[edi]
 	cmp	al,18h
 	jb	symbol_ok
+	cmp	al,1Fh
+	je	decorator_symbol
 	cmp	[formatter_symbols_allowed],0
 	je	no_symbol
       symbol_ok:
@@ -1077,6 +1092,9 @@ get_symbol:
 	add	esi,ebp
 	clc
 	ret
+      decorator_symbol:
+	cmp	[decorator_symbols_allowed],0
+	jne	symbol_ok
       no_symbol:
 	pop	esi
 	mov	ecx,ebp

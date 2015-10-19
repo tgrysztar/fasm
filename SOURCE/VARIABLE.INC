@@ -70,6 +70,7 @@ adjustment dq ?
 symbol_identifier dd ?
 address_symbol dd ?
 address_high dd ?
+uncompressed_displacement dd ?
 format_flags dd ?
 resolver_flags dd ?
 symbols_stream dd ?
@@ -97,13 +98,16 @@ logical_value_parentheses dd ?
 file_extension dd ?
 
 operand_size db ?
-size_override db ?
+operand_flags db ?
 operand_prefix db ?
-opcode_prefix db ?
 rex_prefix db ?
+opcode_prefix db ?
 vex_required db ?
 vex_register db ?
 immediate_size db ?
+mask_register db ?
+broadcast_size db ?
+rounding_mode db ?
 
 base_code db ?
 extended_code db ?
@@ -119,6 +123,7 @@ value_size db ?
 address_size db ?
 label_size db ?
 size_declared db ?
+displacement_compression db ?
 
 value_undefined db ?
 value_constant db ?
@@ -133,11 +138,13 @@ next_pass_needed db ?
 output_format db ?
 code_type db ?
 adjustment_sign db ?
+evex_mode db ?
 
 macro_status db ?
 skip_default_argument_value db ?
 prefixed_instruction db ?
 formatter_symbols_allowed db ?
+decorator_symbols_allowed db ?
 free_address_range db ?
 
 

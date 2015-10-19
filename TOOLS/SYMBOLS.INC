@@ -274,7 +274,7 @@ write_address_register:
       find_register:
 	lodsb
 	test	al,al
-	jz	register_found
+	jz	register_not_found
 	cmp	al,bl
 	je	register_found
 	cmp	bl,[esi]
@@ -283,10 +283,20 @@ write_address_register:
 	movzx	eax,al
 	add	esi,eax
 	jmp	find_register
+      register_not_found:
+	mov	al,bl
+	shr	al,5
+	cmp	al,0Ch shr 1
+	je	xmm_register
+	cmp	al,0Eh shr 1
+	je	ymm_register
+	cmp	al,6 shr 1
+	je	zmm_register
       register_found:
 	lodsb
 	movzx	ecx,al
 	rep	movsb
+      write_register_scale:
 	pop	esi
 	cmp	bh,1
 	je	register_ok
@@ -296,6 +306,23 @@ write_address_register:
 	call	write_dec_number
       register_ok:
 	ret
+      zmm_register:
+	mov	al,'z'
+	jmp	vector_address_register
+      ymm_register:
+	mov	al,'y'
+	jmp	vector_address_register
+      xmm_register:
+	mov	al,'x'
+      vector_address_register:
+	stosb
+	mov	ax,'mm'
+	stosw
+	mov	al,bl
+	and	eax,11111b
+	call	write_dec_number
+	jmp	write_register_scale
+
 write_line_identifier:
 	test	dword [ebx+4],80000000h
 	jnz	identify_macro_generated_line
@@ -401,8 +428,8 @@ address_registers db 23h,2,'bx'
 		  db 8Dh,3,'r13'
 		  db 8Eh,3,'r14'
 		  db 8Fh,3,'r15'
-		  db 0F4h,3,'eip'
-		  db 0F8h,3,'rip'
+		  db 94h,3,'eip'
+		  db 98h,3,'rip'
 		  db 0,1,'?'
 
 _negated db 'negated ',0

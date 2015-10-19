@@ -204,14 +204,8 @@ calculate_expression:
 	mov	al,[ebx+10]
 	or	al,al
 	jz	calculation_loop
-	cmp	[size_override],-1
-	je	calculation_loop
-	cmp	[size_override],0
-	je	check_size
-	cmp	[operand_size],0
-	jne	calculation_loop
-	mov	[operand_size],al
-	jmp	calculation_loop
+	test	[operand_flags],1
+	jnz	calculation_loop
       check_size:
 	xchg	[operand_size],al
 	or	al,al
@@ -1216,7 +1210,7 @@ calculate_expression:
 
 get_byte_value:
 	mov	[value_size],1
-	mov	[size_override],-1
+	or	[operand_flags],1
 	call	calculate_value
 	or	al,al
 	jz	check_byte_value
@@ -1260,7 +1254,7 @@ get_byte_value:
 	ret
 get_word_value:
 	mov	[value_size],2
-	mov	[size_override],-1
+	or	[operand_flags],1
 	call	calculate_value
 	cmp	al,2
 	jb	check_word_value
@@ -1283,7 +1277,7 @@ get_word_value:
 	ret
 get_dword_value:
 	mov	[value_size],4
-	mov	[size_override],-1
+	or	[operand_flags],1
 	call	calculate_value
 	cmp	al,4
 	jne	check_dword_value
@@ -1311,7 +1305,7 @@ get_dword_value:
 	ret
 get_pword_value:
 	mov	[value_size],6
-	mov	[size_override],-1
+	or	[operand_flags],1
 	call	calculate_value
 	cmp	al,4
 	jne	check_pword_value
@@ -1330,7 +1324,7 @@ get_pword_value:
 	ret
 get_qword_value:
 	mov	[value_size],8
-	mov	[size_override],-1
+	or	[operand_flags],1
 	call	calculate_value
       check_qword_value:
 	mov	eax,[edi]
@@ -1338,7 +1332,7 @@ get_qword_value:
 	ret
 get_count_value:
 	mov	[value_size],8
-	mov	[size_override],-1
+	or	[operand_flags],1
 	call	calculate_expression
 	cmp	word [edi+8],0
 	jne	invalid_value
@@ -1507,33 +1501,31 @@ get_address_value:
 	mov	ax,bx
 	shr	ah,4
 	shr	al,4
-	cmp	ah,0Ch
-	je	check_vsib_address
-	cmp	ah,0Dh
-	je	check_vsib_address
-	cmp	al,0Ch
-	je	check_vsib_address
-	cmp	al,0Dh
-	je	check_vsib_address
 	or	bh,bh
 	jz	check_address_registers
 	or	bl,bl
 	jz	check_address_registers
 	cmp	al,ah
-	jne	invalid_address
+	jne	check_vsib
       check_address_registers:
 	or	al,ah
+	cmp	al,0Ch
+	jae	check_vsib
+	cmp	al,6
+	je	check_vsib
+	cmp	al,7
+	je	check_vsib
 	mov	ah,[address_size]
 	and	ah,0Fh
 	jz	address_registers_sizes_ok
 	cmp	al,ah
-	jne	address_sizes_do_not_match
+	jne	invalid_address
       address_registers_sizes_ok:
 	cmp	al,4
 	je	sib_allowed
 	cmp	al,8
 	je	sib_allowed
-	cmp	al,0Fh
+	cmp	al,9
 	je	check_ip_relative_address
 	cmp	cl,1
 	ja	invalid_address
@@ -1550,9 +1542,9 @@ get_address_value:
       check_ip_relative_address:
 	or	bl,bl
 	jnz	invalid_address
-	cmp	bh,0F8h
+	cmp	bh,98h
 	je	check_rip_relative_address
-	cmp	bh,0F4h
+	cmp	bh,94h
 	jne	invalid_address
 	cmp	[free_address_range],0
 	je	check_dword_value
@@ -1665,35 +1657,41 @@ get_address_value:
 	and	al,cl
 	jz	check_immediate_address
 	jmp	invalid_address
-      check_vsib_address:
-	cmp	ah,0Ch
-	je	swap_vsib_registers
-	cmp	ah,0Dh
-	jne	check_vsib_base
+      check_vsib:
+	xor	ah,ah
+      check_vsib_base:
+	test	bh,bh
+	jz	check_vsib_index
+	mov	al,bh
+	shr	al,4
+	cmp	al,4
+	je	check_vsib_base_size
+	cmp	[code_type],64
+	jne	swap_vsib_registers
+	cmp	al,8
+	jne	swap_vsib_registers
+      check_vsib_base_size:
+	mov	ah,[address_size]
+	and	ah,0Fh
+	jz	check_vsib_index
+	cmp	al,ah
+	jne	invalid_address
+      check_vsib_index:
+	mov	al,bl
+	and	al,0E0h
+	cmp	al,0C0h
+	jae	check_index_scale
+	cmp	al,60h
+	je	check_index_scale
+	jmp	invalid_address
       swap_vsib_registers:
+	xor	al,-1
+	jz	invalid_address
 	cmp	cl,1
 	ja	invalid_address
 	xchg	bl,bh
 	mov	cl,1
-      check_vsib_base:
-	test	bh,bh
-	jz	vsib_base_ok
-	mov	al,bh
-	shr	al,4
-	cmp	al,4
-	je	vsib_base_ok
-	cmp	[code_type],64
-	jne	invalid_address
-	cmp	al,8
-	jne	invalid_address
-      vsib_base_ok:
-	mov	al,bl
-	shr	al,4
-	cmp	al,0Ch
-	je	check_index_scale
-	cmp	al,0Dh
-	je	check_index_scale
-	jmp	invalid_address
+	jmp	check_vsib_base
 
 calculate_relative_offset:
 	cmp	[value_undefined],0
@@ -1785,7 +1783,7 @@ calculate_logical_expression:
 	jmp	logical_loop
   get_value_for_comparison:
 	mov	[value_size],8
-	mov	[size_override],-1
+	or	[operand_flags],1
 	lods	byte [esi]
 	call	calculate_expression
 	cmp	byte [edi+8],0
@@ -1816,7 +1814,7 @@ calculate_logical_expression:
       negation_ok:
 	push	eax
 	mov	al,[esi]
-	cmp	al,'{'
+	cmp	al,91h
 	je	logical_expression
 	cmp	al,0FFh
 	je	invalid_expression
@@ -1838,7 +1836,7 @@ calculate_logical_expression:
 	jz	logical_number
 	cmp	al,0Fh
 	je	logical_number
-	cmp	al,'}'
+	cmp	al,92h
 	je	logical_number
 	cmp	al,'&'
 	je	logical_number
@@ -2079,7 +2077,7 @@ calculate_logical_expression:
 	mov	[logical_value_wrapping],dl
 	push	eax
 	lods	byte [esi]
-	cmp	al,'}'
+	cmp	al,92h
 	jne	invalid_expression
 	pop	eax
       logical_value_ok:
