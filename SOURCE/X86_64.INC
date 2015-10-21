@@ -6883,8 +6883,10 @@ store_instruction:
       address_immediate:
 	cmp	[code_type],64
 	je	address_immediate_sib
-	test	ch,22h or 44h or 88h
+	test	ch,44h or 88h
 	jnz	address_immediate_32bit
+	test	ch,22h
+	jnz	address_immediate_16bit
 	or	ch,ch
 	jnz	invalid_address_size
 	cmp	[code_type],16
