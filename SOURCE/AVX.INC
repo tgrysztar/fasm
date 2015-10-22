@@ -614,6 +614,11 @@ avx_movd_instruction:
 	cmp	ah,16
 	jne	invalid_operand_size
 	mov	[postbyte_register],al
+	cmp	[mmx_size],8
+	jne	instruction_ready
+	and	[rex_prefix],not 8
+	or	[rex_prefix],80h
+	mov	[extended_code],0D6h
 	jmp	instruction_ready
       avx_movd_reg:
 	lods	byte [esi]
@@ -654,11 +659,14 @@ avx_movd_instruction:
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address
-	mov	al,[operand_size]
-	or	al,al
-	jz	instruction_ready
-	cmp	al,[mmx_size]
-	jne	invalid_operand_size
+	mov	al,[mmx_size]
+	cmp	al,8
+	jne	avx_movd_xmmreg_mem_ready
+	call	avx_movq_xmmreg_xmmreg_opcode
+      avx_movd_xmmreg_mem_ready:
+	not	al
+	test	[operand_size],al
+	jnz	invalid_operand_size
 	jmp	instruction_ready
       avx_movd_xmmreg_reg:
 	lods	byte [esi]
@@ -672,13 +680,18 @@ avx_movd_instruction:
       avx_movq_xmmreg_xmmreg:
 	cmp	[mmx_size],8
 	jne	invalid_operand
-	add	[extended_code],10h
-	mov	[opcode_prefix],0F3h
+	call	avx_movq_xmmreg_xmmreg_opcode
 	call	convert_avx_register
 	cmp	ah,16
 	jne	invalid_operand_size
 	mov	bl,al
 	jmp	nomem_instruction_ready
+      avx_movq_xmmreg_xmmreg_opcode:
+	and	[rex_prefix],not 8
+	or	[rex_prefix],80h
+	add	[extended_code],10h
+	mov	[opcode_prefix],0F3h
+	ret
 avx_movddup_instruction:
 	or	[vex_required],1
 	mov	[opcode_prefix],0F2h
@@ -1866,9 +1879,8 @@ avx_pbroadcastq_instruction:
 	pop	eax
 	xchg	ah,[operand_size]
 	mov	[postbyte_register],al
-	test	[operand_flags],40h
-	jnz	nomem_instruction_ready
-	or	[vex_required],8
+	test	[vex_required],2
+	jnz	invalid_operand
 	jmp	nomem_instruction_ready
       avx_broadcast_reg_general_reg:
 	call	convert_register
@@ -2048,7 +2060,8 @@ avx_extract_d_instruction:
 	lods	byte [esi]
 	call	convert_register
 	mov	bl,al
-	cmp	ah,[mmx_size]
+	mov	al,[mmx_size]
+	cmp	ah,al
 	jb	invalid_operand_size
 	cmp	ah,4
 	je	avx_extractps_reg_size_ok
@@ -2056,6 +2069,10 @@ avx_extract_d_instruction:
 	jne	invalid_operand_size
 	cmp	[code_type],64
 	jne	invalid_operand
+	cmp	al,4
+	ja	avx_extractps_reg_size_ok
+	je	invalid_operand_size
+	or	[rex_prefix],8
       avx_extractps_reg_size_ok:
 	mov	[operand_size],0
 	lods	byte [esi]

@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.42 (Oct 22, 2015)
+
+[-] Fixed a couple of regression bugs.
+
+
 version 1.71.41 (Oct 21, 2015)
 
 [-] Fixed a bug that caused the "word" operator inside square brackets to
