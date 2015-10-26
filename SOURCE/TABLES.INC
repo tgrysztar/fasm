@@ -4130,6 +4130,8 @@ instructions_14:
 instructions_15:
  db 'aeskeygenassist',0DFh
  dw sse4_instruction_66_3a_imm8-instruction_handler
+ db 'vbroadcastf32x2',19h
+ dw avx512_broadcast_32x2_instruction-instruction_handler
  db 'vbroadcastf32x4',1Ah
  dw avx512_broadcast_32x4_instruction-instruction_handler
  db 'vbroadcastf32x8',1Bh
@@ -4138,6 +4140,8 @@ instructions_15:
  dw avx512_broadcast_64x2_instruction-instruction_handler
  db 'vbroadcastf64x4',1Bh
  dw avx512_broadcast_64x4_instruction-instruction_handler
+ db 'vbroadcasti32x2',59h
+ dw avx512_broadcast_32x2_instruction-instruction_handler
  db 'vbroadcasti32x4',5Ah
  dw avx512_broadcast_32x4_instruction-instruction_handler
  db 'vbroadcasti32x8',5Bh

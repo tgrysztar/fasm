@@ -1769,19 +1769,22 @@ avx512_pmovwb_instruction:
 
 avx_broadcast_128_instruction_noevex:
 	or	[vex_required],2
-	mov	cx,0010h
+	mov	cl,10h
 	jmp	avx_broadcast_instruction
+avx512_broadcast_32x2_instruction:
+	mov	cl,08h
+	jmp	avx_broadcast_instruction_evex
 avx512_broadcast_32x4_instruction:
-	mov	cx,0410h
+	mov	cl,10h
 	jmp	avx_broadcast_instruction_evex
 avx512_broadcast_32x8_instruction:
-	mov	cx,0420h
+	mov	cl,20h
 	jmp	avx_broadcast_instruction_evex
 avx512_broadcast_64x2_instruction:
-	mov	cx,0810h
+	mov	cl,10h
 	jmp	avx_broadcast_instruction_w1_evex
 avx512_broadcast_64x4_instruction:
-	mov	cx,0820h
+	mov	cl,20h
       avx_broadcast_instruction_w1_evex:
 	or	[rex_prefix],8
       avx_broadcast_instruction_evex:
@@ -1789,11 +1792,11 @@ avx512_broadcast_64x4_instruction:
 	jmp	avx_broadcast_instruction
 avx_broadcastss_instruction:
 	mov	cl,4
-	jmp	avx_broadcast_s_instruction
+	jmp	avx_broadcast_instruction
 avx_broadcastsd_instruction:
 	or	[rex_prefix],80h
 	mov	cl,8
-	jmp	avx_broadcast_s_instruction
+	jmp	avx_broadcast_instruction
 avx_pbroadcastb_instruction:
 	mov	cl,1
 	jmp	avx_broadcast_pi_instruction
@@ -1808,14 +1811,11 @@ avx_pbroadcastq_instruction:
 	or	[rex_prefix],80h
       avx_broadcast_pi_instruction:
 	or	[operand_flags],40h
-      avx_broadcast_s_instruction:
-	mov	ch,cl
       avx_broadcast_instruction:
 	mov	[opcode_prefix],66h
 	mov	[supplemental_code],al
 	mov	al,38h
 	mov	[mmx_size],cl
-	mov	[broadcast_size],ch
 	mov	[base_code],0Fh
 	mov	[extended_code],al
 	or	[vex_required],1
@@ -1825,6 +1825,8 @@ avx_pbroadcastq_instruction:
 	test	[operand_flags],40h
 	jnz	avx_broadcast_destination_size_ok
 	cmp	[mmx_size],4
+	je	avx_broadcast_destination_size_ok
+	cmp	[supplemental_code],59h
 	je	avx_broadcast_destination_size_ok
 	cmp	ah,16
 	je	invalid_operand_size
@@ -1847,7 +1849,7 @@ avx_pbroadcastq_instruction:
 	xchg	ah,[operand_size]
 	mov	[postbyte_register],al
 	mov	al,[broadcast_size]
-	xchg	al,[mmx_size]
+	mov	al,[mmx_size]
 	cmp	al,ah
 	je	instruction_ready
 	or	al,al
@@ -2283,6 +2285,8 @@ avx_cvtps2ph_instruction:
 	shl	[operand_size],1
 	call	take_avx_register
 	mov	[postbyte_register],al
+	shr	ah,1
+	mov	[mmx_size],ah
 	jmp	mmx_imm8
       vcvtps2ph_reg:
 	lods	byte [esi]

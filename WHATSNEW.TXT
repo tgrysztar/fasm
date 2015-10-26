@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.43 (Oct 26, 2015)
+
+[+] Added two missing instructions.
+
+[-] Fixed few minor bugs in AVX-512 encodings.
+
+
 version 1.71.42 (Oct 22, 2015)
 
 [-] Fixed a couple of regression bugs.
