@@ -2418,11 +2418,11 @@ avx_cvtsi2ss_instruction:
       avx_cvtsi_reg_reg_mem:
 	call	get_address
 	mov	al,[operand_size]
+	mov	[mmx_size],al
 	cmp	al,4
 	je	instruction_ready
 	cmp	al,8
 	jne	invalid_operand_size
-	mov	[mmx_size],al
 	call	operand_64bit
 	jmp	instruction_ready
 

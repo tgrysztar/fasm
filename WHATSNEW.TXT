@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.44 (Oct 27, 2015)
+
+[-] Minor bug fixes.
+
+
 version 1.71.43 (Oct 26, 2015)
 
 [+] Added two missing instructions.

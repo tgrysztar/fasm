@@ -1685,7 +1685,7 @@ get_address_value:
 	je	check_index_scale
 	jmp	invalid_address
       swap_vsib_registers:
-	xor	al,-1
+	xor	ah,-1
 	jz	invalid_address
 	cmp	cl,1
 	ja	invalid_address
