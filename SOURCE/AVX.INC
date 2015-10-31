@@ -1594,6 +1594,7 @@ avx_shift_bw_instruction:
 	mov	bl,al
 	jmp	nomem_instruction_ready
       avx_shift_reg_reg_mem:
+	mov	[mmx_size],16
 	push	ecx
 	lods	byte [esi]
 	call	get_size_operator
@@ -1604,7 +1605,6 @@ avx_shift_bw_instruction:
 	jz	instruction_ready
 	cmp	al,16
 	jne	invalid_operand_size
-	mov	[mmx_size],al
 	jmp	instruction_ready
       avx_shift_reg_mem:
 	or	[vex_required],8
