@@ -1891,13 +1891,13 @@ instructions_6:
  dw avx_bw_instruction_38_w1_evex-instruction_handler
  db 'vpperm',0A3h
  dw xop_128bit_instruction-instruction_handler
- db 'vprold',0
+ db 'vprold',1
  dw avx512_rotate_d_instruction-instruction_handler
- db 'vprolq',0
+ db 'vprolq',1
  dw avx512_rotate_q_instruction-instruction_handler
- db 'vprord',1
+ db 'vprord',0
  dw avx512_rotate_d_instruction-instruction_handler
- db 'vprorq',1
+ db 'vprorq',0
  dw avx512_rotate_q_instruction-instruction_handler
  db 'vprotb',90h
  dw xop_shift_instruction-instruction_handler
@@ -2293,7 +2293,7 @@ instructions_7:
  db 'vpcmpuq',-1
  dw avx512_cmp_uq_instruction-instruction_handler
  db 'vpcmpuw',-1
- dw avx512_cmp_ub_instruction-instruction_handler
+ dw avx512_cmp_uw_instruction-instruction_handler
  db 'vpcomub',-1
  dw xop_pcom_ub_instruction-instruction_handler
  db 'vpcomud',-1
@@ -3183,7 +3183,7 @@ instructions_9:
  db 'vpcmpleuq',2
  dw avx512_cmp_uq_instruction-instruction_handler
  db 'vpcmpleuw',2
- dw avx512_cmp_ub_instruction-instruction_handler
+ dw avx512_cmp_uw_instruction-instruction_handler
  db 'vpcmpltub',1
  dw avx512_cmp_ub_instruction-instruction_handler
  db 'vpcmpltud',1
@@ -3191,7 +3191,7 @@ instructions_9:
  db 'vpcmpltuq',1
  dw avx512_cmp_uq_instruction-instruction_handler
  db 'vpcmpltuw',1
- dw avx512_cmp_ub_instruction-instruction_handler
+ dw avx512_cmp_uw_instruction-instruction_handler
  db 'vpcmpneqb',4
  dw avx512_cmp_b_instruction-instruction_handler
  db 'vpcmpneqd',4
@@ -3506,7 +3506,7 @@ instructions_10:
  db 'vpcmpnequq',4
  dw avx512_cmp_uq_instruction-instruction_handler
  db 'vpcmpnequw',4
- dw avx512_cmp_ub_instruction-instruction_handler
+ dw avx512_cmp_uw_instruction-instruction_handler
  db 'vpcmpnleub',6
  dw avx512_cmp_ub_instruction-instruction_handler
  db 'vpcmpnleud',6
@@ -3514,7 +3514,7 @@ instructions_10:
  db 'vpcmpnleuq',6
  dw avx512_cmp_uq_instruction-instruction_handler
  db 'vpcmpnleuw',6
- dw avx512_cmp_ub_instruction-instruction_handler
+ dw avx512_cmp_uw_instruction-instruction_handler
  db 'vpcmpnltub',5
  dw avx512_cmp_ub_instruction-instruction_handler
  db 'vpcmpnltud',5
@@ -3522,7 +3522,7 @@ instructions_10:
  db 'vpcmpnltuq',5
  dw avx512_cmp_uq_instruction-instruction_handler
  db 'vpcmpnltuw',5
- dw avx512_cmp_ub_instruction-instruction_handler
+ dw avx512_cmp_uw_instruction-instruction_handler
  db 'vpcomnequb',5
  dw xop_pcom_ub_instruction-instruction_handler
  db 'vpcomnequd',5
