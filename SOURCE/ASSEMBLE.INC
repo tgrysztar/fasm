@@ -193,7 +193,7 @@ assemble_line:
       new_line:
 	lods	dword [esi]
 	mov	[current_line],eax
-	mov	[prefixed_instruction],0
+	and	[prefix_flags],0
 	cmp	[symbols_file],0
 	je	continue_line
 	cmp	[next_pass_needed],0
@@ -451,6 +451,8 @@ assemble_line:
 	add	[esp],ebx
 	ret
       instruction_assembled:
+	test	[prefix_flags],not 1
+	jnz	illegal_instruction
 	mov	al,[esi]
 	cmp	al,0Fh
 	je	line_assembled
@@ -813,7 +815,7 @@ times_directive:
 	cmp	eax,[stack_limit]
 	jb	stack_overflow
 	push	esi
-	or	[prefixed_instruction],-1
+	or	[prefix_flags],1
 	call	continue_line
 	mov	eax,[counter_limit]
 	cmp	[counter],eax
@@ -988,8 +990,8 @@ virtual_directive:
       addressing_space_closed:
 	ret
 repeat_directive:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	lods	byte [esi]
 	cmp	al,'('
 	jne	invalid_argument
@@ -1010,8 +1012,8 @@ repeat_directive:
 	mov	[ebx+4],eax
 	jmp	instruction_assembled
       end_repeat:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	call	find_structure_data
 	jc	unexpected_instruction
 	mov	eax,[counter_limit]
@@ -1042,8 +1044,8 @@ repeat_directive:
 	jne	unexpected_instruction
 	ret
 while_directive:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	call	allocate_structure_data
 	mov	word [ebx],while_directive-instruction_handler
 	mov	eax,1
@@ -1073,8 +1075,8 @@ while_directive:
 	pop	ebx
 	jmp	instruction_assembled
       end_while:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	call	find_structure_data
 	jc	unexpected_instruction
 	mov	eax,[ebx+4]
@@ -1089,8 +1091,8 @@ while_directive:
 	jne	unexpected_instruction
 	ret
 if_directive:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	call	calculate_logical_expression
 	mov	dl,al
 	mov	al,[esi]
@@ -1126,8 +1128,8 @@ if_directive:
 	or	al,-1
 	jmp	make_if_structure
       else_directive:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	mov	ax,if_directive-instruction_handler
 	call	find_structure_data
 	jc	unexpected_instruction
@@ -1153,8 +1155,8 @@ if_directive:
 	call	remove_structure_data
 	jmp	instruction_assembled
       end_if:
-	cmp	[prefixed_instruction],0
-	jne	unexpected_instruction
+	test	[prefix_flags],1
+	jnz	unexpected_instruction
 	call	find_structure_data
 	jc	unexpected_instruction
 	call	remove_structure_data

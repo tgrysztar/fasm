@@ -885,10 +885,16 @@ parse_line_contents:
 	lods	byte [esi]
 	cmp	al,']'
 	je	address_parsed
+	cmp	al,','
+	je	divided_address
 	dec	esi
 	mov	al,')'
 	stos	byte [edi]
 	jmp	argument_parsed
+      divided_address:
+	mov	ax,'),'
+	stos	word [edi]
+	jmp	expression
       address_parsed:
 	mov	al,']'
 	stos	byte [edi]

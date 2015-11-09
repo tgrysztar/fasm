@@ -123,6 +123,7 @@ value_size db ?
 address_size db ?
 label_size db ?
 size_declared db ?
+address_size_declared db ?
 displacement_compression db ?
 
 value_undefined db ?
@@ -132,6 +133,7 @@ value_sign db ?
 fp_sign db ?
 fp_format db ?
 address_sign db ?
+address_register db ?
 compare_type db ?
 logical_value_wrapping db ?
 next_pass_needed db ?
@@ -142,7 +144,7 @@ evex_mode db ?
 
 macro_status db ?
 skip_default_argument_value db ?
-prefixed_instruction db ?
+prefix_flags db ?
 formatter_symbols_allowed db ?
 decorator_symbols_allowed db ?
 free_address_range db ?

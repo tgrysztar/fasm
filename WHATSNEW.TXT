@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.47 (Nov 09, 2015)
+
+[+] Added support for Intel MPX instructions.
+
+
 version 1.71.46 (Oct 31, 2015)
 
 [-] Another minor bug fixed.

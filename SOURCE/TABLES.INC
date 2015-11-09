@@ -243,6 +243,10 @@ symbols_4:
  db '1to2',1Fh,11h
  db '1to4',1Fh,12h
  db '1to8',1Fh,13h
+ db 'bnd0',14h,60h
+ db 'bnd1',14h,61h
+ db 'bnd2',14h,62h
+ db 'bnd3',14h,63h
  db 'byte',11h,1
  db 'code',19h,5
  db 'coff',18h,40h
@@ -494,6 +498,8 @@ instructions_3:
  dw basic_instruction-instruction_handler
  db 'and',20h
  dw basic_instruction-instruction_handler
+ db 'bnd',0F2h
+ dw bnd_prefix_instruction-instruction_handler
  db 'bsf',0BCh
  dw bs_instruction-instruction_handler
  db 'bsr',0BDh
@@ -936,6 +942,14 @@ instructions_5:
  dw tbm_instruction-instruction_handler
  db 'blsic',16h
  dw tbm_instruction-instruction_handler
+ db 'bndcl',1Ah
+ dw bndcl_instruction-instruction_handler
+ db 'bndcn',1Bh
+ dw bndcu_instruction-instruction_handler
+ db 'bndcu',1Ah
+ dw bndcu_instruction-instruction_handler
+ db 'bndmk',1Bh
+ dw bndmk_instruction-instruction_handler
  db 'bound',0
  dw bound_instruction-instruction_handler
  db 'break',0
@@ -1293,11 +1307,11 @@ instructions_5:
  db 'repnz',0F2h
  dw prefix_instruction-instruction_handler
  db 'retfd',0CAh
- dw ret_instruction_32bit-instruction_handler
+ dw retf_instruction_32bit-instruction_handler
  db 'retfq',0CAh
- dw ret_instruction_64bit-instruction_handler
+ dw retf_instruction_64bit-instruction_handler
  db 'retfw',0CAh
- dw ret_instruction_16bit-instruction_handler
+ dw retf_instruction_16bit-instruction_handler
  db 'retnd',0C2h
  dw ret_instruction_32bit_except64-instruction_handler
  db 'retnq',0C2h
@@ -1425,6 +1439,12 @@ instructions_6:
  dw tbm_instruction-instruction_handler
  db 'blsmsk',2
  dw bmi_instruction-instruction_handler
+ db 'bndldx',1Ah
+ dw bndldx_instruction-instruction_handler
+ db 'bndmov',1Ah
+ dw bndmov_instruction-instruction_handler
+ db 'bndstx',1Bh
+ dw bndstx_instruction-instruction_handler
  db 'cmovae',43h
  dw bs_instruction-instruction_handler
  db 'cmovbe',46h
