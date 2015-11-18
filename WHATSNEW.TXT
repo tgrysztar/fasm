@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.48 (Nov 18, 2015)
+
+[-] Fixed recently introduced bug in MOV instruction with debug register
+    as target.
+
+
 version 1.71.47 (Nov 09, 2015)
 
 [+] Added support for Intel MPX instructions.

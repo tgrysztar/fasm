@@ -882,7 +882,7 @@ mov_instruction:
 	lods	byte [esi]
 	mov	ah,al
 	shr	ah,4
-	cmp	al,4
+	cmp	ah,4
 	ja	invalid_operand
 	add	ah,22h
 	mov	[extended_code],ah
