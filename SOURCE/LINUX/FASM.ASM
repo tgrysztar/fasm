@@ -15,10 +15,9 @@ start:
 	call	display_string
 
 	mov	[command_line],esp
-	pop	eax
-	lea	esp,[esp+eax*4]
-	pop	eax
-	pop	[environment]
+	mov	ecx,[esp]
+	mov	ebx,[esp+4+ecx*4+4]
+	mov	[environment],ebx
 	call	get_params
 	jc	information
 

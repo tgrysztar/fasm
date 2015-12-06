@@ -1995,7 +1995,7 @@ calculate_logical_expression:
 	inc	esi
 	jmp	check_expression
       defined_fp_value:
-	add	esi,12
+	add	esi,12+1
 	jmp	expression_checked
       defined_string:
 	lods	dword [esi]

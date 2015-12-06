@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.49 (Dec 06, 2015)
+
+[-] Few small fixes.
+
+
 version 1.71.48 (Nov 18, 2015)
 
 [-] Fixed recently introduced bug in MOV instruction with debug register
