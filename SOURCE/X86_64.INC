@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2015, Tomasz Grysztar.
+; Copyright (c) 1999-2016, Tomasz Grysztar.
 ; All rights reserved.
 
 simple_instruction_except64:
@@ -7043,7 +7043,9 @@ store_instruction:
 	sub	eax,[current_offset]
 	add	eax,5
 	sub	edx,eax
-	jo	value_out_of_range
+	jno	@f
+	call	recoverable_overflow
+      @@:
 	mov	al,101b
 	mov	cl,[postbyte_register]
 	shl	cl,3

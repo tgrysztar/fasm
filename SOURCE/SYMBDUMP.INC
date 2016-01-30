@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2015, Tomasz Grysztar.
+; Copyright (c) 1999-2016, Tomasz Grysztar.
 ; All rights reserved.
 
 dump_symbols:

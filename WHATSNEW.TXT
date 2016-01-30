@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.50 (Jan 30, 2016)
+
+[-] Overflow error in the RIP-relative addresses has been made recoverable.
+
+
 version 1.71.49 (Dec 06, 2015)
 
 [-] Few small fixes.
