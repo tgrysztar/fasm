@@ -350,15 +350,15 @@ avx_instruction:
 	mov	al,[operand_size]
 	cmp	[mmx_size],0
 	jne	avx_mem_size_enforced
-	or	al,al
-	jz	operand_size_not_specified
 	cmp	al,16
 	je	avx_mem_size_ok
 	cmp	al,32
 	je	avx_mem_size_ok
 	cmp	al,64
 	je	avx_mem_size_ok
-	jmp	invalid_operand_size
+	or	al,al
+	jnz	invalid_operand_size
+	call	recoverable_unknown_size
       avx_mem_size_enforced:
 	or	al,al
 	jz	avx_mem_size_ok
@@ -2247,7 +2247,7 @@ avx_cvttpd2dq_instruction:
 	ret
       avx_cvt_q_size_not_specified:
 	cmp	ah,64 shr 1
-	jne	operand_size_not_specified
+	jne	recoverable_unknown_size
 	mov	[operand_size],64
 	ret
 avx_cvttps2udq_instruction:
@@ -2419,6 +2419,8 @@ avx_cvtsi2ss_instruction:
 	call	get_address
 	mov	al,[operand_size]
 	mov	[mmx_size],al
+	or	al,al
+	jz	single_mem_nosize
 	cmp	al,4
 	je	instruction_ready
 	cmp	al,8
