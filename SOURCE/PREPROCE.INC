@@ -101,7 +101,7 @@ preprocessor:
 	or	al,al
 	jz	predefinition_converted
 	cmp	al,20h
-	je	convert_line_data
+	je	convert_predefinition
 	cmp	al,3Bh
 	je	invalid_definition
 	cmp	al,5Ch

@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.52 (May 13, 2016)
+
+[+] Added "rdpkru" and "wrpkru" instructions.
+
+[-] Fixed a bug in processing the "-d" switch.
+
+
 version 1.71.51 (Feb 08, 2016)
 
 [-] Corrected the signalling of "operand size not specified" error with

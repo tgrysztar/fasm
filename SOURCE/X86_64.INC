@@ -3633,12 +3633,13 @@ invlpg_instruction:
 swapgs_instruction:
 	cmp	[code_type],64
 	jne	illegal_instruction
-rdtscp_instruction:
-	mov	[base_code],0Fh
-	mov	[extended_code],1
-	mov	[postbyte_register],7
-	mov	bl,al
-	jmp	nomem_instruction_ready
+simple_instruction_0f_01:
+	mov	ah,al
+	mov	al,0Fh
+	stos	byte [edi]
+	mov	al,1
+	stos	word [edi]
+	jmp	instruction_assembled
 
 basic_486_instruction:
 	mov	[base_code],0Fh
@@ -5858,13 +5859,6 @@ adx_instruction:
 	call	operand_64bit
 	jmp	nomem_instruction_ready
 
-simple_vmx_instruction:
-	mov	ah,al
-	mov	al,0Fh
-	stos	byte [edi]
-	mov	al,1
-	stos	word [edi]
-	jmp	instruction_assembled
 vmclear_instruction:
 	mov	[opcode_prefix],66h
 	jmp	vmx_instruction
@@ -6005,7 +5999,7 @@ skinit_instruction:
 	cmp	ax,0400h
 	jne	invalid_operand
 	mov	al,0DEh
-	jmp	simple_vmx_instruction
+	jmp	simple_instruction_0f_01
 invlpga_instruction:
 	push	eax
 	mov	[base_code],0Fh

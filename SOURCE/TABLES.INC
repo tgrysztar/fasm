@@ -684,9 +684,9 @@ instructions_4:
  db 'cdqe',98h
  dw simple_instruction_64bit-instruction_handler
  db 'clac',0CAh
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'clgi',0DDh
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'clts',6
  dw simple_extended_instruction-instruction_handler
  db 'clwb',6
@@ -898,9 +898,9 @@ instructions_4:
  db 'smsw',14h
  dw pm_store_word_instruction-instruction_handler
  db 'stac',0CBh
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'stgi',0DCh
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'stos',0AAh
  dw stos_instruction-instruction_handler
  db 'test',0
@@ -918,7 +918,7 @@ instructions_4:
  db 'xchg',0
  dw xchg_instruction-instruction_handler
  db 'xend',0D5h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'xlat',0D7h
  dw xlat_instruction-instruction_handler
 instructions_5:
@@ -1421,7 +1421,7 @@ instructions_5:
  db 'xsave',100b
  dw fxsave_instruction-instruction_handler
  db 'xtest',0D6h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
 instructions_6:
  db 'aesdec',0DEh
  dw sse4_instruction_66_38-instruction_handler
@@ -1747,12 +1747,14 @@ instructions_6:
  dw simple_instruction_16bit-instruction_handler
  db 'rdmsrq',32h
  dw simple_extended_instruction_64bit-instruction_handler
+ db 'rdpkru',0EEh
+ dw simple_instruction_0f_01-instruction_handler
  db 'rdrand',110b
  dw rdrand_instruction-instruction_handler
  db 'rdseed',111b
  dw rdrand_instruction-instruction_handler
- db 'rdtscp',1
- dw rdtscp_instruction-instruction_handler
+ db 'rdtscp',0F9h
+ dw simple_instruction_0f_01-instruction_handler
  db 'repeat',0
  dw repeat_directive-instruction_handler
  db 'setalc',0D6h
@@ -1828,7 +1830,7 @@ instructions_6:
  db 'vmaxss',5Fh
  dw avx_ss_instruction_sae-instruction_handler
  db 'vmcall',0C1h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'vminpd',5Dh
  dw avx_pd_instruction_sae-instruction_handler
  db 'vminps',5Dh
@@ -1856,7 +1858,7 @@ instructions_6:
  db 'vmulss',59h
  dw avx_ss_instruction_er-instruction_handler
  db 'vmxoff',0C4h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'vpabsb',1Ch
  dw avx_single_source_bw_instruction_38-instruction_handler
  db 'vpabsd',1Eh
@@ -1995,16 +1997,18 @@ instructions_6:
  dw simple_extended_instruction-instruction_handler
  db 'wrmsrq',30h
  dw simple_extended_instruction_64bit-instruction_handler
+ db 'wrpkru',0EFh
+ dw simple_instruction_0f_01-instruction_handler
  db 'xabort',0
  dw xabort_instruction-instruction_handler
  db 'xbegin',0
  dw xbegin_instruction-instruction_handler
  db 'xgetbv',0D0h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'xrstor',101b
  dw fxsave_instruction-instruction_handler
  db 'xsetbv',0D1h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
 instructions_7:
  db 'blcfill',11h
  dw tbm_instruction-instruction_handler
@@ -2271,7 +2275,7 @@ instructions_7:
  db 'vmclear',6
  dw vmclear_instruction-instruction_handler
  db 'vmmcall',0D9h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'vmovapd',28h
  dw avx_movpd_instruction-instruction_handler
  db 'vmovaps',28h
@@ -2722,7 +2726,7 @@ instructions_8:
  db 'vldmxcsr',10b
  dw vldmxcsr_instruction-instruction_handler
  db 'vmlaunch',0C2h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'vmovddup',12h
  dw avx_movddup_instruction-instruction_handler
  db 'vmovdqu8',6Fh
@@ -2740,7 +2744,7 @@ instructions_8:
  db 'vmpsadbw',42h
  dw avx_pi_instruction_3a_imm8_noevex-instruction_handler
  db 'vmresume',0C3h
- dw simple_vmx_instruction-instruction_handler
+ dw simple_instruction_0f_01-instruction_handler
  db 'vpaddusb',0DCh
  dw avx_bw_instruction-instruction_handler
  db 'vpaddusw',0DDh

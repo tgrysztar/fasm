@@ -687,8 +687,9 @@ instructon is to reverse the sign of the operand from positive to negative or
 from negative to positive. Rules for the operand are the same as for the "inc"
 instruction.
   "xadd" exchanges the destination operand with the source operand, then loads
-the sum of the two values into the destination operand. Rules for the operands
-are the same as for the "add" instruction.
+the sum of the two values into the destination operand. The destination operand
+may be a general register or memory, the source operand must be a general
+register.
   All the above binary arithmetic instructions update SF, ZF, PF and OF flags.
 SF is always set to the same value as the result's sign bit, ZF is set when
 all the bits of result are zero, PF is set when low order eight bits of result
