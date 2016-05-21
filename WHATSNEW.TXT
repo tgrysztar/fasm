@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.53 (May 21, 2016)
+
+[+] Added missing "vmfunc" instruction.
+
+[-] Fixed recently introduced bug in "swapgs" instruction.
+
+
 version 1.71.52 (May 13, 2016)
 
 [+] Added "rdpkru" and "wrpkru" instructions.

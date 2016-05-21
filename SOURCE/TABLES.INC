@@ -1785,7 +1785,7 @@ instructions_6:
  dw sse_sd_instruction-instruction_handler
  db 'sqrtss',51h
  dw sse_ss_instruction-instruction_handler
- db 'swapgs',0
+ db 'swapgs',0F8h
  dw swapgs_instruction-instruction_handler
  db 'sysret',07h
  dw simple_extended_instruction-instruction_handler
@@ -1830,6 +1830,8 @@ instructions_6:
  db 'vmaxss',5Fh
  dw avx_ss_instruction_sae-instruction_handler
  db 'vmcall',0C1h
+ dw simple_instruction_0f_01-instruction_handler
+ db 'vmfunc',0D4h
  dw simple_instruction_0f_01-instruction_handler
  db 'vminpd',5Dh
  dw avx_pd_instruction_sae-instruction_handler
