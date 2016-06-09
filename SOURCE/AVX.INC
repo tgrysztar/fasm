@@ -2072,8 +2072,7 @@ avx_extract_d_instruction:
 	cmp	[code_type],64
 	jne	invalid_operand
 	cmp	al,4
-	ja	avx_extractps_reg_size_ok
-	je	invalid_operand_size
+	jae	avx_extractps_reg_size_ok
 	or	[rex_prefix],8
       avx_extractps_reg_size_ok:
 	mov	[operand_size],0

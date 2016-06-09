@@ -5217,7 +5217,8 @@ extractps_instruction:
 	je	mmx_nomem_imm8
 	cmp	al,8
 	jne	invalid_operand_size
-	call	operand_64bit
+	cmp	[code_type],64
+	jne	illegal_instruction
 	jmp	mmx_nomem_imm8
       setup_66_0f_3a:
 	mov	[extended_code],3Ah
@@ -5343,7 +5344,6 @@ pextrb_instruction:
 	cmp	bh,16
 	jne	invalid_operand_size
 	xchg	bl,[postbyte_register]
-	call	operand_autodetect
 	jmp	mmx_nomem_imm8
 pinsrb_instruction:
 	mov	[mmx_size],1
@@ -5721,10 +5721,13 @@ crc32_instruction:
 	mov	[supplemental_code],0F0h
 	call	take_register
 	mov	[postbyte_register],al
-	cmp	ah,8
-	je	crc32_reg64
 	cmp	ah,4
+	je	crc32_reg_size_ok
+	cmp	ah,8
 	jne	invalid_operand
+	cmp	[code_type],64
+	jne	illegal_instruction
+      crc32_reg_size_ok:
 	lods	byte [esi]
 	cmp	al,','
 	jne	invalid_operand
@@ -5732,7 +5735,7 @@ crc32_instruction:
 	lods	byte [esi]
 	call	get_size_operator
 	cmp	al,10h
-	je	crc32_reg32_reg
+	je	crc32_reg_reg
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address
@@ -5740,63 +5743,25 @@ crc32_instruction:
 	test	al,al
 	jz	crc32_unknown_size
 	cmp	al,1
-	je	crc32_reg32_mem_store
-	cmp	al,4
-	ja	invalid_operand_size
+	je	crc32_reg_mem_store
 	inc	[supplemental_code]
 	call	operand_autodetect
-      crc32_reg32_mem_store:
+      crc32_reg_mem_store:
 	jmp	instruction_ready
       crc32_unknown_size:
 	call	recoverable_unknown_size
-	jmp	crc32_reg32_mem_store
-      crc32_reg32_reg:
+	jmp	crc32_reg_mem_store
+      crc32_reg_reg:
 	lods	byte [esi]
 	call	convert_register
 	mov	bl,al
 	mov	al,ah
 	cmp	al,1
-	je	crc32_reg32_reg_store
-	cmp	al,4
-	ja	invalid_operand_size
+	je	crc32_reg_reg_store
 	inc	[supplemental_code]
 	call	operand_autodetect
-      crc32_reg32_reg_store:
+      crc32_reg_reg_store:
 	jmp	nomem_instruction_ready
-      crc32_reg64:
-	lods	byte [esi]
-	cmp	al,','
-	jne	invalid_operand
-	mov	[operand_size],0
-	call	operand_64bit
-	lods	byte [esi]
-	call	get_size_operator
-	cmp	al,10h
-	je	crc32_reg64_reg
-	cmp	al,'['
-	jne	invalid_operand
-	call	get_address
-	mov	ah,[operand_size]
-	mov	al,8
-	test	ah,ah
-	jz	crc32_unknown_size
-	cmp	ah,1
-	je	crc32_reg32_mem_store
-	cmp	ah,al
-	jne	invalid_operand_size
-	inc	[supplemental_code]
-	jmp	crc32_reg32_mem_store
-      crc32_reg64_reg:
-	lods	byte [esi]
-	call	convert_register
-	mov	bl,al
-	mov	al,8
-	cmp	ah,1
-	je	crc32_reg32_reg_store
-	cmp	ah,al
-	jne	invalid_operand_size
-	inc	[supplemental_code]
-	jmp	crc32_reg32_reg_store
 popcnt_instruction:
 	mov	[opcode_prefix],0F3h
 	jmp	bs_instruction

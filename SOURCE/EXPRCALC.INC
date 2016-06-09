@@ -1030,7 +1030,8 @@ calculate_expression:
 	cmp	al,4
 	je	convert_fp_dword
 	test	al,not 8
-	jnz	invalid_value
+	jz	convert_fp_qword
+	call	recoverable_misuse
       convert_fp_qword:
 	xor	eax,eax
 	xor	edx,edx

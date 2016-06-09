@@ -2,6 +2,16 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.54 (Jun 09, 2016)
+
+[-] Corrected syntax options of "pextrb", "pextrd", "extractps" and "crc32"
+    instructions in long mode to be consistent with how "pextrw" behaved already.
+    They all now allow either 32-bit or 64-bit register as destination and this
+    choice does not affect the result of the operation.
+
+[-] The error message trigerred by "mov [eax],1.0" was misleading.
+
+
 version 1.71.53 (May 21, 2016)
 
 [+] Added missing "vmfunc" instruction.
@@ -267,7 +277,7 @@ version 1.71.10 (Apr 03, 2013)
 
 version 1.71.09 (Mar 30, 2013)
 
-[-] "use16","use32" and "use64" no longer allow to put another instruction in
+[-] "use16", "use32" and "use64" no longer allow to put another instruction in
     the same line.
 
 [-] Fixed a bug in parser that caused it to hang while processing some
