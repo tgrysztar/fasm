@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.55 (Sep 18, 2016)
+
+[-] Fixed generation of PLT relocations in ELF64 output.
+
+
 version 1.71.54 (Jun 09, 2016)
 
 [-] Corrected syntax options of "pextrb", "pextrd", "extractps" and "crc32"

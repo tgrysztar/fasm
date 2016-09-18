@@ -1477,7 +1477,10 @@ get_address_value:
 	cmp	ax,0804h
 	jne	address_sizes_do_not_agree
       address_sizes_mixed:
+	cmp	[value_type],4
+	jne	address_sizes_mixed_type_ok
 	mov	[value_type],2
+      address_sizes_mixed_type_ok:
 	mov	eax,[edi]
 	cdq
 	cmp	edx,[edi+4]
