@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.56 (Sep 19, 2016)
+
+[+] Allowed underscore character to be put inside the number value.
+
+[+] Allowed octal numbers ending with "q".
+
+
 version 1.71.55 (Sep 18, 2016)
 
 [-] Fixed generation of PLT relocations in ELF64 output.
