@@ -3894,6 +3894,9 @@ elf_segment:
       elf_segment_type_ok:
 	mov	[ebx],ah
 	mov	word [ebx+1Ch],1
+	cmp	ah,50h
+	jb	elf_segment_flags
+	or	dword [ebx],6474E500h
 	jmp	elf_segment_flags
       elf_segment_flags_ok:
 	mov	eax,edi
@@ -4027,6 +4030,9 @@ elf_segment:
       elf64_segment_type_ok:
 	mov	[ebx],ah
 	mov	word [ebx+30h],1
+	cmp	ah,50h
+	jb	elf64_segment_flags
+	or	dword [ebx],6474E500h
 	jmp	elf64_segment_flags
       elf64_segment_flags_ok:
 	mov	ecx,edi

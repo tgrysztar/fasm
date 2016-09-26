@@ -32,7 +32,9 @@ start:
 	call	[GetTickCount]
 	mov	[start_time],eax
 
+	and	[preprocessing_done],0
 	call	preprocessor
+	or	[preprocessing_done],-1
 	call	parser
 	call	assembler
 	call	formatter
@@ -355,6 +357,7 @@ bytes_count dd ?
 displayed_count dd ?
 character db ?
 last_displayed rb 2
+preprocessing_done db ?
 
 params rb 1000h
 options rb 1000h

@@ -69,7 +69,9 @@ main:
 	add	eax,ebx
 	mov	[start_time],eax
 
+	and	[preprocessing_done],0
 	call	preprocessor
+	or	[preprocessing_done],-1
 	call	parser
 	call	assembler
 	call	formatter
@@ -128,7 +130,6 @@ get_params:
 	mov	[symbols_file],0
 	mov	[memory_setting],0
 	mov	[passes_limit],100
-
 
 	mov	ecx,[argc]
 	mov	ebx,[argv]
@@ -307,10 +308,10 @@ _logo db 'flat assembler  version ',VERSION_STRING,0
 _usage db 0xA
        db 'usage: fasm <source> [output]',0xA
        db 'optional settings:',0xA
-       db ' -m <limit>         set the limit in kilobytes for the available memory',0Dh,0Ah
-       db ' -p <limit>         set the maximum allowed number of passes',0Dh,0Ah
-       db ' -d <name>=<value>  define symbolic variable',0Dh,0Ah
-       db ' -s <file>          dump symbolic information for debugging',0Dh,0Ah
+       db ' -m <limit>         set the limit in kilobytes for the available memory',0xA
+       db ' -p <limit>         set the maximum allowed number of passes',0xA
+       db ' -d <name>=<value>  define symbolic variable',0xA
+       db ' -s <file>          dump symbolic information for debugging',0xA
        db 0
 _memory_prefix db '  (',0
 _memory_suffix db ' kilobytes memory)',0xA,0
@@ -347,6 +348,7 @@ con_handle dd ?
 displayed_count dd ?
 last_displayed db ?
 character db ?
+preprocessing_done db ?
 
 predefinitions rb 1000h
 buffer rb 1000h

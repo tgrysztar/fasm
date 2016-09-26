@@ -58,7 +58,9 @@ start:
 	jmp	main+(first_segment shr 4):first_gate-first_segment
 
 compile:
+	and	[preprocessing_done],0
 	call	preprocessor
+	or	[preprocessing_done],-1
 	call	parser
 	call	assembler
 	call	formatter
@@ -355,6 +357,9 @@ error_suffix db '.'
 cr_lf db 0Dh,0Ah,0
 line_number_start db ' [',0
 line_data_start db ':',0Dh,0Ah,0
+preprocessed_instruction_prefix db 'processed: ',0
+
+include 'dpmi.inc'
 
 align 16
 first_segment:
@@ -373,7 +378,9 @@ include '..\symbdump.inc'
 include 'system.inc'
 
 first_gate:
+	and	[preprocessing_done],0
 	call	preprocessor
+	or	[preprocessing_done],-1
 	call	parser
 	jmp	main+(second_segment shr 4):second_gate-second_segment
 first_segment_top = $ - first_segment
@@ -421,6 +428,7 @@ mode dw ?
 real_mode_segment dw ?
 displayed_count dd ?
 last_displayed rb 2
+preprocessing_done db ?
 
 segment buffer
 

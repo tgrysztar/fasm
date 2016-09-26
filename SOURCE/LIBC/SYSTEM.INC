@@ -316,6 +316,66 @@ assembler_error:
 	pop	ebx
 	or	ebx,ebx
 	jnz	display_error_line
+	cmp	[preprocessing_done],0
+	je	display_error_message
+	mov	esi,preprocessed_instruction_prefix
+	call	display_string
+	mov	esi,[current_line]
+	add	esi,16
+	mov	edi,[additional_memory]
+	xor	dl,dl
+      convert_instruction:
+	lodsb
+	cmp	al,1Ah
+	je	copy_symbol
+	cmp	al,22h
+	je	copy_symbol
+	cmp	al,3Bh
+	je	instruction_converted
+	stosb
+	or	al,al
+	jz	instruction_converted
+	xor	dl,dl
+	jmp	convert_instruction
+      copy_symbol:
+	or	dl,dl
+	jz	space_ok
+	mov	byte [edi],20h
+	inc	edi
+      space_ok:
+	cmp	al,22h
+	je	quoted
+	lodsb
+	movzx	ecx,al
+	rep	movsb
+	or	dl,-1
+	jmp	convert_instruction
+      quoted:
+	mov	al,27h
+	stosb
+	lodsd
+	mov	ecx,eax
+	jecxz	quoted_copied
+      copy_quoted:
+	lodsb
+	stosb
+	cmp	al,27h
+	jne	quote_ok
+	stosb
+      quote_ok:
+	loop	copy_quoted
+      quoted_copied:
+	mov	al,27h
+	stosb
+	or	dl,-1
+	jmp	convert_instruction
+      instruction_converted:
+	xor	al,al
+	stosb
+	mov	esi,[additional_memory]
+	call	display_string
+	mov	esi,lf
+	call	display_string
       display_error_message:
 	mov	esi,error_prefix
 	call	display_string
@@ -340,3 +400,4 @@ error_suffix db '.'
 lf db 0xA,0
 line_number_start db ' [',0
 line_data_start db ':',0xA,0
+preprocessed_instruction_prefix db 'processed: ',0

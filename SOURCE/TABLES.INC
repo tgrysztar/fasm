@@ -420,6 +420,7 @@ symbols_7:
  db 'dynamic',1Eh,2
  db 'efiboot',1Bh,11
 symbols_8:
+ db 'gnustack',1Eh,51h
  db 'linkinfo',19h,9
  db 'readable',19h,30
  db 'resource',1Ah,2
@@ -430,6 +431,7 @@ symbols_9:
 symbols_10:
  db 'efiruntime',1Bh,12
  db 'executable',19h,29
+ db 'gnuehframe',1Eh,50h
  db 'linkremove',19h,11
 symbols_11:
  db 'discardable',19h,25

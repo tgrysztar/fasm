@@ -2,6 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.57 (Sep 26, 2016)
+
+[+] Added "gnustack" and "gnuehframe" segment types to ELF executable formatter.
+
+[+] Console versions now display preprocessed instruction that caused an error
+    (previously only displayed by Windows GUI interface).
+
+
 version 1.71.56 (Sep 19, 2016)
 
 [+] Allowed underscore character to be put inside the number value.
