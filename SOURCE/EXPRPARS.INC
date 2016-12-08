@@ -86,9 +86,8 @@ convert_number:
 	cmp	eax,edx
 	jae	out_of_memory
 	mov	eax,esp
-	sub	eax,100h
-	jc	stack_overflow
-	cmp	eax,[stack_limit]
+	sub	eax,[stack_limit]
+	cmp	eax,100h
 	jb	stack_overflow
 	cmp	byte [esi],'('
 	je	expression_value

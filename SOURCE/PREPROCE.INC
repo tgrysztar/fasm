@@ -558,7 +558,7 @@ get_directive:
 	jne	next_directive
 	repe	cmps byte [esi],[edi]
 	jb	no_directive
-	je	directive_ok
+	je	directive_handler
       next_directive:
 	mov	edi,ebx
 	add	edi,2
@@ -568,21 +568,17 @@ get_directive:
 	mov	ecx,ebp
 	stc
 	ret
-      directive_ok:
-	lea	esi,[edx+ebp]
-	call	directive_handler
       directive_handler:
-	pop	ecx
+	lea	esi,[edx+ebp]
 	movzx	eax,word [ebx]
-	add	eax,ecx
+	add	eax,directive_handler
 	clc
 	ret
 
 preprocess_line:
 	mov	eax,esp
-	sub	eax,100h
-	jc	stack_overflow
-	cmp	eax,[stack_limit]
+	sub	eax,[stack_limit]
+	cmp	eax,100h
 	jb	stack_overflow
 	push	ecx esi
       preprocess_current_line:

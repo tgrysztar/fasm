@@ -2,6 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.58 (Dec 08, 2016)
+
+[+] Added a 64-bit ELF executable version of flat assembler for Linux. It has
+    no extended capabilities compared to regular versions, it just simulates
+    the 32-bit environment to allow running the assembler on systems that
+    support only 64-bit executables.
+
+
 version 1.71.57 (Sep 26, 2016)
 
 [+] Added "gnustack" and "gnuehframe" segment types to ELF executable formatter.

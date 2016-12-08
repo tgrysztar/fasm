@@ -161,9 +161,8 @@ parser:
 	ret
       parse_block:
 	mov	eax,esp
-	sub	eax,100h
-	jc	stack_overflow
-	cmp	eax,[stack_limit]
+	sub	eax,[stack_limit]
+	cmp	eax,100h
 	jb	stack_overflow
 	push	[current_line]
 	mov	ax,bx
@@ -367,9 +366,8 @@ parser:
 	jmp	skip_parsing_contents
       skip_parsing_block:
 	mov	eax,esp
-	sub	eax,100h
-	jc	stack_overflow
-	cmp	eax,[stack_limit]
+	sub	eax,[stack_limit]
+	cmp	eax,100h
 	jb	stack_overflow
 	push	[current_line]
 	mov	ax,bx
@@ -825,9 +823,8 @@ parse_line_contents:
 	cmp	byte [esi],'('
 	jne	expression
 	mov	eax,esp
-	sub	eax,100h
-	jc	stack_overflow
-	cmp	eax,[stack_limit]
+	sub	eax,[stack_limit]
+	cmp	eax,100h
 	jb	stack_overflow
 	push	esi edi
 	inc	esi

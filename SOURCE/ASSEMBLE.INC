@@ -810,9 +810,8 @@ times_directive:
 	mov	[counter],1
       times_loop:
 	mov	eax,esp
-	sub	eax,100h
-	jc	stack_overflow
-	cmp	eax,[stack_limit]
+	sub	eax,[stack_limit]
+	cmp	eax,100h
 	jb	stack_overflow
 	push	esi
 	or	[prefix_flags],1
@@ -1304,46 +1303,29 @@ break_directive:
 	push	ebx
 	jmp	stop_while
 
+data_unicode:
+	or	[base_code],-1
+	jmp	define_words
+data_words:
+	mov	[base_code],0
+    define_words:
+	push	define_data_word
+	jmp	define_data
+data_dwords:
+	push	define_data_dword
+	jmp	define_data
+data_pwords:
+	push	define_data_pword
+	jmp	define_data
+data_qwords:
+	push	define_data_qword
+	jmp	define_data
+data_twords:
+	push	define_data_tword
+	jmp	define_data
 data_bytes:
-	call	define_data
-	lods	byte [esi]
-	cmp	al,'('
-	je	get_byte
-	cmp	al,'?'
-	jne	invalid_argument
-	mov	eax,edi
-	mov	byte [edi],0
-	inc	edi
-	jmp	undefined_data
-      get_byte:
-	cmp	byte [esi],0
-	je	get_string
-	call	get_byte_value
-	stos	byte [edi]
-	ret
-      get_string:
-	inc	esi
-	lods	dword [esi]
-	mov	ecx,eax
-	lea	eax,[edi+ecx]
-	cmp	eax,[tagged_blocks]
-	ja	out_of_memory
-	rep	movs byte [edi],[esi]
-	inc	esi
-	ret
-      undefined_data:
-	mov	ebp,[addressing_space]
-	test	byte [ds:ebp+0Ah],1
-	jz	mark_undefined_data
-	ret
-      mark_undefined_data:
-	cmp	eax,[undefined_data_end]
-	je	undefined_data_ok
-	mov	[undefined_data_start],eax
-      undefined_data_ok:
-	mov	[undefined_data_end],edi
-	ret
-      define_data:
+	push	define_data_byte
+define_data:
 	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	cmp	byte [esi],'('
@@ -1413,13 +1395,49 @@ data_bytes:
 	dec	esi
 	add	esp,4
 	jmp	instruction_assembled
-data_unicode:
-	or	[base_code],-1
-	jmp	define_words
-data_words:
-	mov	[base_code],0
-      define_words:
-	call	define_data
+
+
+
+
+define_data_byte:
+	lods	byte [esi]
+	cmp	al,'('
+	je	get_byte
+	cmp	al,'?'
+	jne	invalid_argument
+	mov	eax,edi
+	mov	byte [edi],0
+	inc	edi
+	jmp	undefined_data
+      get_byte:
+	cmp	byte [esi],0
+	je	get_string
+	call	get_byte_value
+	stos	byte [edi]
+	ret
+      get_string:
+	inc	esi
+	lods	dword [esi]
+	mov	ecx,eax
+	lea	eax,[edi+ecx]
+	cmp	eax,[tagged_blocks]
+	ja	out_of_memory
+	rep	movs byte [edi],[esi]
+	inc	esi
+	ret
+      undefined_data:
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jz	mark_undefined_data
+	ret
+      mark_undefined_data:
+	cmp	eax,[undefined_data_end]
+	je	undefined_data_ok
+	mov	[undefined_data_start],eax
+      undefined_data_ok:
+	mov	[undefined_data_end],edi
+	ret
+define_data_word:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_word
@@ -1456,8 +1474,7 @@ data_words:
       word_string_ok:
 	inc	esi
 	ret
-data_dwords:
-	call	define_data
+define_data_dword:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_dword
@@ -1499,8 +1516,7 @@ data_dwords:
 	call	mark_relocation
 	stos	word [edi]
 	ret
-data_pwords:
-	call	define_data
+define_data_pword:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_pword
@@ -1546,8 +1562,7 @@ data_pwords:
 	call	mark_relocation
 	stos	word [edi]
 	ret
-data_qwords:
-	call	define_data
+define_data_qword:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_qword
@@ -1566,8 +1581,7 @@ data_qwords:
 	mov	eax,edx
 	stos	dword [edi]
 	ret
-data_twords:
-	call	define_data
+define_data_tword:
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_tword
