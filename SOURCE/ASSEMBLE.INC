@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2016, Tomasz Grysztar.
+; Copyright (c) 1999-2017, Tomasz Grysztar.
 ; All rights reserved.
 
 assembler:
@@ -1303,28 +1303,6 @@ break_directive:
 	push	ebx
 	jmp	stop_while
 
-data_unicode:
-	or	[base_code],-1
-	jmp	define_words
-data_words:
-	mov	[base_code],0
-    define_words:
-	push	define_data_word
-	jmp	define_data
-data_dwords:
-	push	define_data_dword
-	jmp	define_data
-data_pwords:
-	push	define_data_pword
-	jmp	define_data
-data_qwords:
-	push	define_data_qword
-	jmp	define_data
-data_twords:
-	push	define_data_tword
-	jmp	define_data
-data_bytes:
-	push	define_data_byte
 define_data:
 	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
@@ -1349,6 +1327,7 @@ define_data:
       duplicated_values:
 	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
+	clc
 	call	near dword [esp+8]
 	lods	byte [esi]
 	cmp	al,','
@@ -1364,6 +1343,7 @@ define_data:
 	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
 	push	eax esi
+	clc
 	call	near dword [esp+8]
 	pop	ebx eax
 	dec	eax
@@ -1387,19 +1367,18 @@ define_data:
       simple_data_value:
 	cmp	edi,[tagged_blocks]
 	jae	out_of_memory
+	clc
 	call	near dword [esp]
       data_defined:
 	lods	byte [esi]
 	cmp	al,','
 	je	define_data
 	dec	esi
-	add	esp,4
-	jmp	instruction_assembled
-
-
-
-
-define_data_byte:
+	stc
+	ret
+data_bytes:
+	call	define_data
+	jc	instruction_assembled
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_byte
@@ -1437,7 +1416,14 @@ define_data_byte:
       undefined_data_ok:
 	mov	[undefined_data_end],edi
 	ret
-define_data_word:
+data_unicode:
+	or	[base_code],-1
+	jmp	define_words
+data_words:
+	mov	[base_code],0
+    define_words:
+	call	define_data
+	jc	instruction_assembled
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_word
@@ -1474,7 +1460,9 @@ define_data_word:
       word_string_ok:
 	inc	esi
 	ret
-define_data_dword:
+data_dwords:
+	call	define_data
+	jc	instruction_assembled
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_dword
@@ -1516,7 +1504,9 @@ define_data_dword:
 	call	mark_relocation
 	stos	word [edi]
 	ret
-define_data_pword:
+data_pwords:
+	call	define_data
+	jc	instruction_assembled
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_pword
@@ -1562,7 +1552,9 @@ define_data_pword:
 	call	mark_relocation
 	stos	word [edi]
 	ret
-define_data_qword:
+data_qwords:
+	call	define_data
+	jc	instruction_assembled
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_qword
@@ -1581,7 +1573,9 @@ define_data_qword:
 	mov	eax,edx
 	stos	dword [edi]
 	ret
-define_data_tword:
+data_twords:
+	call	define_data
+	jc	instruction_assembled
 	lods	byte [esi]
 	cmp	al,'('
 	je	get_tword

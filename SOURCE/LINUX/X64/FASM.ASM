@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux x64
-; Copyright (c) 1999-2016, Tomasz Grysztar.
+; Copyright (c) 1999-2017, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	ELF64 executable 3 at 400000h
@@ -296,7 +296,7 @@ include 'system.inc'
 
 include '..\..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2016, Tomasz Grysztar',0xA,0
+_copyright db 'Copyright (c) 1999-2017, Tomasz Grysztar',0xA,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0
 _usage db 0xA

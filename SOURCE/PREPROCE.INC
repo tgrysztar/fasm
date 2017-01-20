@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2016, Tomasz Grysztar.
+; Copyright (c) 1999-2017, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -558,7 +558,7 @@ get_directive:
 	jne	next_directive
 	repe	cmps byte [esi],[edi]
 	jb	no_directive
-	je	directive_handler
+	je	directive_found
       next_directive:
 	mov	edi,ebx
 	add	edi,2
@@ -568,11 +568,16 @@ get_directive:
 	mov	ecx,ebp
 	stc
 	ret
+      directive_found:
+	call	get_directive_handler_base
       directive_handler:
 	lea	esi,[edx+ebp]
-	movzx	eax,word [ebx]
-	add	eax,directive_handler
+	movzx	ecx,word [ebx]
+	add	eax,ecx
 	clc
+	ret
+      get_directive_handler_base:
+	mov	eax,[esp]
 	ret
 
 preprocess_line:

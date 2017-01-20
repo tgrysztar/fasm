@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.59 (Jan 20,2017)
+
+[-] Corrected range-checking for minimal denormal floating-point values.
+
+[-] Other minor fixes.
+
+
 version 1.71.58 (Dec 08, 2016)
 
 [+] Added a 64-bit ELF executable version of flat assembler for Linux. It has

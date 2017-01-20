@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2016, Tomasz Grysztar.
+; Copyright (c) 1999-2017, Tomasz Grysztar.
 ; All rights reserved.
 
 calculate_expression:
@@ -1064,7 +1064,7 @@ calculate_expression:
 	mov	cx,bx
 	neg	cx
 	inc	cx
-	cmp	cx,52
+	cmp	cx,52+1
 	ja	value_out_of_range
 	cmp	cx,32
 	jb	fp_qword_small_shift
@@ -1089,6 +1089,9 @@ calculate_expression:
       fp_qword_exp_ok:
 	shl	ebx,20
 	or	edx,ebx
+	jnz	fp_qword_store
+	or	eax,eax
+	jz	value_out_of_range
       fp_qword_store:
 	mov	bl,[esi+11]
 	shl	ebx,31
@@ -1122,7 +1125,7 @@ calculate_expression:
 	mov	cx,bx
 	neg	cx
 	inc	cx
-	cmp	cx,10
+	cmp	cx,10+1
 	ja	value_out_of_range
 	xor	bx,bx
 	shr	ax,cl
@@ -1135,6 +1138,7 @@ calculate_expression:
       fp_word_exp_ok:
 	shl	bx,10
 	or	ax,bx
+	jz	value_out_of_range
       fp_word_store:
 	mov	bl,[esi+11]
 	shl	bx,15
@@ -1169,7 +1173,7 @@ calculate_expression:
 	mov	cx,bx
 	neg	cx
 	inc	cx
-	cmp	cx,23
+	cmp	cx,23+1
 	ja	value_out_of_range
 	xor	bx,bx
 	shr	eax,cl
@@ -1182,6 +1186,7 @@ calculate_expression:
       fp_dword_exp_ok:
 	shl	ebx,23
 	or	eax,ebx
+	jz	value_out_of_range
       fp_dword_store:
 	mov	bl,[esi+11]
 	shl	ebx,31
