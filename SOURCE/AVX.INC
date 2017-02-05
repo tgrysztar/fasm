@@ -641,6 +641,11 @@ avx_movd_instruction:
 	cmp	ah,16
 	jne	invalid_operand_size
 	mov	[postbyte_register],al
+      avx_movd_reg_ready:
+	test	[rex_prefix],8
+	jz	nomem_instruction_ready
+	cmp	[code_type],64
+	jne	illegal_instruction
 	jmp	nomem_instruction_ready
       avx_movd_xmmreg:
 	sub	[extended_code],10h
@@ -676,7 +681,7 @@ avx_movd_instruction:
 	cmp	ah,[mmx_size]
 	jne	invalid_operand_size
 	mov	bl,al
-	jmp	nomem_instruction_ready
+	jmp	avx_movd_reg_ready
       avx_movq_xmmreg_xmmreg:
 	cmp	[mmx_size],8
 	jne	invalid_operand
@@ -2111,6 +2116,8 @@ avx_pinsrd_instruction:
 	mov	cl,4
 	jmp	avx_pinsr_instruction_3a
 avx_pinsrq_instruction:
+	cmp	[code_type],64
+	jne	illegal_instruction
 	mov	cl,8
 	or	[rex_prefix],8
       avx_pinsr_instruction_3a:
@@ -2449,6 +2456,7 @@ avx_maskmov_instruction:
 	cmp	al,','
 	jne	invalid_operand
 	lods	byte [esi]
+	call	get_size_operator
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address

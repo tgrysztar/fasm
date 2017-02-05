@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.60 (Feb 05, 2017)
+
+[+] Updated documentation.
+
+[-] Minor corrections in error detection of some AVX instruction handlers.
+
+
 version 1.71.59 (Jan 20,2017)
 
 [-] Corrected range-checking for minimal denormal floating-point values.
