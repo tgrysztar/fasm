@@ -3236,7 +3236,7 @@ additional operand.
 
   The family of "gather" instructions in their AVX-512 variants use a new
 syntax with only two operands. The opmask register takes the role which
-way played by the third operand in the AVX2 syntax and it is mandatory
+was played by the third operand in the AVX2 syntax and it is mandatory
 in this case.
 
     vgatherdps xmm0{k1},[eax+xmm1]    ; gather four floats

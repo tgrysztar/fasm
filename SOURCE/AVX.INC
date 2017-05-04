@@ -1896,6 +1896,9 @@ avx_pbroadcastq_instruction:
 	or	al,al
 	jz	avx_broadcast_reg_general_reg_size_ok
 	cmp	al,ah
+	je	avx_broadcast_reg_general_reg_size_ok
+	ja	invalid_operand_size
+	cmp	ah,4
 	jne	invalid_operand_size
       avx_broadcast_reg_general_reg_size_ok:
 	cmp	al,4
@@ -2243,6 +2246,8 @@ avx_cvttpd2dq_instruction:
 	mov	al,[operand_size]
 	or	al,al
 	jz	avx_cvt_q_size_not_specified
+	cmp	al,64
+	ja	invalid_operand_size
 	shr	al,1
 	cmp	al,ah
 	je	avx_cvt_q_size_ok
