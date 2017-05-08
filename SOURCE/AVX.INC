@@ -1354,6 +1354,8 @@ kmov_instruction:
 	jmp	nomem_instruction_ready
       kmov_f2_w1:
 	or	[rex_prefix],8
+	cmp	[code_type],64
+	jne	illegal_instruction
       kmov_f2:
 	mov	[opcode_prefix],0F2h
 	jmp	nomem_instruction_ready

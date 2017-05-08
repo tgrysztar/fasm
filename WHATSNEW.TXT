@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.62 (May 08, 2017)
+
+[-] Minor correction in "kmovq" error checking.
+
+[-] Minor fix in the encoding of some absolute addresses in long mode.
+
+
 version 1.71.61 (May 04, 2017)
 
 [-] Minor correction in "vcvtpd2dq" error checking.

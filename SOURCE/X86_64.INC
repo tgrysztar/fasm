@@ -6970,6 +6970,10 @@ store_instruction:
 	jnz	address_immediate_sib_32bit
 	test	ch,not 88h
 	jnz	invalid_address_size
+	test	edx,80000000h
+	jz	address_immediate_sib_store
+	cmp	[address_high],0
+	je	address_immediate_sib_nosignextend
       address_immediate_sib_store:
 	call	store_instruction_code
 	mov	al,100b
