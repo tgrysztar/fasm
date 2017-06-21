@@ -129,6 +129,8 @@ get_params:
 	cmp	al,22h
 	je	string_param
     copy_param:
+	cmp	edi,params+1000h
+	jae	bad_params
 	stosb
 	lodsb
 	cmp	al,20h
@@ -146,6 +148,8 @@ get_params:
 	je	param_end
 	or	al,al
 	jz	param_end
+	cmp	edi,params+1000h
+	jae	bad_params
 	stosb
 	jmp	string_param
     option_param:
@@ -254,6 +258,8 @@ get_params:
     param_end:
 	dec	esi
     string_param_end:
+	cmp	edi,params+1000h
+	jae	bad_params
 	xor	al,al
 	stosb
 	jmp	find_param
@@ -267,6 +273,8 @@ get_params:
 	ret
     convert_definition_option:
 	mov	ecx,edi
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	xor	al,al
 	stosb
       copy_definition_name:
@@ -279,6 +287,8 @@ get_params:
 	je	bad_definition_option
 	or	al,al
 	jz	bad_definition_option
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	stosb
 	inc	byte [ecx]
 	jnz	copy_definition_name
@@ -299,10 +309,14 @@ get_params:
 	jne	definition_value_character
 	lodsb
       definition_value_character:
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	stosb
 	jmp	copy_definition_value
       definition_value_end:
 	dec	esi
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	xor	al,al
 	stosb
 	clc

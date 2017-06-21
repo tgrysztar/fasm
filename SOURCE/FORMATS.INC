@@ -1704,6 +1704,7 @@ make_pe_resource:
 	sub	edx,eax
 	mov	al,1
 	call	lseek
+	jc	resource_headers_ok
       resource_file_alignment_ok:
 	mov	[esi],eax
 	lea	edx,[esi+12]
@@ -1749,8 +1750,10 @@ make_pe_resource:
       resource_header_name_ok:
 	xor	al,al
 	call	lseek
-	jmp	read_resource_headers
+	jnc	read_resource_headers
       resource_headers_ok:
+	cmp	esi,[free_additional_memory]
+	je	invalid_file_format
 	xor	eax,eax
 	mov	[esi],eax
 	mov	[resource_data],edi
@@ -3103,6 +3106,16 @@ close_elf:
       elf_closed:
 	ret
 elf_formatter:
+	mov	ecx,edi
+	sub	ecx,[code_start]
+	neg	ecx
+	and	ecx,111b
+	test	[format_flags],8
+	jnz	align_elf_structures
+	and	ecx,11b
+      align_elf_structures:
+	xor	al,al
+	rep	stos byte [edi]
 	push	edi
 	call	prepare_default_section
 	mov	esi,[symbols_stream]
@@ -3393,8 +3406,12 @@ elf_formatter:
 	mov	ebx,[code_start]
 	mov	eax,edi
 	sub	eax,[free_additional_memory]
+	xor	ecx,ecx
+	sub	ecx,eax
 	test	[format_flags],8
 	jnz	finish_elf64_header
+	and	ecx,11b
+	add	eax,ecx
 	mov	[ebx+20h],eax
 	mov	eax,[current_section]
 	inc	ax
@@ -3405,6 +3422,8 @@ elf_formatter:
 	mov	[ebx+30h],ax
 	jmp	elf_header_finished
       finish_elf64_header:
+	and	ecx,111b
+	add	eax,ecx
 	mov	[ebx+28h],eax
 	mov	eax,[current_section]
 	inc	ax
@@ -3415,12 +3434,12 @@ elf_formatter:
 	mov	[ebx+3Ch],ax
       elf_header_finished:
 	xor	eax,eax
-	mov	ecx,10
-	rep	stos dword [edi]
+	add	ecx,10*4
+	rep	stos byte [edi]
 	test	[format_flags],8
 	jz	elf_null_section_ok
-	mov	ecx,6
-	rep	stos dword [edi]
+	mov	ecx,6*4
+	rep	stos byte [edi]
       elf_null_section_ok:
 	mov	esi,ebp
 	xor	ecx,ecx

@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.71.63 (Jun 21, 2017)
+
+[-] Minor fixes in formatter.
+
+
 version 1.71.62 (May 08, 2017)
 
 [-] Minor correction in "kmovq" error checking.

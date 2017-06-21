@@ -251,6 +251,8 @@ get_params:
 	ret
       convert_definition_option:
 	mov	edx,edi
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	xor	al,al
 	stosb
       copy_definition_name:
@@ -261,6 +263,8 @@ get_params:
 	je	bad_definition_option
 	or	al,al
 	jz	bad_definition_option
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	stosb
 	inc	byte [edx]
 	jnz	copy_definition_name
@@ -273,10 +277,14 @@ get_params:
 	je	definition_value_end
 	or	al,al
 	jz	definition_value_end
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	stosb
 	jmp	copy_definition_value
       definition_value_end:
 	dec	rsi
+	cmp	edi,predefinitions+1000h
+	jae	bad_definition_option
 	xor	al,al
 	stosb
 	clc
