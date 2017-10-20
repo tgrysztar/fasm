@@ -186,6 +186,9 @@ lseek:
 	mov	dl,al
 	mov	eax,19
 	int	0x80
+	cmp	eax,-1
+	je	file_error
+	clc
 	ret
 
 display_string:

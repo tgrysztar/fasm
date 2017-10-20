@@ -131,9 +131,16 @@ lseek:
 	push	ebx
 	movzx	eax,al
 	ccall	fseek,ebx,edx,eax
+	test	eax,eax
+	jnz	lseek_error
 	mov	ebx,[esp]
 	ccall	ftell,ebx
 	pop	ebx
+	clc
+	ret
+    lseek_error:
+	pop	ebx
+	stc
 	ret
 
 display_string:
