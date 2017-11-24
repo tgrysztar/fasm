@@ -9,13 +9,13 @@ formatter:
 	jne	output_path_ok
 	mov	esi,[input_file]
 	mov	edi,[free_additional_memory]
-      copy_output_path:
+      duplicate_output_path:
 	lods	byte [esi]
 	cmp	edi,[structures_buffer]
 	jae	out_of_memory
 	stos	byte [edi]
 	or	al,al
-	jnz	copy_output_path
+	jnz	duplicate_output_path
 	dec	edi
 	mov	eax,edi
       find_extension:

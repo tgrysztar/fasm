@@ -186,9 +186,6 @@ lseek:
 	mov	dl,al
 	mov	eax,19
 	int	0x80
-	cmp	eax,-1
-	je	file_error
-	clc
 	ret
 
 display_string:
@@ -287,6 +284,7 @@ fatal_error:
 	jmp	exit_program
 assembler_error:
 	mov	[con_handle],2
+	and	[output_file],0
 	call	display_user_messages
 	mov	ebx,[current_line]
 	test	ebx,ebx

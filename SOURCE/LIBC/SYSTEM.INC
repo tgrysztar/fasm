@@ -131,16 +131,9 @@ lseek:
 	push	ebx
 	movzx	eax,al
 	ccall	fseek,ebx,edx,eax
-	test	eax,eax
-	jnz	lseek_error
 	mov	ebx,[esp]
 	ccall	ftell,ebx
 	pop	ebx
-	clc
-	ret
-    lseek_error:
-	pop	ebx
-	stc
 	ret
 
 display_string:
@@ -227,6 +220,7 @@ fatal_error:
 	jmp	exit_program
 assembler_error:
 	mov	[con_handle],2
+	and	[output_file],0
 	call	display_user_messages
 	mov	ebx,[current_line]
 	test	ebx,ebx

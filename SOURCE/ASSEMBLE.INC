@@ -148,8 +148,8 @@ create_addressing_space:
       init_addressing_space:
 	mov	ebx,[tagged_blocks]
 	mov	dword [ebx-4],10h
-	mov	dword [ebx-8],20h
-	sub	ebx,8+20h
+	mov	dword [ebx-8],24h
+	sub	ebx,8+24h
 	cmp	ebx,edi
 	jbe	out_of_memory
 	mov	[tagged_blocks],ebx
@@ -162,6 +162,7 @@ create_addressing_space:
 	mov	[ebx+14h],eax
 	mov	[ebx+18h],edi
 	mov	[ebx+1Ch],eax
+	mov	[ebx+20h],eax
 	ret
 
 assemble_line:
@@ -780,6 +781,8 @@ show_display_buffer:
 	mov	eax,[esi+4]
 	mov	ecx,[esi]
 	sub	esi,ecx
+	cmp	eax,10h
+	je	write_addressing_space
 	test	eax,eax
 	jnz	skip_block
 	push	esi
@@ -790,6 +793,62 @@ show_display_buffer:
 	jne	display_messages
       display_done:
 	ret
+      write_addressing_space:
+	mov	ecx,[esi+20h]
+	jecxz	skip_block
+	push	esi
+	mov	edi,[free_additional_memory]
+	mov	esi,[output_file]
+	test	esi,esi
+	jz	addressing_space_written
+	xor	ebx,ebx
+      copy_output_path:
+	lodsb
+	cmp	edi,[structures_buffer]
+	jae	out_of_memory
+	stosb
+	test	al,al
+	jz	output_path_copied
+	cmp	al,'/'
+	je	new_path_segment
+	cmp	al,'\'
+	je	new_path_segment
+	cmp	al,'.'
+	jne	copy_output_path
+	mov	ebx,edi
+	jmp	copy_output_path
+      new_path_segment:
+	xor	ebx,ebx
+	jmp	copy_output_path
+      output_path_copied:
+	test	ebx,ebx
+	jnz	append_extension
+	mov	byte [edi-1],'.'
+	mov	ebx,edi
+      append_extension:
+	mov	edi,ebx
+	add	ebx,ecx
+	inc	ebx
+	cmp	ebx,[structures_buffer]
+	jae	out_of_memory
+	mov	esi,[esp]
+	mov	esi,[esi+18h]
+	sub	esi,ecx
+	rep	movs byte [edi],[esi]
+	xor	al,al
+	stos	byte [edi]
+	mov	edx,[free_additional_memory]
+	call	create
+	jc	write_failed
+	mov	esi,[esp]
+	mov	edx,[esi+18h]
+	mov	ecx,[esi+1Ch]
+	call	write
+	jc	write_failed
+	call	close
+      addressing_space_written:
+	pop	esi
+	jmp	skip_block
 
 times_directive:
 	lods	byte [esi]
@@ -882,6 +941,24 @@ virtual_directive:
 	mov	[ebx+1Ch],eax
 	call	init_addressing_space
 	or	byte [ebx+0Ah],1
+	cmp	byte [esi],86h
+	jne	addressing_space_extension_ok
+	cmp	word [esi+1],'('
+	jne	invalid_argument
+	mov	ecx,[esi+3]
+	add	esi,3+4
+	add	[ebx+18h],ecx
+	mov	[ebx+20h],ecx
+	mov	ebx,characters
+      get_extension:
+	lods	byte [esi]
+	stos	byte [edi]
+	xlat	byte [ebx]
+	test	al,al
+	jz	invalid_argument
+	loop	get_extension
+	inc	esi
+      addressing_space_extension_ok:
 	pop	eax
 	mov	cl,[address_sign]
 	not	eax
@@ -951,6 +1028,7 @@ virtual_directive:
 	mov	eax,edi
 	sub	eax,[ebx+18h]
 	mov	[ebx+1Ch],eax
+	add	eax,[ebx+20h]
 	test	byte [ebx+0Ah],2
 	jz	addressing_space_closed
 	push	esi edi ecx edx
@@ -962,7 +1040,9 @@ virtual_directive:
 	sub	eax,ecx
 	mov	[tagged_blocks],eax
 	lea	edi,[eax+ecx-1]
+	add	eax,[ebx+20h]
 	xchg	eax,[ebx+18h]
+	sub	eax,[ebx+20h]
 	lea	esi,[eax+ecx-1]
 	mov	eax,edi
 	sub	eax,esi
