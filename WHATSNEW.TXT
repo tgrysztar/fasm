@@ -2,6 +2,15 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.01 (Nov 25, 2017)
+
+[+] Added virtual block continuation syntax (backported from flat assembler g).
+
+[+] Documentation update.
+
+[-] Fixed a bug in addressing data of the "virtual as" block.
+
+
 version 1.73.00 (Nov 24, 2017)
 
 [+] Added "virtual as" syntax (backported from flat assembler g).

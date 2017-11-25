@@ -643,10 +643,6 @@ load_directive:
 	mov	ax,[current_pass]
 	mov	[ebx+18],ax
 	or	byte [ebx+8],8
-	cmp	[symbols_file],0
-	je	get_addressing_space
-	cmp	[next_pass_needed],0
-	jne	get_addressing_space
 	call	store_label_reference
       get_addressing_space:
 	mov	ebx,[ebx]
@@ -893,6 +889,8 @@ times_directive:
 
 virtual_directive:
 	lods	byte [esi]
+	cmp	al,'('
+	je	continue_virtual_area
 	cmp	al,80h
 	jne	virtual_at_current
 	lods	byte [esi]
@@ -907,6 +905,7 @@ virtual_directive:
 	jmp	set_virtual
       virtual_at_current:
 	dec	esi
+      virtual_fallback:
 	mov	ebp,[addressing_space]
 	mov	al,[ds:ebp+9]
 	mov	[value_type],al
@@ -928,17 +927,7 @@ virtual_directive:
 	shl	ecx,16
 	mov	cx,bx
 	push	ecx eax
-	call	allocate_structure_data
-	mov	word [ebx],virtual_directive-instruction_handler
-	mov	ecx,[addressing_space]
-	mov	[ebx+12],ecx
-	mov	[ebx+8],edi
-	mov	ecx,[current_line]
-	mov	[ebx+4],ecx
-	mov	ebx,[addressing_space]
-	mov	eax,edi
-	sub	eax,[ebx+18h]
-	mov	[ebx+1Ch],eax
+	call	allocate_virtual_structure_data
 	call	init_addressing_space
 	or	byte [ebx+0Ah],1
 	cmp	byte [esi],86h
@@ -949,6 +938,7 @@ virtual_directive:
 	add	esi,3+4
 	add	[ebx+18h],ecx
 	mov	[ebx+20h],ecx
+	push	ebx
 	mov	ebx,characters
       get_extension:
 	lods	byte [esi]
@@ -958,6 +948,7 @@ virtual_directive:
 	jz	invalid_argument
 	loop	get_extension
 	inc	esi
+	pop	ebx
       addressing_space_extension_ok:
 	pop	eax
 	mov	cl,[address_sign]
@@ -1001,6 +992,82 @@ virtual_directive:
       no_such_structure:
 	stc
 	ret
+      allocate_virtual_structure_data:
+	call	allocate_structure_data
+	mov	word [ebx],virtual_directive-instruction_handler
+	mov	ecx,[addressing_space]
+	mov	[ebx+12],ecx
+	mov	[ebx+8],edi
+	mov	ecx,[current_line]
+	mov	[ebx+4],ecx
+	mov	ebx,[addressing_space]
+	mov	eax,edi
+	sub	eax,[ebx+18h]
+	mov	[ebx+1Ch],eax
+	ret
+      continue_virtual_area:
+	cmp	byte [esi],11h
+	jne	invalid_argument
+	cmp	byte [esi+1+4],')'
+	jne	invalid_argument
+	inc	esi
+	lods	dword [esi]
+	inc	esi
+	cmp	eax,0Fh
+	jbe	reserved_word_used_as_symbol
+	mov	edx,undefined_symbol
+	test	byte [eax+8],1
+	jz	virtual_area_unavailable
+	mov	edx,symbol_out_of_scope
+	mov	cx,[eax+16]
+	cmp	cx,[current_pass]
+	jne	virtual_area_unavailable
+	mov	edx,invalid_use_of_symbol
+	test	byte [eax+9],4
+	jz	virtual_area_unavailable
+	mov	ebx,eax
+	mov	ax,[current_pass]
+	mov	[ebx+18],ax
+	or	byte [ebx+8],8
+	call	store_label_reference
+	mov	ebx,[ebx]
+	test	byte [ebx+0Ah],4
+	jz	virtual_area_unavailable
+	and	byte [ebx+0Ah],not 4
+	mov	edx,ebx
+	call	allocate_virtual_structure_data
+	mov	[addressing_space],edx
+	push	esi
+	mov	esi,[edx+18h]
+	mov	ecx,[edx+1Ch]
+	mov	eax,[edx+20h]
+	sub	esi,eax
+	add	ecx,eax
+	lea	eax,[edi+ecx]
+	cmp	eax,[tagged_blocks]
+	jae	out_of_memory
+	mov	eax,esi
+	sub	eax,edi
+	sub	[edx+18h],eax
+	sub	[edx],eax
+	sbb	dword [edx+4],0
+	sbb	byte [edx+8],0
+	mov	al,cl
+	shr	ecx,2
+	rep	movs dword [edi],[esi]
+	mov	cl,al
+	and	cl,11b
+	rep	movs byte [edi],[esi]
+	pop	esi
+	jmp	instruction_assembled
+      virtual_area_unavailable:
+	cmp	[error_line],0
+	jne	virtual_fallback
+	push	[current_line]
+	pop	[error_line]
+	mov	[error],edx
+	mov	[error_info],eax
+	jmp	virtual_fallback
       end_virtual:
 	call	find_structure_data
 	jc	unexpected_instruction
@@ -1031,6 +1098,7 @@ virtual_directive:
 	add	eax,[ebx+20h]
 	test	byte [ebx+0Ah],2
 	jz	addressing_space_closed
+	or	byte [ebx+0Ah],4
 	push	esi edi ecx edx
 	mov	ecx,eax
 	mov	eax,[tagged_blocks]

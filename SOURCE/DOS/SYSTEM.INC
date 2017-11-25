@@ -334,7 +334,6 @@ fatal_error:
 	mov	al,0FFh
 	jmp	exit_program
 assembler_error:
-	and	[output_file],0
 	call	display_user_messages
 	mov	ebx,[current_line]
 	test	ebx,ebx

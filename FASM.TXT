@@ -5,7 +5,7 @@
 			   €  ‹ﬂﬂﬂﬂ€   ﬂﬂﬂﬂ‹ €	€  €
 			   €  ﬂ‹‹‹‹€‹ ‹‹‹‹‹ﬂ €	€  €
 
-			      flat assembler 1.72
+			      flat assembler 1.73
 			      Programmer's Manual
 
 
@@ -3673,6 +3673,15 @@ For example this code:
 
 loads the single byte from offset 10h in file "a.txt" into the "char"
 constant.
+  Instead of or in addition to an "at" argument, "virtual" can also be followed
+by an "as" keyword and a string defining an extension of additional file where
+the initialized content of the block is going to be stored at the end of
+a successful assembly.
+
+    virtual at 0 as 'asc'
+        times 256 db %-1
+    end virtual
+
   Any of the "section" directives described in 2.4 also begins a new
 addressing space.
   It is possible to declare a special kind of label that marks the current
@@ -3699,6 +3708,19 @@ specify addressing space that has not been assembled yet, just as it is not
 allowed to specify an address in the current addressing space that exceeds
 the current offset. The addresses in any other addressing space are also
 limited by the boundaries of the block.
+  The "virtual" directive can have a previously definen addressing space 
+label as the only argument. This variant allows to extend a previously defined
+and closed block with additional data. Any definition of data within
+an extending block is going to have the same effect as if that definition was
+present in the original "virtual" block.
+
+    virtual at 0 as 'log'
+        Log::
+    end virtual
+
+    virtual Log
+        db 'Hello!',13,10
+    end virtual
 
 
 2.2.5  Other directives

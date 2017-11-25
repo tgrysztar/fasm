@@ -179,12 +179,7 @@ calculate_expression:
       got_label:
 	test	byte [ebx+9],4
 	jnz	invalid_use_of_symbol
-	cmp	[symbols_file],0
-	je	label_reference_ok
-	cmp	[next_pass_needed],0
-	jne	label_reference_ok
 	call	store_label_reference
-      label_reference_ok:
 	mov	al,[ebx+11]
 	mov	[edi-8+12],al
 	mov	eax,[ebx+12]
@@ -1011,6 +1006,10 @@ calculate_expression:
 	mov	[esi+13],bl
 	ret
       store_label_reference:
+	cmp	[symbols_file],0
+	je	label_reference_ok
+	cmp	[next_pass_needed],0
+	jne	label_reference_ok
 	mov	eax,[tagged_blocks]
 	mov	dword [eax-4],2
 	mov	dword [eax-8],4
@@ -1019,6 +1018,7 @@ calculate_expression:
 	jbe	out_of_memory
 	mov	[tagged_blocks],eax
 	mov	[eax],ebx
+      label_reference_ok:
 	ret
       convert_fp:
 	inc	esi
