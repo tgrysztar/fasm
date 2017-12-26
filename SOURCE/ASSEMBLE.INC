@@ -938,6 +938,7 @@ virtual_directive:
 	add	esi,3+4
 	add	[ebx+18h],ecx
 	mov	[ebx+20h],ecx
+	or	byte [ebx+0Ah],2
 	push	ebx
 	mov	ebx,characters
       get_extension:
