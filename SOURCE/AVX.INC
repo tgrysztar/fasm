@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2017, Tomasz Grysztar.
+; Copyright (c) 1999-2018, Tomasz Grysztar.
 ; All rights reserved.
 
 avx_single_source_pd_instruction_er_evex:

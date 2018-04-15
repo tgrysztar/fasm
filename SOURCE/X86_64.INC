@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2017, Tomasz Grysztar.
+; Copyright (c) 1999-2018, Tomasz Grysztar.
 ; All rights reserved.
 
 simple_instruction_except64:
@@ -5449,12 +5449,21 @@ pmovsxdq_instruction:
 	mov	[opcode_prefix],66h
 	ret
 
+xsaves_instruction_64bit:
+	call	operand_64bit
+xsaves_instruction:
+	mov	ah,0C7h
+	jmp	xsave_common
 fxsave_instruction_64bit:
 	call	operand_64bit
 fxsave_instruction:
-	mov	[extended_code],0AEh
+	mov	ah,0AEh
+	xor	cl,cl
+      xsave_common:
 	mov	[base_code],0Fh
+	mov	[extended_code],ah
 	mov	[postbyte_register],al
+	mov	[mmx_size],cl
 	lods	byte [esi]
 	call	get_size_operator
 	cmp	al,'['
@@ -5462,22 +5471,19 @@ fxsave_instruction:
 	call	get_address
 	mov	ah,[operand_size]
 	or	ah,ah
-	jz	fxsave_size_ok
-	mov	al,[postbyte_register]
-	cmp	al,111b
-	je	clflush_size_check
-	cmp	al,10b
-	jb	invalid_operand_size
-	cmp	al,11b
-	ja	invalid_operand_size
-	cmp	ah,4
+	jz	xsave_size_ok
+	cmp	ah,[mmx_size]
 	jne	invalid_operand_size
-	jmp	fxsave_size_ok
-      clflush_size_check:
-	cmp	ah,1
-	jne	invalid_operand_size
-      fxsave_size_ok:
+      xsave_size_ok:
 	jmp	instruction_ready
+clflush_instruction:
+	mov	ah,0AEh
+	mov	cl,1
+	jmp	xsave_common
+stmxcsr_instruction:
+	mov	ah,0AEh
+	mov	cl,4
+	jmp	xsave_common
 prefetch_instruction:
 	mov	[extended_code],18h
       prefetch_mem_8bit:
@@ -5823,6 +5829,21 @@ adx_instruction:
 	jne	invalid_operand_size
 	call	operand_64bit
 	jmp	nomem_instruction_ready
+rdpid_instruction:
+	mov	[postbyte_register],al
+	mov	[extended_code],0C7h
+	mov	[base_code],0Fh
+	mov	[opcode_prefix],0F3h
+	call	take_register
+	cmp	[code_type],64
+	je	rdpid_64bit
+	cmp	ah,4
+	jne	invalid_operand_size
+	jmp	nomem_instruction_ready
+      rdpid_64bit:
+	cmp	ah,8
+	jne	invalid_operand_size
+	jmp	nomem_instruction_ready
 
 vmclear_instruction:
 	mov	[opcode_prefix],66h
@@ -5964,6 +5985,20 @@ skinit_instruction:
 	cmp	ax,0400h
 	jne	invalid_operand
 	mov	al,0DEh
+	jmp	simple_instruction_0f_01
+clzero_instruction:
+	call	take_register
+	or	al,al
+	jnz	invalid_operand
+	mov	al,0FCh
+	cmp	[code_type],64
+	je	clzero_64bit
+	cmp	ah,4
+	jne	invalid_operand
+	jmp	simple_instruction_0f_01
+      clzero_64bit:
+	cmp	ah,8
+	jne	invalid_operand
 	jmp	simple_instruction_0f_01
 invlpga_instruction:
 	push	eax

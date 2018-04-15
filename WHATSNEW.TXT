@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.03 (Apr 15, 2018)
+
+[+] Added "rdpid", "xsavec", "xsaves", "xrstors", "clzero", "monitorx" and "mwaitx"
+    instructions.
+
+
 version 1.73.02 (Dec 16, 2017)
 
 [-] Fixed a bug in the storage of "virtual as" blocks.

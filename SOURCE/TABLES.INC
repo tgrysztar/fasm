@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2017, Tomasz Grysztar.
+; Copyright (c) 1999-2018, Tomasz Grysztar.
 ; All rights reserved.
 
 include_variable db 'INCLUDE',0
@@ -1300,6 +1300,8 @@ instructions_5:
  dw sse_ss_instruction-instruction_handler
  db 'rdmsr',32h
  dw simple_extended_instruction-instruction_handler
+ db 'rdpid',7
+ dw rdpid_instruction-instruction_handler
  db 'rdpmc',33h
  dw simple_extended_instruction-instruction_handler
  db 'rdtsc',31h
@@ -1447,6 +1449,8 @@ instructions_6:
  dw bndmov_instruction-instruction_handler
  db 'bndstx',1Bh
  dw bndstx_instruction-instruction_handler
+ db 'clzero',0
+ dw clzero_instruction-instruction_handler
  db 'cmovae',43h
  dw bs_instruction-instruction_handler
  db 'cmovbe',46h
@@ -1645,6 +1649,8 @@ instructions_6:
  dw movpd_instruction-instruction_handler
  db 'movups',10h
  dw movps_instruction-instruction_handler
+ db 'mwaitx',0FBh
+ dw monitor_instruction-instruction_handler
  db 'paddsb',0ECh
  dw basic_mmx_instruction-instruction_handler
  db 'paddsw',0EDh
@@ -2011,6 +2017,10 @@ instructions_6:
  dw simple_instruction_0f_01-instruction_handler
  db 'xrstor',101b
  dw fxsave_instruction-instruction_handler
+ db 'xsavec',4
+ dw xsaves_instruction-instruction_handler
+ db 'xsaves',5
+ dw xsaves_instruction-instruction_handler
  db 'xsetbv',0D1h
  dw simple_instruction_0f_01-instruction_handler
 instructions_7:
@@ -2023,7 +2033,7 @@ instructions_7:
  db 'blsfill',12h
  dw tbm_instruction-instruction_handler
  db 'clflush',111b
- dw fxsave_instruction-instruction_handler
+ dw clflush_instruction-instruction_handler
  db 'cmovnae',42h
  dw bs_instruction-instruction_handler
  db 'cmovnbe',47h
@@ -2113,7 +2123,7 @@ instructions_7:
  db 'invvpid',81h
  dw vmx_inv_instruction-instruction_handler
  db 'ldmxcsr',10b
- dw fxsave_instruction-instruction_handler
+ dw stmxcsr_instruction-instruction_handler
  db 'loopned',0E0h
  dw loop_instruction_32bit-instruction_handler
  db 'loopneq',0E0h
@@ -2225,7 +2235,7 @@ instructions_7:
  db 'segment',0
  dw segment_directive-instruction_handler
  db 'stmxcsr',11b
- dw fxsave_instruction-instruction_handler
+ dw stmxcsr_instruction-instruction_handler
  db 'syscall',05h
  dw simple_extended_instruction-instruction_handler
  db 'sysexit',35h
@@ -2474,6 +2484,8 @@ instructions_7:
  dw avx_single_source_instruction_38_noevex-instruction_handler
  db 'vtestps',0Eh
  dw avx_single_source_instruction_38_noevex-instruction_handler
+ db 'xrstors',3
+ dw xsaves_instruction-instruction_handler
  db 'xsave64',100b
  dw fxsave_instruction_64bit-instruction_handler
 instructions_8:
@@ -2591,6 +2603,8 @@ instructions_8:
  dw mask_instruction_w-instruction_handler
  db 'maskmovq',0
  dw maskmovq_instruction-instruction_handler
+ db 'monitorx',0FAh
+ dw monitor_instruction-instruction_handler
  db 'movmskpd',0
  dw movmskpd_instruction-instruction_handler
  db 'movmskps',0
@@ -2983,8 +2997,12 @@ instructions_8:
  dw prefix_instruction-instruction_handler
  db 'xrstor64',101b
  dw fxsave_instruction_64bit-instruction_handler
+ db 'xsavec64',4
+ dw xsaves_instruction_64bit-instruction_handler
  db 'xsaveopt',110b
  dw fxsave_instruction-instruction_handler
+ db 'xsaves64',5
+ dw xsaves_instruction_64bit-instruction_handler
 instructions_9:
  db 'cmpxchg8b',8
  dw cmpxchgx_instruction-instruction_handler
@@ -3404,6 +3422,8 @@ instructions_9:
  dw avx_pd_instruction-instruction_handler
  db 'vunpcklps',14h
  dw avx_ps_instruction-instruction_handler
+ db 'xrstors64',3
+ dw xsaves_instruction_64bit-instruction_handler
 instructions_10:
  db 'aesdeclast',0DFh
  dw sse4_instruction_66_38-instruction_handler
