@@ -6321,7 +6321,7 @@ bndstx_instruction:
       mib_place_index:
 	mov	bl,[address_register]
 	xor	cl,cl
-	or	al,al
+	or	bl,bl
 	jz	bnd_mib_ok
 	inc	cl
       bnd_mib_ok:

@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.04 (Apr 30, 2018)
+
+[-] Fixed a bug in "bndstx"/"bndldx" special address syntax processing.
+
+
 version 1.73.03 (Apr 15, 2018)
 
 [+] Added "rdpid", "xsavec", "xsaves", "xrstors", "clzero", "monitorx" and "mwaitx"
