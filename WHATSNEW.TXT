@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.05 (Jan 03, 2019)
+
+[-] Segments in ELF executable format automatically expanded to cover headers
+    and dynamic linking information.
+
+
 version 1.73.04 (Apr 30, 2018)
 
 [-] Fixed a bug in "bndstx"/"bndldx" special address syntax processing.

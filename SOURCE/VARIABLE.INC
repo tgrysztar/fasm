@@ -1,6 +1,6 @@
 
 ; flat assembler core variables
-; Copyright (c) 1999-2018, Tomasz Grysztar.
+; Copyright (c) 1999-2019, Tomasz Grysztar.
 ; All rights reserved.
 
 ; Variables which have to be set up by interface:
@@ -84,6 +84,7 @@ subsystem dw ?
 subsystem_version dd ?
 image_base dd ?
 image_base_high dd ?
+merge_segment dd ?
 resource_data dd ?
 resource_size dd ?
 actual_fixups_size dd ?
@@ -149,7 +150,6 @@ formatter_symbols_allowed db ?
 decorator_symbols_allowed db ?
 free_address_range db ?
 
-
 characters rb 100h
 converted rb 100h
-message rb 200h
+message rb 180h

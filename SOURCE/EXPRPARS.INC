@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2018, Tomasz Grysztar.
+; Copyright (c) 1999-2019, Tomasz Grysztar.
 ; All rights reserved.
 
 convert_expression:
