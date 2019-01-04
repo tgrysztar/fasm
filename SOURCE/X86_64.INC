@@ -2375,6 +2375,18 @@ bs_instruction:
 	mov	bl,al
 	stc
 	ret
+ud_instruction:
+	mov	[extended_code],al
+	mov	[base_code],0Fh
+	call	get_reg_mem
+	jc	ud_reg_reg
+	cmp	[operand_size],4
+	jne	invalid_operand_size
+	jmp	instruction_ready
+      ud_reg_reg:
+	cmp	ah,4
+	jne	invalid_operand_size
+	jmp	nomem_instruction_ready
 
 imul_instruction:
 	mov	[base_code],0F6h

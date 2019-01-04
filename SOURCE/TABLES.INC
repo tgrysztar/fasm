@@ -658,6 +658,10 @@ instructions_3:
  dw pm_store_word_instruction-instruction_handler
  db 'sub',28h
  dw basic_instruction-instruction_handler
+ db 'ud0',0FFh
+ dw ud_instruction-instruction_handler
+ db 'ud1',0B9h
+ dw ud_instruction-instruction_handler
  db 'ud2',0Bh
  dw simple_extended_instruction-instruction_handler
  db 'xor',30h

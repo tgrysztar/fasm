@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.06 (Jan 04, 2019)
+
+[+] Added "ud0" and "ud1" instruction.
+
+[-] Fixed a minor bug in ELF formatter.
+
+
 version 1.73.05 (Jan 03, 2019)
 
 [-] Segments in ELF executable format automatically expanded to cover headers
