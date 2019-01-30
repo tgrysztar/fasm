@@ -846,7 +846,9 @@ calculate_expression:
 	mov	eax,[eax+30h]
 	jmp	finish_rva
       calculate_gotoff:
-	test	[format_flags],8+1
+	test	[format_flags],1
+	jnz	calculate_elf_dyn_rva
+	test	[format_flags],8
 	jnz	invalid_expression
       calculate_coff_rva:
 	mov	dl,5
@@ -858,6 +860,11 @@ calculate_expression:
 	mov	byte [edi+12],dl
 	add	edi,14h
 	jmp	calculation_loop
+      calculate_elf_dyn_rva:
+	xor	dl,dl
+	test	byte [edi+12],1
+	jnz	incorrect_change_of_value_type
+	jmp	change_value_type
       calculate_plt:
 	cmp	word [edi+8],0
 	jne	invalid_expression

@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.07 (Jan 30, 2019)
+
+[+] Added "dynamic" variant of ELF executable.
+
+[+] Added "gnurelro" segment type for ELF executable.
+
+
 version 1.73.06 (Jan 04, 2019)
 
 [+] Added "ud0" and "ud1" instruction.

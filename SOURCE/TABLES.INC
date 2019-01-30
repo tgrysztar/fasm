@@ -420,6 +420,7 @@ symbols_7:
  db 'dynamic',1Eh,2
  db 'efiboot',1Bh,11
 symbols_8:
+ db 'gnurelro',1Eh,52h
  db 'gnustack',1Eh,51h
  db 'linkinfo',19h,9
  db 'readable',19h,30
