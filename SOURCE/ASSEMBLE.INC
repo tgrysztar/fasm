@@ -2123,6 +2123,11 @@ align_directive:
 	je	make_alignment
 	cmp	[output_format],3
 	je	pe_alignment
+	cmp	[output_format],5
+	jne	object_alignment
+	test	[format_flags],1
+	jnz	pe_alignment
+      object_alignment:
 	mov	ebx,[ds:ebp+14h]
 	cmp	byte [ebx],0
 	jne	section_not_aligned_enough

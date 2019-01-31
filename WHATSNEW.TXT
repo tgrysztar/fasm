@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.08 (Jan 31, 2019)
+
+[-] Fixed a bug in "align" directive for "dynamic" variant of ELF executable.
+
+
 version 1.73.07 (Jan 30, 2019)
 
 [+] Added "dynamic" variant of ELF executable.
