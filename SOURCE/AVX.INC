@@ -424,6 +424,8 @@ avx_instruction:
       take_avx512_rounding:
 	test	[operand_flags],4+8
 	jz	avx512_rounding_done
+	test	[operand_flags],8
+	jz	avx512_rounding_allowed
 	cmp	[mmx_size],0
 	jne	avx512_rounding_allowed
 	cmp	[operand_size],64
@@ -435,9 +437,10 @@ avx_instruction:
 	jne	avx512_rounding_done
 	add	esi,2
 	mov	[rounding_mode],0
-	or	[vex_required],40h+80h
+	or	[vex_required],40h
 	test	[operand_flags],8
 	jz	take_sae
+	or	[vex_required],80h
 	lods	byte [esi]
 	cmp	al,1Fh
 	jne	invalid_operand

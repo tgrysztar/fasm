@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.09 (Feb 17, 2019)
+
+[-] Fixed a bug in AVX-512 instruction encoding with "{sae}" modifier.
+
+
 version 1.73.08 (Jan 31, 2019)
 
 [-] Fixed a bug in "align" directive for "dynamic" variant of ELF executable.
