@@ -5492,6 +5492,10 @@ clflush_instruction:
 	mov	ah,0AEh
 	mov	cl,1
 	jmp	xsave_common
+cldemote_instruction:
+	mov	ah,1Ch
+	mov	cl,1
+	jmp	xsave_common
 stmxcsr_instruction:
 	mov	ah,0AEh
 	mov	cl,4
@@ -6338,6 +6342,39 @@ bndstx_instruction:
 	inc	cl
       bnd_mib_ok:
 	ret
+
+tpause_instruction:
+	mov	[postbyte_register],6
+	mov	[extended_code],0AEh
+	mov	[base_code],0Fh
+	mov	[opcode_prefix],al
+	call	take_register
+	cmp	ah,4
+	jne	invalid_operand_size
+	mov	bl,al
+	cmp	byte [esi],','
+	jne	nomem_instruction_ready
+	inc	esi
+	call	take_register
+	cmp	ax,0402h
+	jne	invalid_operand
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_register
+	cmp	ax,0400h
+	jne	invalid_operand
+	jmp	nomem_instruction_ready
+umonitor_instruction:
+	mov	[postbyte_register],6
+	mov	[extended_code],0AEh
+	mov	[base_code],0Fh
+	mov	[opcode_prefix],0F3h
+	call	take_register
+	mov	bl,al
+	mov	al,ah
+	call	operand_autodetect
+	jmp	nomem_instruction_ready
 
 take_register:
 	lods	byte [esi]

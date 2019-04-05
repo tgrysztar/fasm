@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.10 (Apr 05, 2019)
+
+[+] Added "cldemote", "tpause", "umonitor" and "umwait" instructions.
+
+
 version 1.73.09 (Feb 17, 2019)
 
 [-] Fixed a bug in AVX-512 instruction encoding with "{sae}" modifier.

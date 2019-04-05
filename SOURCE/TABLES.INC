@@ -1804,6 +1804,10 @@ instructions_6:
  dw simple_extended_instruction-instruction_handler
  db 't1mskc',17h
  dw tbm_instruction-instruction_handler
+ db 'tpause',66h
+ dw tpause_instruction-instruction_handler
+ db 'umwait',0F2h
+ dw tpause_instruction-instruction_handler
  db 'vaddpd',58h
  dw avx_pd_instruction_er-instruction_handler
  db 'vaddps',58h
@@ -2502,6 +2506,8 @@ instructions_8:
  dw sse4_instruction_66_38_xmm0-instruction_handler
  db 'blendvps',14h
  dw sse4_instruction_66_38_xmm0-instruction_handler
+ db 'cldemote',0
+ dw cldemote_instruction-instruction_handler
  db 'cmpneqpd',4
  dw cmp_pd_instruction-instruction_handler
  db 'cmpneqps',4
@@ -2678,6 +2684,8 @@ instructions_8:
  dw simple_extended_instruction-instruction_handler
  db 'sysexitq',35h
  dw simple_extended_instruction_64bit-instruction_handler
+ db 'umonitor',0
+ dw umonitor_instruction-instruction_handler
  db 'unpckhpd',15h
  dw sse_pd_instruction-instruction_handler
  db 'unpckhps',15h
