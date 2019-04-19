@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.11 (Apr 19, 2019)
+
+[+] Added "definite" operator.
+
+
 version 1.73.10 (Apr 05, 2019)
 
 [+] Added "cldemote", "tpause", "umonitor" and "umwait" instructions.

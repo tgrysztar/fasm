@@ -76,6 +76,7 @@ directive_operators:
  db 2,'as',86h
  db 2,'at',80h
  db 7,'defined',88h
+ db 8,'definite',8Ah
  db 3,'dup',81h
  db 2,'eq',0F0h
  db 6,'eqtype',0F7h

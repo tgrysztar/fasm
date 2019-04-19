@@ -1836,6 +1836,8 @@ calculate_logical_expression:
 	je	invalid_expression
 	cmp	al,88h
 	je	check_for_defined
+	cmp	al,8Ah
+	je	check_for_earlier_defined
 	cmp	al,89h
 	je	check_for_used
 	cmp	al,'0'
@@ -1981,7 +1983,12 @@ calculate_logical_expression:
 	or	eax,edx
 	jnz	return_true
 	jmp	return_false
+      check_for_earlier_defined:
+	or	bh,-1
+	jmp	check_if_expression_defined
       check_for_defined:
+	xor	bh,bh
+      check_if_expression_defined:
 	or	bl,-1
 	lods	word [esi]
 	cmp	ah,'('
@@ -2025,6 +2032,8 @@ calculate_logical_expression:
 	cmp	eax,0Fh
 	jb	check_expression
 	je	reserved_word_used_as_symbol
+	test	bh,bh
+	jnz	no_prediction
 	test	byte [eax+8],4
 	jnz	no_prediction
 	test	byte [eax+8],1

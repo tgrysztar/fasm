@@ -3459,7 +3459,9 @@ checks whether the given symbol is used somewhere (it returns correct result
 even if symbol is used only after this check). The "defined" operator can be
 followed by any expression, usually just by a single symbol name; it checks
 whether the given expression contains only symbols that are defined in the
-source and accessible from the current position.
+source and accessible from the current position. The "definite" operator
+does a similar check with restriction to symbols defined before current
+position in source.
   With "relativeto" operator it is possible to check whether values of two
 expressions differ only by constant amount. The valid syntax is a numerical
 expression followed by "relativeto" and then another expression (possibly
@@ -3825,8 +3827,9 @@ get skipped.
   The above sample might have been written as a try to define the label only
 when it was not yet defined. It fails, because the "defined" operator does
 check whether the label is defined anywhere, and this includes the definition
-inside this conditionally processed block. However adding some additional
-condition may make it possible to get it resolved:
+inside this conditionally processed block. It could be easily corrected by
+using "definite" operator instead of "defined". But there is also another
+modification that could get it resolved:
 
     if ~ defined alpha | defined @f
         alpha:
