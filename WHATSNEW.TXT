@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.12 (May 19, 2019)
+
+[-] Implied memory size allowed for 16-bit "movzx"/"movsx".
+
+
 version 1.73.11 (Apr 19, 2019)
 
 [+] Added "definite" operator.

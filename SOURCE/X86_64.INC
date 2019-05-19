@@ -2188,6 +2188,8 @@ movx_instruction:
 	call	operand_autodetect
 	jmp	instruction_ready
       movx_unknown_size:
+	cmp	al,2
+	je	movx_mem_store
 	call	recoverable_unknown_size
 	jmp	movx_mem_store
       movx_reg:
