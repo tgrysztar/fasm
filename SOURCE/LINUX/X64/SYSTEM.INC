@@ -35,22 +35,21 @@ init_memory:
 	xor	edi,edi
 	mov	eax,12
 	syscall
-	mov	r9,not 0FFFFFFFFh
-	test	rax,r9
-	jnz	no_low_memory
-	mov	[additional_memory],eax
 	mov	ecx,[memory_setting]
 	shl	ecx,10
 	jnz	allocate_memory
 	mov	ecx,1000000h
       allocate_memory:
-	mov	edi,[additional_memory]
-	add	edi,ecx
+	mov	r9d,eax
+	cmp	rax,r9
+	jne	high_brk
+	mov	[additional_memory],eax
+	lea	edi,[eax+ecx]
 	mov	eax,12
 	syscall
-	mov	r9,not 0FFFFFFFFh
-	test	rax,r9
-	jnz	no_low_memory
+	mov	r9d,eax
+	cmp	rax,r9
+	jne	no_low_memory
 	mov	[memory_end],eax
 	sub	eax,[additional_memory]
 	shr	eax,2
@@ -58,10 +57,53 @@ init_memory:
 	mov	[additional_memory_end],eax
 	mov	[memory_start],eax
 	ret
-
-no_low_memory:
+      high_brk:
+	xor	r9d,r9d
+	or	r8,-1
+	mov	r10d,62h		; MAP_PRIVATE + MAP_ANONYMOUS + MAP_32BIT
+	mov	edx,3			; PROT_READ + PROT_WRITE
+	mov	esi,ecx
+	xor	edi,edi
+	mov	eax,9			; sys_mmap
+	syscall
+	cmp	eax,-1
+	je	mmap_with_hint
+	mov	r9d,eax
+	cmp	rax,r9
+	jne	mmap_unusable
+	add	r9d,esi
+	jnc	mmap_ok
+      mmap_unusable:
+	mov	rdi,rax
+	mov	eax,11			; sys_munmap
+	syscall
+      mmap_with_hint:
+	mov	r10d,22h		; MAP_PRIVATE + MAP_ANONYMOUS
+	mov	edx,3			; PROT_READ + PROT_WRITE
+	mov	edi,480000h
+	mov	eax,9			; sys_mmap
+	syscall
+	cmp	eax,-1
+	je	no_low_memory
+	mov	r9d,eax
+	cmp	rax,r9
+	jne	no_low_memory
+	add	r9d,esi
+	jnc	mmap_ok
+      no_low_memory:
+	mov	esi,lf
+	call	display_string
 	push	_no_low_memory
 	jmp	fatal_error
+      mmap_ok:
+	mov	[additional_memory],eax
+	lea	edi,[eax+esi]
+	mov	[memory_end],edi
+	shr	esi,2
+	add	eax,esi
+	mov	[additional_memory_end],eax
+	mov	[memory_start],eax
+	ret
 
 exit_program:
 	movzx	edi,al
