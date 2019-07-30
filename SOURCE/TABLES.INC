@@ -1310,6 +1310,8 @@ instructions_5:
  dw rdpid_instruction-instruction_handler
  db 'rdpmc',33h
  dw simple_extended_instruction-instruction_handler
+ db 'rdpru',0FDh
+ dw simple_instruction_0f_01-instruction_handler
  db 'rdtsc',31h
  dw simple_extended_instruction-instruction_handler
  db 'repne',0F2h
@@ -3001,6 +3003,8 @@ instructions_8:
  dw avx_comiss_instruction-instruction_handler
  db 'vzeroall',77h
  dw vzeroall_instruction-instruction_handler
+ db 'wbnoinvd',9
+ dw simple_extended_instruction_f3-instruction_handler
  db 'wrfsbase',2
  dw rdfsbase_instruction-instruction_handler
  db 'wrgsbase',3

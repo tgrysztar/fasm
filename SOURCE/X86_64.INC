@@ -54,6 +54,10 @@ simple_extended_instruction:
 	mov	al,0Fh
 	stos	word [edi]
 	jmp	instruction_assembled
+simple_extended_instruction_f3:
+	mov	byte [edi],0F3h
+	inc	edi
+	jmp	simple_extended_instruction
 prefix_instruction:
 	stos	byte [edi]
 	or	[prefix_flags],1
