@@ -92,9 +92,13 @@ avx_q_instruction_38_w1_evex:
 avx_q_instruction_38_w1:
 	or	[rex_prefix],8
 	jmp	avx_q_instruction_38
+avx_q_instruction_3a_imm8_w1:
+	or	[rex_prefix],8
+	jmp	avx_q_instruction_3a_imm8
 avx_q_instruction_3a_imm8_evex:
-	mov	[immediate_size],1
 	or	[vex_required],8
+avx_q_instruction_3a_imm8:
+	mov	[immediate_size],1
 	mov	[supplemental_code],al
 	mov	al,3Ah
 	jmp	avx_q_instruction

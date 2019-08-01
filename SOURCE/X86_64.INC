@@ -5606,6 +5606,9 @@ movntss_instruction:
 	mov	[postbyte_register],al
 	jmp	instruction_ready
 
+movdiri_instruction:
+	mov	[supplemental_code],al
+	mov	al,38h
 movnti_instruction:
 	mov	[base_code],0Fh
 	mov	[extended_code],al
@@ -6381,6 +6384,43 @@ umonitor_instruction:
 	mov	al,ah
 	call	operand_autodetect
 	jmp	nomem_instruction_ready
+movdir64b_instruction:
+	call	setup_66_0f_38
+	call	take_register
+	mov	[postbyte_register],al
+	xor	al,al
+	xchg	al,[operand_size]
+	push	eax
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	al,'['
+	jne	invalid_operand
+	call	get_address
+	mov	al,[operand_size]
+	or	al,al
+	jz	movdir64b_ready
+	cmp	al,64
+	jne	invalid_operand_size
+      movdir64b_ready:
+	push	edi
+	call	store_instruction
+	pop	ebx eax
+	mov	cl,[code_type]
+	cmp	byte [ebx],67h
+	jne	movdir64b_size_check
+	shr	cl,1
+	cmp	cl,16
+	jae	movdir64b_size_check
+	mov	cl,32
+      movdir64b_size_check:
+	shl	al,3
+	cmp	al,cl
+	jne	invalid_operand_size
+	jmp	instruction_assembled
+
 
 take_register:
 	lods	byte [esi]

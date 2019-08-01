@@ -2,12 +2,17 @@
 Visit http://flatassembler.net/ for more information.
 
 
-version 1.73.14 (July 40, 2019)
+version 1.73.15 (Aug 01, 2019)
 
-[-] Added "rdpru" and "wbnoinvd" instructions.
+[+] Added "movdiri", "movdir64b" instructions and GFNI instruction set.
 
 
-version 1.73.13 (July 14, 2019)
+version 1.73.14 (Jul 30, 2019)
+
+[+] Added "rdpru" and "wbnoinvd" instructions.
+
+
+version 1.73.13 (Jul 14, 2019)
 
 [-] Corrections in 64-bit Linux interface.
 

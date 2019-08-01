@@ -456,7 +456,8 @@ instructions:
  dw instructions_13-instructions,(instructions_14-instructions_13)/(13+3)
  dw instructions_14-instructions,(instructions_15-instructions_14)/(14+3)
  dw instructions_15-instructions,(instructions_16-instructions_15)/(15+3)
- dw instructions_16-instructions,(instructions_end-instructions_16)/(16+3)
+ dw instructions_16-instructions,(instructions_17-instructions_16)/(16+3)
+ dw instructions_17-instructions,(instructions_end-instructions_17)/(16+3)
 
 instructions_2:
  db 'bt',4
@@ -2152,6 +2153,8 @@ instructions_7:
  dw monitor_instruction-instruction_handler
  db 'movddup',12h
  dw sse_sd_instruction-instruction_handler
+ db 'movdiri',0F9h
+ dw movdiri_instruction-instruction_handler
  db 'movdq2q',0
  dw movdq2q_instruction-instruction_handler
  db 'movhlps',12h
@@ -3040,6 +3043,10 @@ instructions_9:
  dw extractps_instruction-instruction_handler
  db 'fxrstor64',1
  dw fxsave_instruction_64bit-instruction_handler
+ db 'gf2p8mulb',0CFh
+ dw sse4_instruction_66_38-instruction_handler
+ db 'movdir64b',0F8h
+ dw movdir64b_instruction-instruction_handler
  db 'pclmulqdq',-1
  dw pclmulqdq_instruction-instruction_handler
  db 'pcmpestri',61h
@@ -3551,6 +3558,8 @@ instructions_10:
  dw avx512_sd_instruction_sae_imm8-instruction_handler
  db 'vgetmantss',27h
  dw avx512_ss_instruction_sae_imm8-instruction_handler
+ db 'vgf2p8mulb',0CFh
+ dw avx_bw_instruction_38-instruction_handler
  db 'vmaskmovpd',2Dh
  dw avx_maskmov_instruction-instruction_handler
  db 'vmaskmovps',2Ch
@@ -4086,6 +4095,8 @@ instructions_12:
  db 'vpermiltd2ps',0
  dw vpermil_2ps_instruction-instruction_handler
 instructions_13:
+ db 'gf2p8affineqb',0CEh
+ dw sse4_instruction_66_3a_imm8-instruction_handler
  db 'vcmptrue_uspd',1Fh
  dw avx_cmp_pd_instruction-instruction_handler
  db 'vcmptrue_usps',1Fh
@@ -4175,6 +4186,8 @@ instructions_14:
  dw fma_instruction_pd-instruction_handler
  db 'vfmsubadd231ps',0B7h
  dw fma_instruction_ps-instruction_handler
+ db 'vgf2p8affineqb',0CEh
+ dw avx_q_instruction_3a_imm8_w1-instruction_handler
  db 'vpmultishiftqb',83h
  dw avx_q_instruction_38_evex-instruction_handler
  db 'vscatterpf0dpd',5
@@ -4221,8 +4234,13 @@ instructions_15:
  db 'vpbroadcastmw2d',3Ah
  dw avx512_pmov_m2_instruction-instruction_handler
 instructions_16:
+ db 'gf2p8affineinvqb',0CFh
+ dw sse4_instruction_66_3a_imm8-instruction_handler
  db 'vaeskeygenassist',0DFh
  dw avx_single_source_128bit_instruction_3a_imm8_noevex-instruction_handler
+instructions_17:
+ db 'vgf2p8affineinvqb',0CFh
+ dw avx_q_instruction_3a_imm8_w1-instruction_handler
 instructions_end:
 
 data_directives:

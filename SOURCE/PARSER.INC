@@ -1131,7 +1131,7 @@ get_instruction:
 	mov	ebp,ecx
 	call	lower_case
 	mov	ecx,ebp
-	cmp	cl,16
+	cmp	cl,17
 	ja	no_instruction
 	sub	cl,2
 	jc	no_instruction
