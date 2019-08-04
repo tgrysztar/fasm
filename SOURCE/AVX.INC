@@ -400,9 +400,9 @@ avx_instruction:
 	shr	ah,4
 	cmp	ah,5
 	jne	invalid_operand
+	and	al,111b
 	or	al,al
 	jz	invalid_operand
-	and	al,111b
 	mov	[mask_register],al
 	or	[vex_required],20h
 	lods	byte [esi]
