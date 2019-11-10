@@ -3648,6 +3648,10 @@ invlpg_instruction:
 	jne	invalid_operand
 	call	get_address
 	jmp	instruction_ready
+mcommit_instruction:
+	mov	byte [edi],0F3h
+	inc	edi
+	jmp	simple_instruction_0f_01
 swapgs_instruction:
 	cmp	[code_type],64
 	jne	illegal_instruction

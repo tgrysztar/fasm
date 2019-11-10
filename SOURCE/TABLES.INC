@@ -2149,6 +2149,8 @@ instructions_7:
  dw loop_instruction_64bit-instruction_handler
  db 'loopnzw',0E0h
  dw loop_instruction_16bit-instruction_handler
+ db 'mcommit',0FAh
+ dw mcommit_instruction-instruction_handler
  db 'monitor',0C8h
  dw monitor_instruction-instruction_handler
  db 'movddup',12h

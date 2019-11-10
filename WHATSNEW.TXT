@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.17 (Nov 10, 2019)
+
+[+] Added "mcommit" instruction.
+
+
 version 1.73.16 (Aug 04, 2019)
 
 [-] Corrected a mistake in AVX-512 mask parsing that led to "{k0}" mask being

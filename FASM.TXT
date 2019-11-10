@@ -195,7 +195,7 @@ source file.
 
 1.2  Assembly syntax
 
-The information provided below is intended mainly for the assembler
+The information provided below is intended mainly for the assembly language
 programmers that have been using some other assembly compilers before.
 If you are beginner, you should look for the assembly programming tutorials.
   Flat assembler by default uses the Intel syntax for the assembly
@@ -1626,9 +1626,9 @@ source operand. "packsswb" converts packed signed words into packed signed
 bytes, "packssdw" converts packed signed double words into packed signed
 words, using saturation to handle overflow conditions. "packuswb" converts
 packed signed words into packed unsigned bytes. Converted data elements from
-the source operand are stored in the low part of the destination operand,
+the source operand are stored in the high part of the destination operand,
 while converted data elements from the destination operand are stored in the
-high part. "punpckhbw", "punpckhwd" and "punpckhdq" interleaves the data
+low part. "punpckhbw", "punpckhwd" and "punpckhdq" interleaves the data
 elements from the high parts of the source and destination operands and
 stores the result into the destination operand. "punpcklbw", "punpcklwd" and
 "punpckldq" perform the same operation, but the low parts of the source and
@@ -2073,7 +2073,7 @@ SSE3 instructions (SSSE3). They generally follow the same rules for operands
 as all the MMX operations extended by SSE.
   "phaddw" and "phaddd" perform the horizontal additional of the pairs of
 adjacent values from both the source and destination operand, and stores the
-sums into the destination (sums from the source operand go into lower part of
+sums into the destination (sums from the source operand go into higher part of
 destination register). They operate on 16-bit or 32-bit chunks, respectively.
 "phaddsw" performs the same operation on signed 16-bit packed values, but the
 result of each addition is saturated. "phsubw" and "phsubd" analogously
