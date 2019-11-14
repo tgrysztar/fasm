@@ -451,13 +451,13 @@ mov_instruction:
 	pop	ecx ebx edx
 	cmp	ah,1
 	je	mov_mem_reg_8bit
+	inc	[base_code]
 	mov	al,ah
 	call	operand_autodetect
 	mov	al,[postbyte_register]
 	or	al,bl
 	or	al,bh
 	jz	mov_mem_ax
-	inc	[base_code]
 	jmp	instruction_ready
       mov_mem_reg_8bit:
 	or	al,bl
@@ -472,10 +472,12 @@ mov_instruction:
 	jnz	mov_mem_address64_al
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	[code_type],64
-	je	mov_mem_address64_al
-	cmp	[code_type],32
-	je	mov_mem_address32_al
+	call	check_mov_address64
+	cmp	al,0
+	jg	mov_mem_address64_al
+	jl	instruction_ready
+	cmp	[code_type],16
+	jne	mov_mem_address32_al
 	cmp	edx,10000h
 	jb	mov_mem_address16_al
       mov_mem_address32_al:
@@ -499,6 +501,24 @@ mov_instruction:
 	cmp	edx,10000h
 	jge	value_out_of_range
 	jmp	instruction_assembled
+      check_mov_address64:
+	cmp	[code_type],64
+	jne	no_address64
+	mov	eax,[address_high]
+	or	eax,eax
+	jz	no_address64
+	bt	edx,31
+	adc	eax,0
+	jz	address64_simm32
+      address64_required:
+	mov	al,1
+	ret
+      address64_simm32:
+	mov	al,-1
+	ret
+      no_address64:
+	xor	al,al
+	ret
       mov_mem_address64_al:
 	call	store_segment_prefix_if_necessary
 	mov	[base_code],0A2h
@@ -515,10 +535,12 @@ mov_instruction:
 	jnz	mov_mem_address64_ax
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	[code_type],64
-	je	mov_mem_address64_ax
-	cmp	[code_type],32
-	je	mov_mem_address32_ax
+	call	check_mov_address64
+	cmp	al,0
+	jg	mov_mem_address64_ax
+	jl	instruction_ready
+	cmp	[code_type],16
+	jne	mov_mem_address32_ax
 	cmp	edx,10000h
 	jb	mov_mem_address16_ax
       mov_mem_address32_ax:
@@ -688,23 +710,23 @@ mov_instruction:
 	jne	invalid_operand_size
 	jmp	nomem_instruction_ready
       mov_reg_mem:
+	add	[base_code],2
 	call	get_address
 	mov	al,[operand_size]
 	cmp	al,1
 	je	mov_reg_mem_8bit
+	inc	[base_code]
 	call	operand_autodetect
 	mov	al,[postbyte_register]
 	or	al,bl
 	or	al,bh
 	jz	mov_ax_mem
-	add	[base_code],3
 	jmp	instruction_ready
       mov_reg_mem_8bit:
 	mov	al,[postbyte_register]
 	or	al,bl
 	or	al,bh
 	jz	mov_al_mem
-	add	[base_code],2
 	jmp	instruction_ready
       mov_al_mem:
 	test	ch,22h
@@ -715,10 +737,12 @@ mov_instruction:
 	jnz	mov_al_mem_address64
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	[code_type],64
-	je	mov_al_mem_address64
-	cmp	[code_type],32
-	je	mov_al_mem_address32
+	call	check_mov_address64
+	cmp	al,0
+	jg	mov_al_mem_address64
+	jl	instruction_ready
+	cmp	[code_type],16
+	jne	mov_al_mem_address32
 	cmp	edx,10000h
 	jb	mov_al_mem_address16
       mov_al_mem_address32:
@@ -744,10 +768,12 @@ mov_instruction:
 	jnz	mov_ax_mem_address64
 	or	ch,ch
 	jnz	invalid_address_size
-	cmp	[code_type],64
-	je	mov_ax_mem_address64
-	cmp	[code_type],32
-	je	mov_ax_mem_address32
+	call	check_mov_address64
+	cmp	al,0
+	jg	mov_ax_mem_address64
+	jl	instruction_ready
+	cmp	[code_type],16
+	jne	mov_ax_mem_address32
 	cmp	edx,10000h
 	jb	mov_ax_mem_address16
       mov_ax_mem_address32:
@@ -6533,6 +6559,8 @@ get_address:
 	mov	edx,eax
 	cmp	[address_size_declared],0
 	jne	address_ok
+	cmp	[segment_register],4
+	ja	address_ok
 	or	bx,bx
 	jnz	clear_address_size
 	cmp	[code_type],64

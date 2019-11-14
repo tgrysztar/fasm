@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.18 (Nov 13, 2019)
+
+[-] Addresses prefixed with "fs:" or "gs:" are no longer RIP-relative by default.
+
+
 version 1.73.17 (Nov 10, 2019)
 
 [+] Added "mcommit" instruction.
