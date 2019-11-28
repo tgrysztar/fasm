@@ -2,6 +2,16 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.19 (Nov 27, 2019)
+
+[+] Added AVX512_BITALG, AVX512_VPOPCNTDQ, AVX512_VBMI2, AVX512_VNNI
+    and AVX512_4VNNIW instruction sets.
+
+[+] Added CET_SS and CET_IBT instruction sets.
+
+[+] Added "ptwrite" instruction.
+
+
 version 1.73.18 (Nov 13, 2019)
 
 [-] Addresses prefixed with "fs:" or "gs:" are no longer RIP-relative by default.

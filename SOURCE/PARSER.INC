@@ -569,6 +569,12 @@ parse_line_contents:
       symbol_argument:
 	pop	edi
 	stos	word [edi]
+	cmp	byte [esi],'+'
+	jne	argument_parsed
+	and	ax,0F0FFh
+	cmp	ax,6010h
+	jne	argument_parsed
+	movs	byte [edi],[esi]
 	jmp	argument_parsed
       operator_argument:
 	pop	edi

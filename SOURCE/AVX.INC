@@ -108,6 +108,8 @@ avx_q_instruction:
 	or	[rex_prefix],80h
 	mov	ch,8
 	jmp	avx_pi_instruction
+avx_single_source_d_instruction_38_evex_w1:
+	or	[rex_prefix],8
 avx_single_source_d_instruction_38_evex:
 	or	[vex_required],8
 avx_single_source_d_instruction_38:
@@ -134,6 +136,14 @@ avx_d_instruction_evex:
 avx_d_instruction:
 	mov	ch,4
 	jmp	avx_pi_instruction
+avx_bw_instruction_3a_imm8_w1_evex:
+	or	[rex_prefix],8
+avx_bw_instruction_3a_imm8_evex:
+	mov	[immediate_size],1
+	or	[vex_required],8
+	mov	[supplemental_code],al
+	mov	al,3Ah
+	jmp	avx_bw_instruction
 avx_single_source_bw_instruction_38:
 	or	[operand_flags],2
 avx_bw_instruction_38:
@@ -3098,6 +3108,40 @@ xop_shift_instruction:
 	mov	[xop_opcode_map],8
 	dec	esi
 	jmp	mmx_imm8
+
+avx512_4vnniw_instruction:
+	mov	[opcode_prefix],0F2h
+	mov	[base_code],0Fh
+	mov	[extended_code],38h
+	mov	[supplemental_code],al
+	mov	[mmx_size],16
+	mov	[broadcast_size],0
+	or	[vex_required],8
+	call	take_avx_register
+	mov	[postbyte_register],al
+	call	take_avx512_mask
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_avx_register
+	mov	[vex_register],al
+	cmp	byte [esi],'+'
+	jne	reg4_ok
+	inc	esi
+	cmp	dword [esi],29030128h
+	jne	invalid_operand
+	lods	dword [esi]
+      reg4_ok:
+	cmp	[operand_size],64
+	jne	invalid_operand_size
+	mov	[operand_size],0
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_avx_rm
+	jc	invalid_operand
+	mov	[operand_size],64
+	jmp	instruction_ready
 
 set_evex_mode:
 	mov	[evex_mode],al

@@ -3250,15 +3250,21 @@ register.
     vscatterdps [eax+xmm1]{k1},xmm0    ; scatter four floats
     vscatterdpd [ymm3*8]{k3},zmm0      ; scatter eight doubles
 
+  The AVX512_4VNNI extension introduces instructions with another unusual
+syntax variant. The first source operand of "vp4dpwssd" or "vp4dpwssds"
+instruction refers to an aligned block of four 512-bit registers, containing
+the base register specified by the operand. This can be indicated by attaching
+"+3" to the name of register, although it is optional.
+
+    vp4dpwssd zmm1{k1}{z},zmm2+3,xword[rbx]
+
 
 2.1.25  Other extensions of instruction set
 
 There is a number of additional instruction set extensions recognized by flat
-assembler, and the general syntax of the instructions introduced by those
-extensions is provided here. For a detailed information on the operations
-performed by them, check out the manuals from Intel (for the VMX, SMX, XSAVE, 
-RDRAND, FSGSBASE, INVPCID, HLE, RTM, and MPX extensions) or AMD (for the SVM 
-extension).
+assembler, and examples of syntax of the instructions introduced by those
+extensions are provided here. For a detailed information on the operations
+performed by them, check out the manuals from Intel or AMD.
   The Virtual-Machine Extensions (VMX) provide a set of instructions for the
 management of virtual machines. The "vmxon" instruction, which enters the VMX
 operation, requires a single 64-bit memory operand, which should be a physical
@@ -3677,8 +3683,8 @@ loads the single byte from offset 10h in file "a.txt" into the "char"
 constant.
   Instead of or in addition to an "at" argument, "virtual" can also be followed
 by an "as" keyword and a string defining an extension of additional file where
-the initialized content of the block is going to be stored at the end of
-a successful assembly.
+the initialized content of the addressing space started by "virtual" is going
+to be stored at the end of a successful assembly.
 
     virtual at 0 as 'asc'
         times 256 db %-1
