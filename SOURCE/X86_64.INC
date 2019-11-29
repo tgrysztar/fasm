@@ -3721,7 +3721,7 @@ basic_486_instruction:
 	cmp	al,','
 	jne	invalid_operand
 	call	take_register
-	mov	al,bl
+	mov	bl,al
 	xchg	bl,[postbyte_register]
 	mov	al,ah
 	cmp	al,1

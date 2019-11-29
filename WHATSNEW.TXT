@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.20 (Nov 29, 2019)
+
+[-] Fixed a bug in "cmpxchg" and "xadd" introduced by previous version.
+
+
 version 1.73.19 (Nov 27, 2019)
 
 [+] Added AVX512_BITALG, AVX512_VPOPCNTDQ, AVX512_VBMI2, AVX512_VNNI
