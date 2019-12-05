@@ -611,13 +611,15 @@ load_directive:
 	xor	cx,cx
 	jmp	make_constant
       get_data_point:
+	lods	byte [esi]
+	cmp	al,':'
+	je	get_data_offset
+	cmp	al,'('
+	jne	invalid_argument
 	mov	ebx,[addressing_space]
 	mov	ecx,edi
 	sub	ecx,[ebx+18h]
 	mov	[ebx+1Ch],ecx
-	lods	byte [esi]
-	cmp	al,'('
-	jne	invalid_argument
 	cmp	byte [esi],11h
 	jne	get_data_address
 	cmp	word [esi+1+4],'):'
@@ -685,6 +687,38 @@ load_directive:
 	call	recoverable_overflow
 	stc
 	ret
+      get_data_offset:
+	cmp	[output_format],2
+	jae	invalid_operand
+	lods	byte [esi]
+	cmp	al,'('
+	jne	invalid_argument
+	cmp	byte [esi],'.'
+	je	invalid_value
+	call	get_dword_value
+	cmp	[value_type],0
+	je	data_offset_ok
+	call	recoverable_invalid_address
+      data_offset_ok:
+	add	eax,[code_start]
+	jc	bad_data_address
+	mov	ebx,eax
+	movzx	ecx,[operand_size]
+	add	eax,ecx
+	jc	bad_data_address
+	mov	edx,[addressing_space]
+	test	byte [edx+0Ah],1
+	jnz	data_offset_from_virtual
+	cmp	eax,edi
+	ja	bad_data_address
+	clc
+	ret
+      data_offset_from_virtual:
+	cmp	eax,[undefined_data_end]
+	ja	bad_data_address
+	clc
+	ret
+
 store_directive:
 	cmp	byte [esi],11h
 	je	sized_store
@@ -927,6 +961,15 @@ virtual_directive:
 	shl	ecx,16
 	mov	cx,bx
 	push	ecx eax
+	mov	ebx,[addressing_space]
+	test	byte [ebx+0Ah],1
+	jnz	non_virtual_end_ok
+	mov	eax,edi
+	xchg	eax,[undefined_data_end]
+	cmp	eax,edi
+	je	non_virtual_end_ok
+	mov	[undefined_data_start],edi
+      non_virtual_end_ok:
 	call	allocate_virtual_structure_data
 	call	init_addressing_space
 	or	byte [ebx+0Ah],1

@@ -954,10 +954,14 @@ avx_pi_instruction_3a_imm8:
 avx_pclmulqdq_instruction:
 	mov	byte [value],al
 	mov	[immediate_size],-4
-	or	[vex_required],2
-	mov	cl,16
+	xor	cl,cl
 	mov	al,44h
+	or	[operand_flags],10h
 	jmp	avx_instruction_3a
+avx_instruction_38_nomask:
+	or	[operand_flags],10h
+	xor	cl,cl
+	jmp	avx_instruction_38
 
 avx512_single_source_pd_instruction_sae_imm8:
 	or	[operand_flags],2

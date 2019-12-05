@@ -1396,7 +1396,7 @@ pe_entry:
 	je	pe_entry_ok
 	call	recoverable_invalid_address
       pe_entry_ok:
-      cdq
+	cdq
 	test	[format_flags],4
 	jnz	pe64_entry_type_ok
 	mov	edx,[code_start]

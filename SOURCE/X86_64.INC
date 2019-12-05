@@ -5688,6 +5688,9 @@ monitor_instruction:
 	mov	al,[postbyte_register]
 	stos	byte [edi]
 	jmp	instruction_assembled
+pconfig_instruction:
+	mov	[postbyte_register],al
+	jmp	monitor_instruction_store
 movntdqa_instruction:
 	call	setup_66_0f_38
 	lods	byte [esi]

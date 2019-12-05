@@ -208,9 +208,32 @@ calculate_expression:
 	cmp	al,[operand_size]
 	jne	operand_sizes_do_not_match
 	jmp	calculation_loop
+      actual_file_offset_label:
+	mov	eax,[undefined_data_end]
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jnz	use_undefined_data_offset
+	cmp	eax,[current_offset]
+	jne	use_current_offset
+       use_undefined_data_offset:
+	mov	eax,[undefined_data_start]
+	jmp	make_file_offset_label
+      current_file_offset_label:
+	mov	ebp,[addressing_space]
+	test	byte [ds:ebp+0Ah],1
+	jz	use_current_offset
+	mov	eax,[undefined_data_end]
+	jmp	make_file_offset_label
+       use_current_offset:
+	mov	eax,[current_offset]
+       make_file_offset_label:
+	cmp	[output_format],2
+	jae	invalid_use_of_symbol
+	sub	eax,[code_start]
+	jmp	make_dword_label_value
       current_offset_label:
 	mov	eax,[current_offset]
-      make_current_offset_label:
+       make_current_offset_label:
 	xor	edx,edx
 	xor	ch,ch
 	mov	ebp,[addressing_space]
@@ -219,7 +242,7 @@ calculate_expression:
 	sbb	ch,[ds:ebp+8]
 	jp	current_offset_label_ok
 	call	recoverable_overflow
-      current_offset_label_ok:
+       current_offset_label_ok:
 	stos	dword [edi]
 	mov	eax,edx
 	stos	dword [edi]
@@ -260,6 +283,10 @@ calculate_expression:
 	je	timestamp_label
 	cmp	eax,3
 	je	org_origin_label
+	cmp	eax,4
+	je	current_file_offset_label
+	cmp	eax,5
+	je	actual_file_offset_label
 	mov	edx,invalid_value
 	jmp	error_undefined
       label_out_of_scope:

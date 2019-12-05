@@ -4747,14 +4747,21 @@ These directives are actually also a kind of control directives, with the
 purpose of controlling the format of generated code.
   "format" directive followed by the format identifier allows to select the
 output format. This directive should be put at the beginning of the source.
-Default output format is a flat binary file, it can also be selected by using
-"format binary" directive. This directive can be followed by the "as" keyword
-and the quoted string specifying the default file extension for the output
+It can always be followed in the same line by the "as" keyword and
+a quoted string specifying the default file extension for the output
 file. Unless the output file name was specified from the command line,
 assembler will use this extension when generating the output file.
   "use16" and "use32" directives force the assembler to generate 16-bit or
 32-bit code, omitting the default setting for selected output format. "use64"
 enables generating the code for the long mode of x86-64 processors.
+  Default output format is a flat binary file, it can also be selected by using
+"format binary" directive. When this format is chosen, special symbol "$%" can
+be used to get an offset within the output and "$%%" can be used to get the
+actual offset in the output file, omitting any undefined data that would be
+discarded if the output was ended at this point. Additionally, for this format
+"load" and "store" directives allow access to any data within the already
+generated output by following "from" or "at" keyword with ":" character and
+then an expression specifying the offset within the output.
   Below are described different output formats with the directives specific to
 these formats.
 

@@ -581,12 +581,12 @@ parse_line_contents:
 	cmp	al,85h
 	je	ptr_argument
 	stos	byte [edi]
-	cmp	al,80h
-	je	forced_multipart_expression
 	cmp	al,8Ch
 	je	forced_expression
 	cmp	al,81h
 	je	forced_parenthesis
+	cmp	al,80h
+	je	parse_at_operator
 	cmp	al,82h
 	je	parse_from_operator
 	cmp	al,89h
@@ -747,8 +747,11 @@ parse_line_contents:
 	jmp	argument_parsed
       parse_from_operator:
 	cmp	byte [esi],22h
-	jne	forced_multipart_expression
-	jmp	argument_parsed
+	je	argument_parsed
+      parse_at_operator:
+	cmp	byte [esi],':'
+	je	argument_parsed
+	jmp	forced_multipart_expression
       parse_quoted_extrn:
 	inc	esi
 	mov	ax,'('
@@ -1278,13 +1281,17 @@ get_label_id:
 	mov	eax,0Fh
 	ret
       current_address_label:
-	cmp	ecx,2
+	cmp	ecx,3
+	je	current_address_label_3_characters
 	ja	find_label
 	inc	esi
-	jb	get_current_offset_id
+	cmp	ecx,1
+	jbe	get_current_offset_id
 	inc	esi
 	cmp	byte [esi-1],'$'
 	je	get_org_origin_id
+	cmp	byte [esi-1],'%'
+	je	get_file_offset_id
 	sub	esi,2
 	jmp	find_label
       get_current_offset_id:
@@ -1298,6 +1305,16 @@ get_label_id:
 	ret
       get_org_origin_id:
 	mov	eax,3
+	ret
+      get_file_offset_id:
+	mov	eax,4
+	ret
+      current_address_label_3_characters:
+	cmp	word [esi+1],'%%'
+	jne	find_label
+	add	esi,3
+      get_actual_file_offset_id:
+	mov	eax,5
 	ret
       get_predefined_id:
 	cmp	ecx,2

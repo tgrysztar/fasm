@@ -2225,6 +2225,8 @@ instructions_7:
  dw basic_mmx_instruction-instruction_handler
  db 'pcommit',0F8h
  dw pcommit_instruction-instruction_handler
+ db 'pconfig',0C5h
+ dw pconfig_instruction-instruction_handler
  db 'pfcmpeq',0B0h
  dw amd3dnow_instruction-instruction_handler
  db 'pfcmpge',90h
@@ -2286,9 +2288,9 @@ instructions_7:
  db 'ucomiss',2Eh
  dw comiss_instruction-instruction_handler
  db 'vaesdec',0DEh
- dw avx_128bit_instruction_38_noevex-instruction_handler
+ dw avx_instruction_38_nomask-instruction_handler
  db 'vaesenc',0DCh
- dw avx_128bit_instruction_38_noevex-instruction_handler
+ dw avx_instruction_38_nomask-instruction_handler
  db 'vaesimc',0DBh
  dw avx_single_source_128bit_instruction_38_noevex-instruction_handler
  db 'valignd',3
@@ -3778,9 +3780,9 @@ instructions_11:
  db 'sha256rnds2',0CBh
  dw sse4_instruction_38_xmm0-instruction_handler
  db 'vaesdeclast',0DFh
- dw avx_128bit_instruction_38_noevex-instruction_handler
+ dw avx_instruction_38_nomask-instruction_handler
  db 'vaesenclast',0DDh
- dw avx_128bit_instruction_38_noevex-instruction_handler
+ dw avx_instruction_38_nomask-instruction_handler
  db 'vcmpeq_ospd',10h
  dw avx_cmp_pd_instruction-instruction_handler
  db 'vcmpeq_osps',10h
