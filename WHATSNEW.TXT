@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.22 (Feb 02, 2020)
+
+[-] Removed a trick from preprocessor's implementation that caused
+    the x64 version to crash when replacing symbolic constant in a label.
+
+
 version 1.73.21 (Dec 05, 2019)
 
 [+] Added "$%" and "$%%" symbols, and output offset addressing with "load"

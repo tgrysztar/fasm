@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2019, Tomasz Grysztar.
+; Copyright (c) 1999-2020, Tomasz Grysztar.
 ; All rights reserved.
 
 go32:

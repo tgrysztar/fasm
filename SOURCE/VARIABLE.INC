@@ -1,6 +1,6 @@
 
 ; flat assembler core variables
-; Copyright (c) 1999-2019, Tomasz Grysztar.
+; Copyright (c) 1999-2020, Tomasz Grysztar.
 ; All rights reserved.
 
 ; Variables which have to be set up by interface:

@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2019, Tomasz Grysztar.
+; Copyright (c) 1999-2020, Tomasz Grysztar.
 ; All rights reserved.
 
 CREATE_NEW	       = 1

@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Win32
-; Copyright (c) 1999-2019, Tomasz Grysztar.
+; Copyright (c) 1999-2020, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	PE console
@@ -342,7 +342,7 @@ section '.data' data readable writeable
 
 include '..\version.inc'
 
-_copyright db 'Copyright (c) 1999-2019, Tomasz Grysztar',0Dh,0Ah,0
+_copyright db 'Copyright (c) 1999-2020, Tomasz Grysztar',0Dh,0Ah,0
 
 _logo db 'flat assembler  version ',VERSION_STRING,0
 _usage db 0Dh,0Ah

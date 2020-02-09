@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2019, Tomasz Grysztar.
+; Copyright (c) 1999-2020, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -765,8 +765,8 @@ preprocess_line:
 	inc	ebx
 	jmp	check_for_broken_label
       label_broken:
-	push	line_preprocessed
-	jmp	replace_symbolic_constant
+	call	replace_symbolic_constant
+	jmp	line_preprocessed
       label_constant_ok:
 	mov	ecx,edi
 	sub	ecx,esi

@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2019, Tomasz Grysztar.
+; Copyright (c) 1999-2020, Tomasz Grysztar.
 ; All rights reserved.
 
 	format	MZ
@@ -336,7 +336,7 @@ get_params:
 include '..\version.inc'
 
 _logo db 'flat assembler  version ',VERSION_STRING,24h
-_copyright db 'Copyright (c) 1999-2019, Tomasz Grysztar',0Dh,0Ah,0
+_copyright db 'Copyright (c) 1999-2020, Tomasz Grysztar',0Dh,0Ah,0
 
 _usage db 0Dh,0Ah
        db 'usage: fasm <source> [output]',0Dh,0Ah
