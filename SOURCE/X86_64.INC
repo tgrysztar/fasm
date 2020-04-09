@@ -697,7 +697,7 @@ mov_instruction:
 	cmp	[operand_size],4
 	jne	invalid_operand_size
 	cmp	[postbyte_register],8
-	jb	mov_reg_creg_store
+	jne	mov_reg_creg_store
 	cmp	[extended_code],20h
 	jne	mov_reg_creg_store
 	mov	al,0F0h
@@ -929,7 +929,7 @@ mov_instruction:
 	cmp	ah,4
 	jne	invalid_operand_size
 	cmp	[postbyte_register],8
-	jb	mov_creg_store
+	jne	mov_creg_store
 	cmp	[extended_code],22h
 	jne	mov_creg_store
 	mov	al,0F0h
@@ -3674,7 +3674,11 @@ invlpg_instruction:
 	jne	invalid_operand
 	call	get_address
 	jmp	instruction_ready
-mcommit_instruction:
+simple_instruction_f2_0f_01:
+	mov	byte [edi],0F2h
+	inc	edi
+	jmp	simple_instruction_0f_01
+simple_instruction_f3_0f_01:
 	mov	byte [edi],0F3h
 	inc	edi
 	jmp	simple_instruction_0f_01

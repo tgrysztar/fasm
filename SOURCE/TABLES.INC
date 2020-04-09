@@ -1746,6 +1746,8 @@ instructions_6:
  dw ssse3_instruction-instruction_handler
  db 'pslldq',111b
  dw pslldq_instruction-instruction_handler
+ db 'psmash',0FFh
+ dw simple_instruction_f3_0f_01-instruction_handler
  db 'psrldq',011b
  dw pslldq_instruction-instruction_handler
  db 'psubsb',0E8h
@@ -2170,7 +2172,7 @@ instructions_7:
  db 'loopnzw',0E0h
  dw loop_instruction_16bit-instruction_handler
  db 'mcommit',0FAh
- dw mcommit_instruction-instruction_handler
+ dw simple_instruction_f3_0f_01-instruction_handler
  db 'monitor',0C8h
  dw monitor_instruction-instruction_handler
  db 'movddup',12h
@@ -3141,6 +3143,12 @@ instructions_9:
  dw basic_mmx_instruction-instruction_handler
  db 'punpcklwd',61h
  dw basic_mmx_instruction-instruction_handler
+ db 'pvalidate',0FFh
+ dw simple_instruction_f2_0f_01-instruction_handler
+ db 'rmpadjust',0FEh
+ dw simple_instruction_f3_0f_01-instruction_handler
+ db 'rmpupdate',0FEh
+ dw simple_instruction_f2_0f_01-instruction_handler
  db 'sha1nexte',0C8h
  dw sse4_instruction_38-instruction_handler
  db 'sha1rnds4',0CCh

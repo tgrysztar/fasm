@@ -2,7 +2,14 @@
 Visit http://flatassembler.net/ for more information.
 
 
-version 1.73.22 (Feb 02, 2020)
+version 1.73.23 (Apr 09, 2020)
+
+[+] Added "psmash", "pvalidate", "rmpadjust" and "rmpupdate" instructions.
+
+[-] No longer allowing "mov" to/from cr9-cr15 outside of long mode.
+
+
+version 1.73.22 (Feb 09, 2020)
 
 [-] Removed a trick from preprocessor's implementation that caused
     the x64 version to crash when replacing symbolic constant in a label.
