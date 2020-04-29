@@ -99,9 +99,9 @@ dpmi_dos_int:
 	mov	edx,[esp+14h]
 	mov	ecx,[esp+18h]
 	mov	ah,[esp+20h]
-	add	esp,32h
 	sahf
-	mov	eax,[esp-32h+1Ch]
+	mov	eax,[esp+1Ch]
+	lea	esp,[esp+32h]
 	ret
 dpmi_dos_int_with_buffer:
 	mov	[real_mode_segment],buffer

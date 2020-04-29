@@ -2,11 +2,19 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.24 (Apr 29, 2020)
+
+[+] Added "invlpgb" and "tlbsync" instructions.
+
+[-] Upper bits of default entry point of ELF64 executable were not correctly
+    stored in the header.
+
+
 version 1.73.23 (Apr 09, 2020)
 
 [+] Added "psmash", "pvalidate", "rmpadjust" and "rmpupdate" instructions.
 
-[-] No longer allowing "mov" to/from cr9-cr15 outside of long mode.
+[-] No longer allowing "mov" to/from CR9-CR15 outside of long mode.
 
 
 version 1.73.22 (Feb 09, 2020)

@@ -1875,7 +1875,9 @@ calculate_logical_expression:
 	jne	invalid_value
 	call	get_value_for_comparison
 	mov	bh,[value_sign]
-	push	eax edx [symbol_identifier] ebx ecx
+	push	eax edx
+	push	[symbol_identifier]
+	push	ebx ecx
 	mov	al,[esi]
 	or	al,al
 	jz	logical_number

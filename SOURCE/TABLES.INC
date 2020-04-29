@@ -2153,6 +2153,8 @@ instructions_7:
  dw insertq_instruction-instruction_handler
  db 'invlpga',0DFh
  dw invlpga_instruction-instruction_handler
+ db 'invlpgb',0FEh
+ dw simple_instruction_0f_01-instruction_handler
  db 'invpcid',82h
  dw vmx_inv_instruction-instruction_handler
  db 'invvpid',81h
@@ -2285,6 +2287,8 @@ instructions_7:
  dw simple_extended_instruction-instruction_handler
  db 'sysretq',07h
  dw simple_extended_instruction_64bit-instruction_handler
+ db 'tlbsync',0FFh
+ dw simple_instruction_0f_01-instruction_handler
  db 'ucomisd',2Eh
  dw comisd_instruction-instruction_handler
  db 'ucomiss',2Eh

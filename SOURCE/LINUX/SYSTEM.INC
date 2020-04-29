@@ -291,7 +291,7 @@ assembler_error:
 	mov	ebx,[current_line]
 	test	ebx,ebx
 	jz	display_error_message
-	push	dword 0
+	pushd	0
       get_error_lines:
 	mov	eax,[ebx]
 	cmp	byte [eax],0

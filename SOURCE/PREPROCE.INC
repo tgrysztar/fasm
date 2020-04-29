@@ -1809,7 +1809,9 @@ use_macro:
 	pop	[free_additional_memory]
 	jmp	line_preprocessed
 use_instant_macro:
-	push	edi [current_line] esi
+	push	edi
+	push	[current_line]
+	push	esi
 	mov	eax,[error_line]
 	mov	[current_line],eax
 	mov	[macro_line],eax
