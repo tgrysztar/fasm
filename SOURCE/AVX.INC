@@ -1431,9 +1431,9 @@ vzeroupper_instruction:
 	and	[displacement_compression],0
 	call	store_vex_instruction_code
 	jmp	instruction_assembled
-vldmxcsr_instruction:
+vstmxcsr_instruction:
 	or	[vex_required],2
-	jmp	fxsave_instruction
+	jmp	stmxcsr_instruction
 
 avx_perm2f128_instruction:
 	or	[vex_required],2

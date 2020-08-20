@@ -2311,8 +2311,8 @@ packed quad words into the destination register. "pminsb" and "pmaxsb"
 return the minimum or maximum values of packed signed bytes, "pminuw" and
 "pmaxuw" return the minimum and maximum values of packed unsigned words,
 "pminud", "pmaxud", "pminsd" and "pmaxsd" return minimum or maximum values
-of packed unsigned or signed words. These instructions complement the
-instructions computing packed minimum or maximum introduced by SSE.
+of packed unsigned or signed double words. These instructions complement
+the instructions computing packed minimum or maximum introduced by SSE.
   "ptest" sets the ZF flag to one when the result of bitwise AND of the
 both operands is zero, and zeroes the ZF otherwise. It also sets CF flag
 to one, when the result of bitwise AND of the destination operand with

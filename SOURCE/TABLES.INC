@@ -2811,7 +2811,7 @@ instructions_8:
  db 'vfmsubss',6Eh
  dw fma4_instruction_ss-instruction_handler
  db 'vldmxcsr',10b
- dw vldmxcsr_instruction-instruction_handler
+ dw vstmxcsr_instruction-instruction_handler
  db 'vmlaunch',0C2h
  dw simple_instruction_0f_01-instruction_handler
  db 'vmovddup',12h
@@ -3073,7 +3073,7 @@ instructions_8:
  db 'vrsqrtss',52h
  dw avx_ss_instruction_noevex-instruction_handler
  db 'vstmxcsr',11b
- dw vldmxcsr_instruction-instruction_handler
+ dw vstmxcsr_instruction-instruction_handler
  db 'vucomisd',2Eh
  dw avx_comisd_instruction-instruction_handler
  db 'vucomiss',2Eh

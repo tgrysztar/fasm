@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.25 (Aug 20, 2020)
+
+[-] Corrected operand size handling for "vldmxcsr"/"vstmxcsr" instructions.
+
+
 version 1.73.24 (Apr 29, 2020)
 
 [+] Added "invlpgb" and "tlbsync" instructions.
