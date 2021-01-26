@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.26 (Jan 26, 2021)
+
+[-] Corrected assembly of some "mov" variants when "use32" setting is used
+    with 64-bit relocatable formats.
+
+
 version 1.73.25 (Aug 20, 2020)
 
 [-] Corrected operand size handling for "vldmxcsr"/"vstmxcsr" instructions.

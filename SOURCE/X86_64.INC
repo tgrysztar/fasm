@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2020, Tomasz Grysztar.
+; Copyright (c) 1999-2021, Tomasz Grysztar.
 ; All rights reserved.
 
 simple_instruction_except64:
@@ -468,9 +468,7 @@ mov_instruction:
 	jnz	mov_mem_address16_al
 	test	ch,44h
 	jnz	mov_mem_address32_al
-	test	ch,88h
-	jnz	mov_mem_address64_al
-	or	ch,ch
+	test	ch,not 88h
 	jnz	invalid_address_size
 	call	check_mov_address64
 	cmp	al,0
@@ -504,6 +502,8 @@ mov_instruction:
       check_mov_address64:
 	cmp	[code_type],64
 	jne	no_address64
+	test	ch,88h
+	jnz	address64_required
 	mov	eax,[address_high]
 	or	eax,eax
 	jz	no_address64
@@ -517,6 +517,8 @@ mov_instruction:
 	mov	al,-1
 	ret
       no_address64:
+	test	ch,08h
+	jnz	invalid_address_size
 	xor	al,al
 	ret
       mov_mem_address64_al:
@@ -531,9 +533,7 @@ mov_instruction:
 	jnz	mov_mem_address16_ax
 	test	ch,44h
 	jnz	mov_mem_address32_ax
-	test	ch,88h
-	jnz	mov_mem_address64_ax
-	or	ch,ch
+	test	ch,not 88h
 	jnz	invalid_address_size
 	call	check_mov_address64
 	cmp	al,0
@@ -733,9 +733,7 @@ mov_instruction:
 	jnz	mov_al_mem_address16
 	test	ch,44h
 	jnz	mov_al_mem_address32
-	test	ch,88h
-	jnz	mov_al_mem_address64
-	or	ch,ch
+	test	ch,not 88h
 	jnz	invalid_address_size
 	call	check_mov_address64
 	cmp	al,0
@@ -764,9 +762,7 @@ mov_instruction:
 	jnz	mov_ax_mem_address16
 	test	ch,44h
 	jnz	mov_ax_mem_address32
-	test	ch,88h
-	jnz	mov_ax_mem_address64
-	or	ch,ch
+	test	ch,not 88h
 	jnz	invalid_address_size
 	call	check_mov_address64
 	cmp	al,0

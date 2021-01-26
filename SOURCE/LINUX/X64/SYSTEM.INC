@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux x64
-; Copyright (c) 1999-2020, Tomasz Grysztar.
+; Copyright (c) 1999-2021, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 0003o
@@ -111,10 +111,15 @@ exit_program:
 	syscall
 
 get_environment_variable:
-	mov	ebx,esi
-	mov	rsi,[environment]
+	mov	ecx,esi
+	mov	rbx,[environment]
+      next_variable:
+	mov	rsi,[rbx]
+	test	rsi,rsi
+	jz	no_environment_variable
+	add	rbx,8
       compare_variable_names:
-	mov	edx,ebx
+	mov	edx,ecx
       compare_character:
 	lodsb
 	mov	ah,[edx]
@@ -131,12 +136,8 @@ get_environment_variable:
 	jb	next_variable
 	cmp	al,5Ah
 	jna	compare_character
-      next_variable:
-	lodsb
-	or	al,al
-	jnz	next_variable
-	cmp	byte [rsi],0
-	jne	compare_variable_names
+	jmp	next_variable
+      no_environment_variable:
 	ret
       end_of_variable_name:
 	or	ah,ah
