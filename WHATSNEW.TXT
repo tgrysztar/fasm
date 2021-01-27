@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.27 (Jan 27, 2021)
+
+[-] The assembler should no longer prematurely abort when sign-extended 32-bit
+    value in 64-bit instruction overflows during intermediate passes.
+
+
 version 1.73.26 (Jan 26, 2021)
 
 [-] Corrected assembly of some "mov" variants when "use32" setting is used

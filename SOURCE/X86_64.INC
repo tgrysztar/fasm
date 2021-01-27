@@ -228,7 +228,9 @@ basic_instruction:
 	mov	ecx,edx
 	cdq
 	cmp	ecx,edx
-	jne	value_out_of_range
+	je	simm32_range_ok
+	call	recoverable_overflow
+      simm32_range_ok:
 	cmp	[value_type],4
 	jne	get_simm32_ok
 	mov	[value_type],2
