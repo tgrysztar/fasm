@@ -2,6 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.28 (Sep 16, 2021)
+
+[+] Added special preprocessing of symbols "__file__" and "__line__"
+    (backported from flat assembler g).
+
+
 version 1.73.27 (Jan 27, 2021)
 
 [-] The assembler should no longer prematurely abort when sign-extended 32-bit

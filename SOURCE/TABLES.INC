@@ -48,6 +48,13 @@ macro_directives:
  dw reverse_block-directive_handler
  db 0
 
+preprocessor_special_symbols:
+ db 4,'file'
+ dw preprocessed_file_value-directive_handler
+ db 4,'line'
+ dw preprocessed_line_value-directive_handler
+ db 0
+
 operators:
  db 1,'+',80h
  db 1,'-',81h
@@ -457,7 +464,7 @@ instructions:
  dw instructions_14-instructions,(instructions_15-instructions_14)/(14+3)
  dw instructions_15-instructions,(instructions_16-instructions_15)/(15+3)
  dw instructions_16-instructions,(instructions_17-instructions_16)/(16+3)
- dw instructions_17-instructions,(instructions_end-instructions_17)/(16+3)
+ dw instructions_17-instructions,(instructions_end-instructions_17)/(17+3)
 
 instructions_2:
  db 'bt',4

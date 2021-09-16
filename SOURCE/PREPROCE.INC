@@ -686,6 +686,8 @@ preprocess_line:
 	mov	ch,10b
 	call	get_preprocessor_symbol
 	jc	struc_name_ok
+	test	edx,edx
+	jz	reserved_word_used_as_symbol
 	mov	ecx,[edx+12]
 	add	ecx,3
 	lea	ebx,[edi+ecx]
@@ -745,6 +747,8 @@ preprocess_line:
 	inc	esi
 	jmp	preprocess_instruction
       symbolic_constant_in_label:
+	test	edx,edx
+	jz	reserved_word_used_as_symbol
 	mov	ebx,[edx+8]
 	mov	ecx,[edx+12]
 	add	ecx,ebx
@@ -806,7 +810,32 @@ get_preprocessor_symbol:
 	push	ebp edi esi
 	mov	ebp,ecx
 	shl	ebp,22
+	mov	al,ch
+	and	al,11b
 	movzx	ecx,cl
+	cmp	al,10b
+	jne	no_preprocessor_special_symbol
+	cmp	cl,4
+	jbe	no_preprocessor_special_symbol
+	mov	ax,'__'
+	cmp	ax,[esi]
+	jne	no_preprocessor_special_symbol
+	cmp	ax,[esi+ecx-2]
+	jne	no_preprocessor_special_symbol
+	add	esi,2
+	sub	ecx,4
+	push	ebp
+	mov	edi,preprocessor_special_symbols
+	call	get_directive
+	pop	ebp
+	jc	preprocessor_special_symbol_not_recognized
+	add	esi,2
+	xor	edx,edx
+	jmp	preprocessor_symbol_found
+      preprocessor_special_symbol_not_recognized:
+	add	ecx,4
+	sub	esi,2
+      no_preprocessor_special_symbol:
 	mov	ebx,hash_tree
 	mov	edi,10
       follow_hashes_roots:
@@ -1333,6 +1362,8 @@ restore_equ_constant:
 	mov	cl,al
 	call	get_preprocessor_symbol
 	jc	no_symbol_to_restore
+	test	edx,edx
+	jz	symbol_restored
 	mov	dword [edx+4],0
 	jmp	symbol_restored
       no_symbol_to_restore:
@@ -1383,6 +1414,8 @@ process_equ_constants:
 	jc	no_replacing
 	mov	[current_section],edi
       replace_symbolic_constant:
+	test	edx,edx
+	jz	replace_special_symbolic_constant
 	mov	ecx,[edx+12]
 	mov	edx,[edx+8]
 	xchg	esi,edx
@@ -1451,6 +1484,53 @@ process_equ_constants:
 	stos	word [edi]
 	call	move_data
 	jmp	process_after_replaced
+      replace_special_symbolic_constant:
+	jmp	near eax
+    preprocessed_file_value:
+	call	get_current_line_from_file
+	test	ebx,ebx
+	jz	process_after_replaced
+	push	esi edi
+	mov	esi,[ebx]
+	mov	edi,esi
+	xor	al,al
+	or	ecx,-1
+	repne	scas byte [edi]
+	add	ecx,2
+	neg	ecx
+	pop	edi
+	lea	eax,[edi+1+4+ecx]
+	cmp	eax,[memory_end]
+	ja	out_of_memory
+	mov	al,22h
+	stos	byte [edi]
+	mov	eax,ecx
+	stos	dword [edi]
+	rep	movs byte [edi],[esi]
+	pop	esi
+	jmp	process_after_replaced
+    preprocessed_line_value:
+	call	get_current_line_from_file
+	test	ebx,ebx
+	jz	process_after_replaced
+	lea	eax,[edi+1+4+20]
+	cmp	eax,[memory_end]
+	ja	out_of_memory
+	mov	ecx,[ebx+4]
+	call	store_number_symbol
+	jmp	process_after_replaced
+    get_current_line_from_file:
+	mov	ebx,[current_line]
+      find_line_from_file:
+	test	ebx,ebx
+	jz	line_from_file_found
+	test	byte [ebx+7],80h
+	jz	line_from_file_found
+	mov	ebx,[ebx+8]
+	jmp	find_line_from_file
+      line_from_file_found:
+	ret
+
 process_macro_operators:
 	xor	dl,dl
 	mov	ebp,edi
@@ -2025,6 +2105,8 @@ do_irp:
 	mov	ch,10b
 	call	get_preprocessor_symbol
 	jc	instant_macro_finish
+	test	edx,edx
+	jz	invalid_use_of_symbol
 	push	edx
       mark_variable_value:
 	inc	[counter_limit]

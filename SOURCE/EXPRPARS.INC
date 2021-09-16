@@ -192,8 +192,6 @@ convert_number:
 	ret
       preprocessor_value:
 	dec	edi
-	cmp	[hash_tree],0
-	je	invalid_value
 	lods	byte [esi]
 	cmp	al,1Ah
 	jne	invalid_value
@@ -202,12 +200,23 @@ convert_number:
 	mov	ch,10b
 	call	get_preprocessor_symbol
 	jc	invalid_value
+	test	edx,edx
+	jz	special_preprocessor_value
 	push	esi
 	mov	esi,[edx+8]
 	push	[current_offset]
 	call	convert_expression
 	pop	[current_offset]
 	pop	esi
+	ret
+      special_preprocessor_value:
+	cmp	eax,preprocessed_line_value
+	jne	invalid_value
+	call	get_current_line_from_file
+	mov	al,4
+	stos	byte [edi]
+	mov	eax,[ebx+4]
+	stos	dword [edi]
 	ret
 
 get_number:
