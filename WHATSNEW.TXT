@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.29 (Dec 18, 2021)
+
+[-] Corrected an issue in external use of expression calculator.
+
+
 version 1.73.28 (Sep 16, 2021)
 
 [+] Added special preprocessing of symbols "__file__" and "__line__"

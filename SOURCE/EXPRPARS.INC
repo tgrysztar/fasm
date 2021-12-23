@@ -135,8 +135,11 @@ convert_number:
       subexpression_closed:
 	ret
       symbol_value:
-	cmp	[source_start],0
-	je	preprocessor_value
+	mov	eax,[source_start]
+	test	eax,eax
+	jz	preprocessor_value
+	cmp	eax,-1
+	je	invalid_value
 	push	edi esi
 	lods	word [esi]
 	cmp	al,1Ah
