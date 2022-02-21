@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.30 (Feb 21, 2022)
+
+[-] No longer signal an error when there is no line to concatenate with "\".
+
+
 version 1.73.29 (Dec 18, 2021)
 
 [-] Corrected an issue in external use of expression calculator.

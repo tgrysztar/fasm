@@ -1,6 +1,6 @@
 
 ; flat assembler  version 1.73
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 ;
 ; This programs is free for commercial and non-commercial use as long as
@@ -33,7 +33,7 @@
 ; cannot simply be copied and put under another distribution licence
 ; (including the GNU Public Licence).
 
-VERSION_STRING equ "1.73.29"
+VERSION_STRING equ "1.73.30"
 
 VERSION_MAJOR = 1
 VERSION_MINOR = 73

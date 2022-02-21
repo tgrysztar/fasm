@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Unix/libc
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 
 extrn malloc

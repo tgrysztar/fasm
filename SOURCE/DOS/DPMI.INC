@@ -1,6 +1,6 @@
 
 ; flat assembler interface for DOS
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 
 init_dpmi_memory:

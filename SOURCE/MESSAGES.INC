@@ -1,12 +1,11 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 
 _out_of_memory db 'out of memory',0
 _stack_overflow db 'out of stack space',0
 _main_file_not_found db 'source file not found',0
-_unexpected_end_of_file db 'unexpected end of file',0
 _code_cannot_be_generated db 'code cannot be generated',0
 _format_limitations_exceeded db 'format limitations exceeded',0
 _invalid_definition db 'invalid definition provided',0

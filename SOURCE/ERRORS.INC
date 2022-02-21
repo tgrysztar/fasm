@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 
 out_of_memory:
@@ -16,9 +16,6 @@ write_failed:
 	push	_write_failed
 	jmp	fatal_error
 
-unexpected_end_of_file:
-	push	_unexpected_end_of_file
-	jmp	general_error
 code_cannot_be_generated:
 	push	_code_cannot_be_generated
 	jmp	general_error

@@ -1,6 +1,6 @@
 
 flat assembler  version 1.73
-Copyright (c) 1999-2021, Tomasz Grysztar.
+Copyright (c) 1999-2022, Tomasz Grysztar.
 All rights reserved.
 
 This program is free for commercial and non-commercial use as long as

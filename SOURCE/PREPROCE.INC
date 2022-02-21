@@ -1,6 +1,6 @@
 
 ; flat assembler core
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 
 preprocessor:
@@ -402,9 +402,9 @@ convert_line:
 	cmp	al,9
 	je	concatenate_lines
 	cmp	al,1Ah
-	je	unexpected_end_of_file
+	je	line_end
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	line_end
 	cmp	al,0Ah
 	je	concatenate_lf
 	cmp	al,0Dh
@@ -430,9 +430,9 @@ convert_line:
 	jmp	missing_end_quote
       backslashed_symbol:
 	cmp	al,1Ah
-	je	unexpected_end_of_file
+	je	extra_characters_on_line
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	extra_characters_on_line
 	cmp	al,0Ah
 	je	extra_characters_on_line
 	cmp	al,0Dh
@@ -474,9 +474,9 @@ convert_line:
 	cmp	al,9
 	je	concatenate_lines
 	cmp	al,1Ah
-	je	unexpected_end_of_file
+	je	line_end
 	or	al,al
-	jz	unexpected_end_of_file
+	jz	line_end
 	cmp	al,0Ah
 	je	concatenate_lf
 	cmp	al,0Dh
@@ -493,7 +493,7 @@ convert_line:
 	jz	concatenate_ok
 	cmp	al,1Ah
 	jne	find_concatenated_line
-	jmp	unexpected_end_of_file
+	jmp	line_end
       concatenate_lf:
 	lods	byte [esi]
 	cmp	al,0Dh

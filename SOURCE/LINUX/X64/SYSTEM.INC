@@ -1,6 +1,6 @@
 
 ; flat assembler interface for Linux x64
-; Copyright (c) 1999-2021, Tomasz Grysztar.
+; Copyright (c) 1999-2022, Tomasz Grysztar.
 ; All rights reserved.
 
 O_ACCMODE  = 0003o
