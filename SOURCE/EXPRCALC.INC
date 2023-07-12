@@ -1327,7 +1327,7 @@ get_dword_value:
 	cmp	edx,[edi+4]
 	jne	range_exceeded
 	mov	ecx,edx
-	shr	ecx,31
+	sar	ecx,31
 	cmp	cl,[value_sign]
 	jne	range_exceeded
 	ret

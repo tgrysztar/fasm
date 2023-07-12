@@ -4930,11 +4930,11 @@ the brand of the target operating system (for example value 3 would mark
 the executable for Linux system). With this format selected it is allowed
 to use "entry" directive followed by the value to set as entry point of program.
 On the other hand it makes "extrn" and "public" directives unavailable,
-and instead of "section" there should be the "segment" directive used,
-followed by one or more segment permission flags and optionally a marker of
-special ELF executable segment, which can be "interpreter", "dynamic", "note",
-"gnuehframe", "gnustack" or "gnurelro". Available permission flags are: "readable",
-"writeable" and "executable". The origin of a non-special segment is aligned
-to page (4096 bytes). 
+and instead of "section" it expects the "segment" directive followed by one or more
+segment permission flags and optionally a marker of special ELF executable segment,
+which can be "interpreter", "dynamic", "note", "gnuehframe", "gnustack"
+or "gnurelro". Available permission flags are: "readable", "writeable"
+and "executable". The origin of a non-special segment is aligned to page
+(4096 bytes).
 
 EOF

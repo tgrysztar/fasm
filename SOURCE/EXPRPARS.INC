@@ -519,18 +519,14 @@ get_number:
 
 get_fp_value:
 	push	edi esi
-	lods	byte [esi]
-	cmp	al,1Ah
-	je	fp_value_start
-	cmp	al,'-'
-	je	fp_sign_ok
-	cmp	al,'+'
-	jne	not_fp_value
-      fp_sign_ok:
-	lods	byte [esi]
-	cmp	al,1Ah
-	jne	not_fp_value
       fp_value_start:
+	lods	byte [esi]
+	cmp	al,'-'
+	je	fp_value_start
+	cmp	al,'+'
+	je	fp_value_start
+	cmp	al,1Ah
+	jne	not_fp_value
 	lods	byte [esi]
 	movzx	ecx,al
 	cmp	cl,1
@@ -598,14 +594,15 @@ get_fp_value:
 	or	ah,ah
 	jz	not_fp_value
 	pop	esi
-	lods	byte [esi]
 	mov	[fp_sign],0
+      fp_get_sign:
+	lods	byte [esi]
 	cmp	al,1Ah
 	je	fp_get
-	inc	esi
 	cmp	al,'+'
-	je	fp_get
-	mov	[fp_sign],1
+	je	fp_get_sign
+	xor	[fp_sign],1
+	jmp	fp_get_sign
       fp_get:
 	lods	byte [esi]
 	movzx	ecx,al

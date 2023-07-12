@@ -739,6 +739,7 @@ make_stub:
 	call	lseek
 	movzx	ecx,word [esi+4]
 	dec	ecx
+	js	out_of_memory
 	shl	ecx,9
 	movzx	edx,word [esi+2]
 	test	edx,edx
