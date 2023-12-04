@@ -5897,6 +5897,7 @@ rdpid_instruction:
 	mov	[base_code],0Fh
 	mov	[opcode_prefix],0F3h
 	call	take_register
+	mov	bl,al
 	cmp	[code_type],64
 	je	rdpid_64bit
 	cmp	ah,4

@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.32 (Dec 04, 2023)
+
+[-] Corrected encoding of "rdpid" instruction operand.
+
+
 version 1.73.31 (Jul 12, 2023)
 
 [+] Handling multiple sign characters before a floating-point value.
