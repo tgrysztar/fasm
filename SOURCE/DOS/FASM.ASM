@@ -335,7 +335,7 @@ get_params:
 
 include '..\version.inc'
 
-_logo db 'flat assembler  version ',VERSION_STRING,24h
+_logo db 'flat assembler version ',VERSION_STRING,24h
 _copyright db 'Copyright (c) 1999-2022, Tomasz Grysztar',0Dh,0Ah,0
 
 _usage db 0Dh,0Ah
