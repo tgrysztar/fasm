@@ -705,6 +705,8 @@ instructions_4:
  dw simple_instruction_0f_01-instruction_handler
  db 'clts',6
  dw simple_extended_instruction-instruction_handler
+ db 'clui',0EEh
+ dw simple_instruction_f3_0f_01_64bit-instruction_handler
  db 'clwb',6
  dw clflushopt_instruction-instruction_handler
  db 'cmps',0A6h
@@ -919,6 +921,8 @@ instructions_4:
  dw simple_instruction_0f_01-instruction_handler
  db 'stos',0AAh
  dw stos_instruction-instruction_handler
+ db 'stui',0EFh
+ dw simple_instruction_f3_0f_01_64bit-instruction_handler
  db 'test',0
  dw test_instruction-instruction_handler
  db 'verr',4
@@ -1018,6 +1022,10 @@ instructions_5:
  dw sse_sd_instruction-instruction_handler
  db 'divss',5Eh
  dw sse_ss_instruction-instruction_handler
+ db 'encls',0CFh
+ dw simple_instruction_0f_01-instruction_handler
+ db 'enclu',0D7h
+ dw simple_instruction_0f_01-instruction_handler
  db 'enter',0
  dw enter_instruction-instruction_handler
  db 'entry',0
@@ -1404,6 +1412,8 @@ instructions_5:
  dw popcnt_instruction-instruction_handler
  db 'tzmsk',14h
  dw tbm_instruction-instruction_handler
+ db 'uiret',0ECh
+ dw simple_instruction_f3_0f_01_64bit-instruction_handler
  db 'vdppd',41h
  dw avx_128bit_instruction_3a_imm8_noevex-instruction_handler
  db 'vdpps',40h
@@ -1507,6 +1517,8 @@ instructions_6:
  dw comisd_instruction-instruction_handler
  db 'comiss',2Fh
  dw comiss_instruction-instruction_handler
+ db 'enqcmd',0F2h
+ dw enqcmd_instruction-instruction_handler
  db 'fcmovb',0C0h
  dw fcmov_instruction-instruction_handler
  db 'fcmove',0C8h
@@ -1585,6 +1597,8 @@ instructions_6:
  dw sse_pd_instruction-instruction_handler
  db 'haddps',07Ch
  dw cvtpd2dq_instruction-instruction_handler
+ db 'hreset',0
+ dw hreset_instruction-instruction_handler
  db 'hsubpd',07Dh
  dw sse_pd_instruction-instruction_handler
  db 'hsubps',07Dh
@@ -1825,6 +1839,8 @@ instructions_6:
  dw simple_extended_instruction-instruction_handler
  db 't1mskc',17h
  dw tbm_instruction-instruction_handler
+ db 'testui',0EDh
+ dw simple_instruction_f3_0f_01_64bit-instruction_handler
  db 'tpause',66h
  dw tpause_instruction-instruction_handler
  db 'umwait',0F2h
@@ -2108,6 +2124,8 @@ instructions_7:
  dw endbr_instruction-instruction_handler
  db 'endbr64',0FAh
  dw endbr_instruction-instruction_handler
+ db 'enqcmds',0F3h
+ dw enqcmd_instruction-instruction_handler
  db 'fcmovbe',0D0h
  dw fcmov_instruction-instruction_handler
  db 'fcmovnb',0C0h
@@ -2737,6 +2755,8 @@ instructions_8:
  dw rdfsbase_instruction-instruction_handler
  db 'rstorssp',5
  dw rstorssp_instruction-instruction_handler
+ db 'senduipi',6
+ dw senduipi_instruction-instruction_handler
  db 'setssbsy',0E8h
  dw setssbsy_instruction-instruction_handler
  db 'sha1msg1',0C9h
@@ -3160,6 +3180,8 @@ instructions_9:
  dw simple_instruction_f3_0f_01-instruction_handler
  db 'rmpupdate',0FEh
  dw simple_instruction_f2_0f_01-instruction_handler
+ db 'serialize',0E8h
+ dw simple_instruction_0f_01-instruction_handler
  db 'sha1nexte',0C8h
  dw sse4_instruction_38-instruction_handler
  db 'sha1rnds4',0CCh
@@ -3544,8 +3566,12 @@ instructions_9:
  dw avx_pd_instruction-instruction_handler
  db 'vunpcklps',14h
  dw avx_ps_instruction-instruction_handler
+ db 'xresldtrk',0E9h
+ dw simple_instruction_f2_0f_01-instruction_handler
  db 'xrstors64',3
  dw xsaves_instruction_64bit-instruction_handler
+ db 'xsusldtrk',0E8h
+ dw simple_instruction_f2_0f_01-instruction_handler
 instructions_10:
  db 'aesdeclast',0DFh
  dw sse4_instruction_66_38-instruction_handler

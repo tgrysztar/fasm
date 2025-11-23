@@ -2,6 +2,13 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version.1.73.33 (..., 2025)
+
+[+] Added UINTR, SERIALIZE, TSXLDTRK, HRESET, SGX, ENQCMD instruction sets.
+
+[-] Corrected encoding of "umonitor" instruction.
+
+
 version 1.73.32 (Dec 04, 2023)
 
 [-] Corrected encoding of "rdpid" instruction operand.

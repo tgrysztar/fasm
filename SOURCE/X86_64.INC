@@ -77,13 +77,7 @@ bnd_prefix_instruction:
 	or	[prefix_flags],1 + 10h
 	jmp	continue_line
 int_instruction:
-	lods	byte [esi]
-	call	get_size_operator
-	cmp	ah,1
-	ja	invalid_operand_size
-	cmp	al,'('
-	jne	invalid_operand
-	call	get_byte_value
+	call	take_byte_value
 	test	eax,eax
 	jns	int_imm_ok
 	call	recoverable_overflow
@@ -92,6 +86,16 @@ int_instruction:
 	mov	al,0CDh
 	stos	word [edi]
 	jmp	instruction_assembled
+    take_byte_value:
+	lods	byte [esi]
+	call	get_size_operator
+	cmp	ah,1
+	ja	invalid_operand_size
+	cmp	al,'('
+	jne	invalid_operand
+	call	get_byte_value
+	ret
+
 aa_instruction:
 	cmp	[code_type],64
 	je	illegal_instruction
@@ -3678,6 +3682,9 @@ simple_instruction_f2_0f_01:
 	mov	byte [edi],0F2h
 	inc	edi
 	jmp	simple_instruction_0f_01
+simple_instruction_f3_0f_01_64bit:
+	cmp	[code_type],64
+	jne	illegal_instruction
 simple_instruction_f3_0f_01:
 	mov	byte [edi],0F3h
 	inc	edi
@@ -4359,6 +4366,7 @@ pmovmskb_instruction:
 	call	get_byte_value
 	stosb
 	ret
+
 pinsrw_instruction:
 	mov	[extended_code],al
 	mov	[base_code],0Fh
@@ -5692,6 +5700,23 @@ monitor_instruction:
 	mov	al,[postbyte_register]
 	stos	byte [edi]
 	jmp	instruction_assembled
+hreset_instruction:
+	call	take_byte_value
+	mov	dl,al
+	cmp	byte [esi],','
+	jne	hreset_instruction_store
+	lods	byte [esi]
+	call	take_register
+	cmp	ax,0400h
+	jne	invalid_operand
+      hreset_instruction_store:
+	mov	eax,0F03A0FF3h
+	stos	dword [edi]
+	mov	al,0C0h
+	mov	ah,dl
+	stos	word [edi]
+	jmp	instruction_assembled
+
 pconfig_instruction:
 	mov	[postbyte_register],al
 	jmp	monitor_instruction_store
@@ -6120,14 +6145,24 @@ invlpga_instruction:
 	mov	ah,bl
 	jmp	simple_svm_detect_size
 
+senduipi_instruction:
+	cmp	[code_type],64
+	jne	illegal_instruction
+	mov	[opcode_prefix],0F3h
 rdrand_instruction:
 	mov	[base_code],0Fh
 	mov	[extended_code],0C7h
 	mov	[postbyte_register],al
 	call	take_register
 	mov	bl,al
+	cmp	[postbyte_register],6
+	je	senduipi_reg64
 	mov	al,ah
 	call	operand_autodetect
+	jmp	nomem_instruction_ready
+      senduipi_reg64:
+	cmp	ah,8
+	jne	invalid_operand_size
 	jmp	nomem_instruction_ready
 rdfsbase_instruction:
 	cmp	[code_type],64
@@ -6145,13 +6180,7 @@ rdfsbase_instruction:
 	jmp	nomem_instruction_ready
 
 xabort_instruction:
-	lods	byte [esi]
-	call	get_size_operator
-	cmp	ah,1
-	ja	invalid_operand_size
-	cmp	al,'('
-	jne	invalid_operand
-	call	get_byte_value
+	call	take_byte_value
 	mov	dl,al
 	mov	ax,0F8C6h
 	stos	word [edi]
@@ -6460,11 +6489,19 @@ umonitor_instruction:
 	mov	[opcode_prefix],0F3h
 	call	take_register
 	mov	bl,al
-	mov	al,ah
-	call	operand_autodetect
+	cmp	ah,4
+	je	umonitor_reg32
+	shl	ah,3
+	cmp	ah,[code_type]
+	je	umonitor_ok
+	jmp	invalid_operand_size
+      umonitor_reg32:
+	call	address_32bit_prefix
+      umonitor_ok:
 	jmp	nomem_instruction_ready
 movdir64b_instruction:
 	call	setup_66_0f_38
+      movdir64b_reg_mem:
 	call	take_register
 	mov	[postbyte_register],al
 	xor	al,al
@@ -6499,6 +6536,12 @@ movdir64b_instruction:
 	cmp	al,cl
 	jne	invalid_operand_size
 	jmp	instruction_assembled
+enqcmd_instruction:
+	mov	[opcode_prefix],al
+	mov	[base_code],0Fh
+	mov	[extended_code],38h
+	mov	[supplemental_code],0F8h
+	jmp	movdir64b_reg_mem
 
 setssbsy_instruction:
 	shl	eax,24
