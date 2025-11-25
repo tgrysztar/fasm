@@ -2,7 +2,12 @@
 Visit http://flatassembler.net/ for more information.
 
 
-version.1.73.33 (..., 2025)
+version 1.73.34 (Nov 25, 2025)
+
+[+] Added AMX instructions.
+
+
+version 1.73.33 (Nov 23, 2025)
 
 [+] Added UINTR, SERIALIZE, TSXLDTRK, HRESET, SGX, ENQCMD instruction sets.
 

@@ -299,6 +299,14 @@ symbols_4:
  db 'r15d',10h,4Fh
  db 'r15l',10h,1Fh
  db 'r15w',10h,2Fh
+ db 'tmm0',14h,70h
+ db 'tmm1',14h,71h
+ db 'tmm2',14h,72h
+ db 'tmm3',14h,73h
+ db 'tmm4',14h,74h
+ db 'tmm5',14h,75h
+ db 'tmm6',14h,76h
+ db 'tmm7',14h,77h
  db 'word',11h,2
  db 'xmm0',10h,0C0h
  db 'xmm1',10h,0C1h
@@ -2312,6 +2320,14 @@ instructions_7:
  dw simple_extended_instruction-instruction_handler
  db 'sysretq',07h
  dw simple_extended_instruction_64bit-instruction_handler
+ db 'tdpbssd',0F2h
+ dw amx_int8_instruction-instruction_handler
+ db 'tdpbsud',0F3h
+ dw amx_int8_instruction-instruction_handler
+ db 'tdpbusd',66h
+ dw amx_int8_instruction-instruction_handler
+ db 'tdpbuud',0
+ dw amx_int8_instruction-instruction_handler
  db 'tlbsync',0FFh
  dw simple_instruction_0f_01-instruction_handler
  db 'ucomisd',2Eh
@@ -2767,6 +2783,8 @@ instructions_8:
  dw simple_extended_instruction-instruction_handler
  db 'sysexitq',35h
  dw simple_extended_instruction_64bit-instruction_handler
+ db 'tilezero',0
+ dw tilezero_instruction-instruction_handler
  db 'umonitor',0
  dw umonitor_instruction-instruction_handler
  db 'unpckhpd',15h
@@ -3146,6 +3164,8 @@ instructions_9:
  dw fxsave_instruction_64bit-instruction_handler
  db 'gf2p8mulb',0CFh
  dw sse4_instruction_66_38-instruction_handler
+ db 'ldtilecfg',0
+ dw ldtilecfg_instruction-instruction_handler
  db 'movdir64b',0F8h
  dw movdir64b_instruction-instruction_handler
  db 'pclmulqdq',-1
@@ -3186,6 +3206,12 @@ instructions_9:
  dw sse4_instruction_38-instruction_handler
  db 'sha1rnds4',0CCh
  dw sse4_instruction_3a_imm8-instruction_handler
+ db 'sttilecfg',66h
+ dw ldtilecfg_instruction-instruction_handler
+ db 'tdpbf16ps',0F3h
+ dw amx_bf16_instruction-instruction_handler
+ db 'tileloadd',0F2h
+ dw tileloadd_instruction-instruction_handler
  db 'useavx256',0
  dw set_evex_mode-instruction_handler
  db 'useavx512',1
@@ -3611,6 +3637,8 @@ instructions_10:
  dw sse4_instruction_38-instruction_handler
  db 'sha256msg2',0CDh
  dw sse4_instruction_38-instruction_handler
+ db 'tilestored',0F3h
+ dw tilestored_instruction-instruction_handler
  db 'vcmptruepd',0Fh
  dw avx_cmp_pd_instruction-instruction_handler
  db 'vcmptrueps',0Fh
@@ -3824,6 +3852,10 @@ instructions_11:
  dw setssbsy_instruction-instruction_handler
  db 'sha256rnds2',0CBh
  dw sse4_instruction_38_xmm0-instruction_handler
+ db 'tileloaddt1',66h
+ dw tileloadd_instruction-instruction_handler
+ db 'tilerelease',0
+ dw tilerelease_instruction-instruction_handler
  db 'vaesdeclast',0DFh
  dw avx_instruction_38_nomask-instruction_handler
  db 'vaesenclast',0DDh

@@ -3147,6 +3147,94 @@ avx512_4vnniw_instruction:
 	mov	[operand_size],64
 	jmp	instruction_ready
 
+take_tile_register:
+	lods	byte [esi]
+	cmp	al,14h
+	jne	invalid_operand
+	lods	byte [esi]
+	mov	ah,al
+	shr	ah,4
+	cmp	ah,7
+	jne	invalid_operand
+	and	al,1111b
+	ret
+take_tile_address:
+	or	[operand_flags],80h
+	mov	[address_size],0
+	jmp	get_sib_address_components
+amx_int8_instruction:
+	mov	ah,5Eh
+	jmp	amx_instruction
+amx_bf16_instruction:
+	mov	ah,5Ch
+amx_instruction:
+	mov	[opcode_prefix],al
+	or	[vex_required],2
+	mov	[base_code],0Fh
+	mov	[extended_code],38h
+	mov	[supplemental_code],ah
+	call	take_tile_register
+	mov	[postbyte_register],al
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_tile_register
+	mov	bl,al
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_tile_register
+	mov	[vex_register],al
+	jmp	nomem_instruction_ready
+tilezero_instruction:
+	call	take_tile_register
+	mov	[postbyte_register],al
+	mov	[opcode_prefix],0F2h
+	jmp	tile_instruction
+tilerelease_instruction:
+	mov	[postbyte_register],0
+      tile_instruction:
+	or	[vex_required],2
+	mov	[base_code],0Fh
+	mov	[extended_code],38h
+	mov	[supplemental_code],49h
+	xor	bl,bl
+	mov	[vex_register],0
+	jmp	nomem_instruction_ready
+ldtilecfg_instruction:
+	mov	[opcode_prefix],al
+	or	[vex_required],2
+	mov	[supplemental_code],49h
+	mov	ah,38h
+	xor	al,al
+	mov	cl,64
+	jmp	xsave_common
+tileloadd_instruction:
+	call	tileloadd_setup
+	call	take_tile_register
+	mov	[postbyte_register],al
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_tile_address
+	jmp	instruction_ready
+      tileloadd_setup:
+	mov	[opcode_prefix],al
+	or	[vex_required],2
+	mov	[base_code],0Fh
+	mov	[extended_code],38h
+	mov	[supplemental_code],4Bh
+	ret
+tilestored_instruction:
+	call	tileloadd_setup
+	call	take_tile_address
+	lods	byte [esi]
+	cmp	al,','
+	jne	invalid_operand
+	call	take_tile_register
+	mov	[postbyte_register],al
+	jmp	instruction_ready
+
 set_evex_mode:
 	mov	[evex_mode],al
 	jmp	instruction_assembled

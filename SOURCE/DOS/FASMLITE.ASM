@@ -419,7 +419,7 @@ macro db values&
 	match name=,class=,id, values
 	\{
 		if name eqtype 'ax'
-			if class = 1Fh | ( class = 10h & ( id and 0F0h > 0C0h | id and 0E0h = 60h) )
+			if class = 1Fh | ( class = 10h & ( id and 0F0h > 0C0h | id and 0E0h = 60h) ) | ( class = 14h & id and 0F0h = 70h )
 				__CUT = 1
 			end if
 		end if

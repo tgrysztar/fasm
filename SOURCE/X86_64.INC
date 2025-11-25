@@ -5529,7 +5529,8 @@ fxsave_instruction:
 	cmp	al,'['
 	jne	invalid_operand
 	call	get_address
-	mov	ah,[operand_size]
+	xor	ah,ah
+	xchg	ah,[operand_size]
 	or	ah,ah
 	jz	xsave_size_ok
 	cmp	ah,[mmx_size]
@@ -6390,7 +6391,10 @@ bndmk_instruction:
 	mov	al,bl
 	or	al,bh
 	shr	al,4
-	cmp	al,[address_size]
+	or	al,[address_size]
+	cmp	al,4
+	je	address_component_ok
+	cmp	al,8
 	jne	invalid_address
       address_component_ok:
 	ret
@@ -6403,6 +6407,9 @@ bndldx_instruction:
 	cmp	al,','
 	jne	invalid_operand
 	call	take_bnd_mib
+     bnd_mib_check:
+	cmp	cl,1
+	ja	invalid_address
 	jmp	bndmk_ready
 bndstx_instruction:
 	mov	[base_code],0Fh
@@ -6413,12 +6420,13 @@ bndstx_instruction:
 	jne	invalid_operand
 	call	take_bnd_register
 	mov	[postbyte_register],al
-	jmp	bndmk_ready
-    take_bnd_mib:
+	jmp	bnd_mib_check
+take_bnd_mib:
+	call	get_bnd_size
+     get_sib_address_components:
 	lods	byte [esi]
 	cmp	al,'['
 	jne	invalid_operand
-	call	get_bnd_size
 	call	get_address_prefixes
 	call	get_address_component
 	cmp	byte [esi-1],']'
@@ -6448,8 +6456,6 @@ bndstx_instruction:
 	jz	mib_place_index
 	or	bh,bh
 	jnz	invalid_address
-	cmp	cl,1
-	jne	invalid_address
 	mov	bh,bl
       mib_place_index:
 	mov	bl,[address_register]
@@ -7000,6 +7006,8 @@ store_instruction:
 	jne	invalid_address
 	cmp	[code_type],64
 	je	invalid_address_size
+	test	[operand_flags],80h
+	jnz	invalid_address_size
 	call	address_16bit_prefix
 	test	ch,22h
 	setz	[displacement_compression]
@@ -7226,6 +7234,8 @@ store_instruction:
 	and	al,111b
 	cmp	al,4
 	je	zero_index_register
+	test	[operand_flags],80h
+	jnz	zero_index_register
 	test	ch,44h or 88h
 	jnz	simple_address_32bit_value
 	or	ch,ch
