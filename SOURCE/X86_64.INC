@@ -6156,7 +6156,7 @@ rdrand_instruction:
 	mov	[postbyte_register],al
 	call	take_register
 	mov	bl,al
-	cmp	[postbyte_register],6
+	cmp	[opcode_prefix],0F3h
 	je	senduipi_reg64
 	mov	al,ah
 	call	operand_autodetect

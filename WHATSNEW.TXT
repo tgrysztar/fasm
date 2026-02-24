@@ -2,6 +2,11 @@
 Visit http://flatassembler.net/ for more information.
 
 
+version 1.73.35 (Feb 24, 2026)
+
+[-] Fixed a bug in "rdrand" operand parsing introduced when UINTR was added.
+
+
 version 1.73.34 (Nov 25, 2025)
 
 [+] Added AMX instructions.
